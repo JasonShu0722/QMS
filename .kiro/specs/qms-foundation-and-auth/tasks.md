@@ -213,7 +213,7 @@
   - _Requirements: 2.1.1_
 
 
-- [ ] 3.5 实现权限配置管理 API
+- [x] 3.5 实现权限配置管理 API
   - 创建 backend/app/api/v1/admin/permissions.py 权限管理路由
   - 实现 GET /api/v1/admin/permissions/matrix 获取权限矩阵：
     - 返回用户列表和功能-操作组合

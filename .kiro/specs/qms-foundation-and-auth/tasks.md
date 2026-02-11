@@ -274,7 +274,7 @@
   - 实现 GET /api/v1/tasks/my-tasks 获取当前用户待办任务
   - _Requirements: 2.2.3_
 
-- [ ] 4.2 实现任务转派功能
+- [x] 4.2 实现任务转派功能
   - 实现 POST /api/v1/admin/tasks/reassign 批量转派任务：
     - 接收参数：from_user_id, to_user_id, task_ids
     - 更新各业务表的 current_handler_id

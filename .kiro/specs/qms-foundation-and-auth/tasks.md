@@ -198,7 +198,7 @@
   - 创建 get_current_user 依赖注入函数（从 JWT Token 提取用户）
   - _Requirements: 2.1.5_
 
-- [ ] 3.4 实现权限引擎核心逻辑
+- [x] 3.4 实现权限引擎核心逻辑
   - 创建 backend/app/core/permissions.py 权限引擎
   - 实现 PermissionChecker 类：
     - check_permission(user_id, module_path, operation) -> bool

@@ -84,7 +84,7 @@
 
 ### 2. 数据库设计与核心模型
 
-- [ ] 2.1 设计用户与权限数据模型
+- [x] 2.1 设计用户与权限数据模型
   - 创建 backend/app/models/user.py User 模型
     - 字段：id, username, password_hash, email, phone, full_name
     - 用户类型：user_type (internal/supplier)

@@ -104,7 +104,7 @@
     - 状态：status (pending/active/suspended)
   - _Requirements: 2.1.1, 2.1.3, 2.1.4_
 
-- [ ] 2.2 设计通知与日志数据模型
+- [x] 2.2 设计通知与日志数据模型
   - 创建 backend/app/models/notification.py Notification 模型
     - 字段：id, user_id (FK), message_type, title, content, link
     - 状态：is_read, read_at

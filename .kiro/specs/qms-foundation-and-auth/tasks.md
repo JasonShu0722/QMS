@@ -16,7 +16,7 @@
 
 ### 1. 项目基础设施搭建
 
-- [ ] 1.1 初始化 Monorepo 项目结构
+- [x] 1.1 初始化 Monorepo 项目结构
   - 创建根目录结构：backend/, frontend/, deployment/
   - 创建 .env.example 环境变量模板（包含 DB_PASSWORD, REDIS_PASSWORD, SECRET_KEY, IMS_BASE_URL, OPENAI_API_KEY, SMTP_SERVER）
   - 编写 README.md 项目说明文档（包含双轨发布架构说明）

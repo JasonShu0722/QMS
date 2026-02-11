@@ -171,7 +171,7 @@
   - _Requirements: 2.1.5_
 
 
-- [ ] 3.2 实现用户注册与审核 API
+- [x] 3.2 实现用户注册与审核 API
   - 创建 backend/app/schemas/user.py Pydantic 数据校验模型
     - UserRegisterSchema: 注册表单校验
     - UserApprovalSchema: 审核操作校验

@@ -43,6 +43,6 @@ async def health_check():
     return {"status": "healthy"}
 
 
-# 导入并注册 API 路由（后续任务中实现）
-# from app.api.v1 import api_router
-# app.include_router(api_router, prefix="/api/v1")
+# 导入并注册 API 路由
+from app.api.v1 import api_router
+app.include_router(api_router, prefix="/api")

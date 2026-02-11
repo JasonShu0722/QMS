@@ -335,7 +335,7 @@
     - 阅读人员清单
   - _Requirements: 2.2.5_
 
-- [ ] 4.6 实现消息通知配置管理
+- [x] 4.6 实现消息通知配置管理
   - 创建 backend/app/models/notification_rule.py NotificationRule 模型
     - 字段：id, rule_name, trigger_object, trigger_condition, action_type
     - 升级策略：timeout_hours, escalation_recipients

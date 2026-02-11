@@ -4,7 +4,7 @@ API Version 1
 """
 from fastapi import APIRouter
 from app.api.v1 import auth, tasks, notifications, profile, announcements
-from app.api.v1.admin import permissions, users, operation_logs, tasks as admin_tasks
+from app.api.v1.admin import permissions, users, operation_logs, tasks as admin_tasks, notification_rules
 
 # 创建 v1 API 路由器
 api_router = APIRouter(prefix="/v1")
@@ -19,5 +19,6 @@ api_router.include_router(permissions.router)
 api_router.include_router(users.router)
 api_router.include_router(operation_logs.router)
 api_router.include_router(admin_tasks.router)
+api_router.include_router(notification_rules.router)
 
 __all__ = ["api_router"]

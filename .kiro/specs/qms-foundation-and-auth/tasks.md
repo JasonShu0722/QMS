@@ -319,7 +319,7 @@
     - 更新 digital_signature 字段
   - _Requirements: 2.2.2_
 
-- [ ] 4.5 实现公告栏管理
+- [x] 4.5 实现公告栏管理
   - 创建 backend/app/api/v1/announcements.py 公告路由
   - 实现 GET /api/v1/announcements 获取公告列表：
     - 按发布时间倒序

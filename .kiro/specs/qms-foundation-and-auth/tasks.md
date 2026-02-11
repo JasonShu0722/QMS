@@ -225,7 +225,7 @@
   - 实现 GET /api/v1/admin/permissions/users/{user_id} 获取用户权限详情
   - _Requirements: 2.1.1_
 
-- [ ] 3.6 实现用户审核管理 API
+- [x] 3.6 实现用户审核管理 API
   - 创建 backend/app/api/v1/admin/users.py 用户管理路由
   - 实现 GET /api/v1/admin/users/pending 获取待审核用户列表
   - 实现 POST /api/v1/admin/users/{id}/approve 批准用户：

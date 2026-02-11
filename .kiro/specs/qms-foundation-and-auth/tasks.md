@@ -66,7 +66,7 @@
   - 创建 app/core/config.py 配置管理模块（读取环境变量）
   - _Requirements: 2.1.5, 2.12.2_
 
-- [ ] 1.5 配置前端开发环境
+- [x] 1.5 配置前端开发环境
   - 使用 Vite 初始化 Vue 3 项目（Composition API）
   - 安装依赖包：
     - Element Plus (桌面端 UI 组件库)

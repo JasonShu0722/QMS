@@ -136,7 +136,7 @@
     - 审计字段：created_at, updated_at, updated_by
   - _Requirements: 2.3.2_
 
-- [ ] 2.5 执行数据库迁移（兼容双轨环境）
+- [x] 2.5 执行数据库迁移（兼容双轨环境）
   - 使用 Alembic 生成初始迁移脚本：alembic revision --autogenerate -m "Initial schema"
   - 验证迁移脚本符合非破坏性原则：
     - 新增字段必须设置为 Nullable 或带有 Default Value

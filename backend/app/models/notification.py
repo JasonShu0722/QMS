@@ -1,7 +1,7 @@
 """
 Notification Model - 站内信通知模型
 
-用于系统内部消息推送，包括流程异常、系统提醒、预警通知等。
+用于系统内部消息推送,包括流程异常、系统提醒、预警通知等。
 支持未读/已读状态管理和消息链接跳转。
 """
 from datetime import datetime
@@ -9,7 +9,7 @@ from enum import Enum
 from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 
-from app.core.database import Base
+from app.models.base import Base
 
 
 class MessageType(str, Enum):

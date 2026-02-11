@@ -9,12 +9,17 @@ from sqlalchemy import select, or_
 
 from app.core.database import get_db
 from app.core.auth_strategy import LocalAuthStrategy
+from app.core.dependencies import get_current_user
 from app.models.user import User, UserType, UserStatus
 from app.models.supplier import Supplier, SupplierStatus
 from app.schemas.user import (
     UserRegisterSchema,
     RegisterResponseSchema,
-    SupplierSearchResponseSchema
+    SupplierSearchResponseSchema,
+    LoginRequestSchema,
+    LoginResponseSchema,
+    CaptchaResponseSchema,
+    UserResponseSchema
 )
 
 router = APIRouter(prefix="/auth", tags=["认证管理"])
@@ -202,3 +207,181 @@ async def search_suppliers(
         for supplier in suppliers
     ]
 
+
+
+@router.post(
+    "/login",
+    response_model=LoginResponseSchema,
+    summary="统一登录接口",
+    description="""
+    统一登录接口，支持内部员工和供应商用户登录。
+    
+    **登录流程：**
+    1. 验证用户名和密码
+    2. 供应商登录：验证图形验证码
+    3. 检查账号状态（active/frozen/pending）
+    4. 检查密码是否需要强制修改（首次登录或超过 90 天）
+    5. 生成 JWT Token
+    6. 记录登录日志（last_login_at, ip_address）
+    
+    **内部员工登录：**
+    - user_type: "internal"
+    - 仅需用户名和密码
+    
+    **供应商登录：**
+    - user_type: "supplier"
+    - 需要用户名、密码和图形验证码
+    - 先调用 /auth/captcha 获取验证码
+    """
+)
+async def login(
+    login_data: LoginRequestSchema,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    统一登录接口
+    
+    Requirements: 2.1.5
+    """
+    from app.services.captcha_service import captcha_service
+    from app.core.auth_strategy import (
+        InvalidCredentialsError,
+        AccountLockedError,
+        PasswordExpiredError,
+        AccountInactiveError
+    )
+    
+    # 1. 供应商登录：验证图形验证码
+    if login_data.user_type == UserType.SUPPLIER:
+        if not login_data.captcha or not login_data.captcha_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="供应商登录必须提供图形验证码"
+            )
+        
+        # 验证验证码
+        is_captcha_valid = captcha_service.verify_captcha(
+            login_data.captcha_id,
+            login_data.captcha
+        )
+        
+        if not is_captcha_valid:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="验证码错误或已过期，请重新获取"
+            )
+    
+    # 2. 执行认证
+    try:
+        user = await local_auth.authenticate(
+            db,
+            login_data.username,
+            login_data.password
+        )
+    except InvalidCredentialsError as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=str(e)
+        )
+    except AccountLockedError as e:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=str(e)
+        )
+    except AccountInactiveError as e:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=str(e)
+        )
+    except PasswordExpiredError as e:
+        # 密码过期：仍然返回 Token，但标记 password_expired=True
+        # 前端收到后应引导用户修改密码
+        user = await db.execute(
+            select(User).where(User.username == login_data.username)
+        )
+        user = user.scalar_one()
+        
+        access_token = local_auth.create_access_token(user.id)
+        
+        return LoginResponseSchema(
+            access_token=access_token,
+            token_type="bearer",
+            user_info=UserResponseSchema.model_validate(user),
+            password_expired=True
+        )
+    
+    # 3. 生成 Token
+    access_token = local_auth.create_access_token(user.id)
+    
+    # 4. 返回登录结果
+    return LoginResponseSchema(
+        access_token=access_token,
+        token_type="bearer",
+        user_info=UserResponseSchema.model_validate(user),
+        password_expired=False
+    )
+
+
+@router.get(
+    "/captcha",
+    response_model=CaptchaResponseSchema,
+    summary="生成图形验证码",
+    description="""
+    生成图形验证码接口，用于供应商登录。
+    
+    **使用流程：**
+    1. 前端调用此接口获取验证码图片和 captcha_id
+    2. 用户输入验证码
+    3. 登录时将 captcha_id 和用户输入的验证码一起提交
+    
+    **验证码特性：**
+    - 有效期：5 分钟
+    - 长度：4 位字符（大写字母和数字）
+    - 一次性使用：验证后自动失效
+    """
+)
+async def get_captcha():
+    """
+    生成图形验证码
+    
+    Requirements: 2.1.5
+    """
+    from app.services.captcha_service import captcha_service
+    
+    # 生成验证码
+    captcha_id, captcha_image = captcha_service.generate_captcha()
+    
+    return CaptchaResponseSchema(
+        captcha_id=captcha_id,
+        captcha_image=captcha_image
+    )
+
+
+@router.get(
+    "/me",
+    response_model=UserResponseSchema,
+    summary="获取当前用户信息",
+    description="""
+    获取当前登录用户的详细信息。
+    
+    **认证要求：**
+    - 需要在请求头中携带有效的 JWT Token
+    - Header: Authorization: Bearer <token>
+    
+    **返回信息：**
+    - 用户基本信息（姓名、邮箱、电话）
+    - 用户类型和状态
+    - 部门和职位（内部员工）
+    - 关联供应商（供应商用户）
+    - 最后登录时间
+    """
+)
+async def get_current_user_info(
+    current_user: User = Depends(get_current_user)
+):
+    """
+    获取当前用户信息
+    
+    Requirements: 2.1.5
+    """
+    return UserResponseSchema.model_validate(current_user)

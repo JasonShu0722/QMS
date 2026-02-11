@@ -173,3 +173,90 @@ class RegisterResponseSchema(BaseModel):
         }
     }
 
+
+
+class LoginRequestSchema(BaseModel):
+    """
+    登录请求模型
+    """
+    username: str = Field(..., min_length=3, max_length=50, description="用户名")
+    password: str = Field(..., min_length=1, description="密码")
+    user_type: str = Field(..., description="用户类型: internal 或 supplier")
+    captcha: Optional[str] = Field(None, description="图形验证码（供应商登录必填）")
+    captcha_id: Optional[str] = Field(None, description="验证码ID（供应商登录必填）")
+    
+    @field_validator('user_type')
+    @classmethod
+    def validate_user_type(cls, v: str) -> str:
+        """验证用户类型"""
+        if v not in ['internal', 'supplier']:
+            raise ValueError('用户类型必须是 internal 或 supplier')
+        return v
+    
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "username": "zhang_san",
+                    "password": "SecurePass123!",
+                    "user_type": "internal"
+                },
+                {
+                    "username": "supplier_user",
+                    "password": "SupplierPass456!",
+                    "user_type": "supplier",
+                    "captcha": "ABCD",
+                    "captcha_id": "550e8400-e29b-41d4-a716-446655440000"
+                }
+            ]
+        }
+    }
+
+
+class LoginResponseSchema(BaseModel):
+    """
+    登录成功响应模型
+    """
+    access_token: str
+    token_type: str
+    user_info: UserResponseSchema
+    password_expired: bool = Field(default=False, description="密码是否过期（需要强制修改）")
+    
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+                    "token_type": "bearer",
+                    "password_expired": False,
+                    "user_info": {
+                        "id": 1,
+                        "username": "zhang_san",
+                        "full_name": "张三",
+                        "email": "zhangsan@company.com",
+                        "user_type": "internal",
+                        "status": "active"
+                    }
+                }
+            ]
+        }
+    }
+
+
+class CaptchaResponseSchema(BaseModel):
+    """
+    验证码响应模型
+    """
+    captcha_id: str = Field(..., description="验证码ID（用于验证时关联）")
+    captcha_image: str = Field(..., description="Base64编码的验证码图片")
+    
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "captcha_id": "550e8400-e29b-41d4-a716-446655440000",
+                    "captcha_image": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA..."
+                }
+            ]
+        }
+    }

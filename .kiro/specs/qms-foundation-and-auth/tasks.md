@@ -184,7 +184,7 @@
   - 实现 GET /api/v1/auth/suppliers/search?q={keyword} 供应商模糊搜索接口
   - _Requirements: 2.1.3_
 
-- [ ] 3.3 实现统一登录 API（多入口支持）
+- [x] 3.3 实现统一登录 API（多入口支持）
   - 实现 POST /api/v1/auth/login 登录接口：
     - 接收参数：username, password, user_type (internal/supplier), captcha (供应商必填)
     - 验证用户名和密码

@@ -260,7 +260,7 @@
 
 ### 4. 个人中心与通知系统
 
-- [ ] 4.1 实现任务聚合服务
+- [x] 4.1 实现任务聚合服务
   - 创建 backend/app/services/task_aggregator.py 任务聚合服务
   - 实现 TaskAggregator 类：
     - get_user_tasks(user_id) -> List[TaskItem]

@@ -7,10 +7,13 @@ from typing import AsyncGenerator
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy.pool import NullPool
+from datetime import datetime
 
 from app.main import app
 from app.core.database import get_db
 from app.models.base import Base
+from app.models.user import User, UserType, UserStatus
+from app.core.auth_strategy import LocalAuthStrategy
 
 
 # 测试数据库 URL（使用 SQLite 内存数据库）
@@ -58,6 +61,47 @@ async def db_session(db_engine) -> AsyncGenerator[AsyncSession, None]:
     
     async with async_session() as session:
         yield session
+
+
+@pytest.fixture(scope="function")
+async def async_db_session(db_session: AsyncSession) -> AsyncSession:
+    """别名：用于某些测试中更清晰的命名"""
+    return db_session
+
+
+@pytest.fixture(scope="function")
+async def test_user(db_session: AsyncSession) -> User:
+    """创建测试用户"""
+    auth_strategy = LocalAuthStrategy()
+    
+    user = User(
+        username="testuser",
+        password_hash=auth_strategy.hash_password("Test@1234"),
+        full_name="测试用户",
+        email="test@example.com",
+        phone="13800138000",
+        user_type=UserType.INTERNAL,
+        status=UserStatus.ACTIVE,
+        department="质量部",
+        position="质量工程师",
+        password_changed_at=datetime.utcnow(),
+        created_at=datetime.utcnow(),
+        updated_at=datetime.utcnow()
+    )
+    
+    db_session.add(user)
+    await db_session.commit()
+    await db_session.refresh(user)
+    
+    return user
+
+
+@pytest.fixture(scope="function")
+async def test_user_token(test_user: User) -> str:
+    """创建测试用户的 JWT Token"""
+    auth_strategy = LocalAuthStrategy()
+    token = auth_strategy.create_access_token(test_user.id)
+    return token
 
 
 @pytest.fixture(scope="function")

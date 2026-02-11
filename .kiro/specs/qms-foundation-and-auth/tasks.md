@@ -128,7 +128,7 @@
   - _Requirements: 2.12.3_
 
 
-- [ ] 2.4 设计系统配置数据模型
+- [x] 2.4 设计系统配置数据模型
   - 创建 backend/app/models/system_config.py SystemConfig 模型
     - 字段：id, config_key, config_value (JSON), config_type, description
     - 配置分类：category (business_rule/timeout/file_limit/notification)

@@ -242,7 +242,7 @@
     - 强制下次登录修改
   - _Requirements: 2.1.3, 2.3.3_
 
-- [ ] 3.7 实现操作日志审计
+- [x] 3.7 实现操作日志审计
   - 创建 backend/app/core/audit_middleware.py 审计中间件
   - 拦截所有 POST/PUT/DELETE 请求：
     - 记录操作人、操作时间、操作类型

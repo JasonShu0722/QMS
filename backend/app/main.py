@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
+from app.core.audit_middleware import setup_audit_middleware
 
 # 创建 FastAPI 应用实例
 app = FastAPI(
@@ -24,6 +25,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# 注册审计中间件
+setup_audit_middleware(app)
 
 
 @app.get("/")

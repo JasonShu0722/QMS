@@ -4,7 +4,7 @@ API Version 1
 """
 from fastapi import APIRouter
 from app.api.v1 import auth
-from app.api.v1.admin import permissions, users
+from app.api.v1.admin import permissions, users, operation_logs
 
 # 创建 v1 API 路由器
 api_router = APIRouter(prefix="/v1")
@@ -13,5 +13,6 @@ api_router = APIRouter(prefix="/v1")
 api_router.include_router(auth.router)
 api_router.include_router(permissions.router)
 api_router.include_router(users.router)
+api_router.include_router(operation_logs.router)
 
 __all__ = ["api_router"]

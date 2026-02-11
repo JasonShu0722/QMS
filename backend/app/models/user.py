@@ -91,6 +91,7 @@ class User(Base):
     # 关系映射
     # supplier: Mapped[Optional["Supplier"]] = relationship("Supplier", back_populates="users")
     # permissions: Mapped[list["Permission"]] = relationship("Permission", back_populates="user", cascade="all, delete-orphan")
+    operation_logs: Mapped[list["OperationLog"]] = relationship("OperationLog", back_populates="user")
     
     def __repr__(self) -> str:
         return f"<User(id={self.id}, username='{self.username}', user_type='{self.user_type}', status='{self.status}')>"

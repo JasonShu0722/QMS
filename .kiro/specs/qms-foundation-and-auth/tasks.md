@@ -118,7 +118,7 @@
     - 状态：is_active, published_at, expires_at
   - _Requirements: 2.1.4, 2.2.4, 2.2.5_
 
-- [ ] 2.3 设计功能特性开关数据模型
+- [x] 2.3 设计功能特性开关数据模型
   - 创建 backend/app/models/feature_flag.py FeatureFlag 模型
     - 字段：id, feature_key, feature_name, description
     - 开关状态：is_enabled, scope (global/whitelist)

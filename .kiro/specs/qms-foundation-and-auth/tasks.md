@@ -23,7 +23,7 @@
   - 创建 .gitignore 文件
   - _Requirements: 2.1.1, 2.12.1_
 
-- [ ] 1.2 配置双轨 Docker Compose 环境
+- [x] 1.2 配置双轨 Docker Compose 环境
   - 创建 docker-compose.yml，定义以下服务：
     - postgres: PostgreSQL 15+ 数据库（共享数据底座）
     - redis: Redis 7+ 缓存/队列

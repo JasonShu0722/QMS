@@ -304,7 +304,7 @@
   - _Requirements: 2.2.4_
 
 
-- [ ] 4.4 实现个人信息管理 API
+- [x] 4.4 实现个人信息管理 API
   - 创建 backend/app/api/v1/profile.py 个人信息路由
   - 实现 GET /api/v1/profile 获取个人信息
   - 实现 PUT /api/v1/profile/password 修改密码：

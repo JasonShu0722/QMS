@@ -3,7 +3,7 @@ API Version 1
 统一管理所有 v1 版本的 API 路由
 """
 from fastapi import APIRouter
-from app.api.v1 import auth, tasks, notifications
+from app.api.v1 import auth, tasks, notifications, profile
 from app.api.v1.admin import permissions, users, operation_logs, tasks as admin_tasks
 
 # 创建 v1 API 路由器
@@ -13,6 +13,7 @@ api_router = APIRouter(prefix="/v1")
 api_router.include_router(auth.router)
 api_router.include_router(tasks.router)
 api_router.include_router(notifications.router)
+api_router.include_router(profile.router)
 api_router.include_router(permissions.router)
 api_router.include_router(users.router)
 api_router.include_router(operation_logs.router)

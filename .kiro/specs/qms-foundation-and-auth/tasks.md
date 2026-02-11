@@ -387,7 +387,7 @@
 
 ### 6. 前端基础组件开发
 
-- [ ] 6.1 实现前端认证与路由
+- [x] 6.1 实现前端认证与路由
   - 创建 frontend/src/stores/auth.ts Pinia 状态管理
     - 定义 useAuthStore：token, userInfo, isAuthenticated
     - 实现 login(username, password, userType)

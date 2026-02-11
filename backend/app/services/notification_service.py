@@ -9,12 +9,15 @@ from datetime import datetime
 import aiosmtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from email.mime.base import MIMEBase
+from email import encoders
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, update
 
 from app.core.config import settings
 from app.models.user import User
+from app.models.notification import Notification, MessageType
 
 
 class NotificationService:
@@ -376,5 +379,253 @@ QMS 质量管理系统
         )
 
 
+
 # 创建全局通知服务实例
 notification_service = NotificationService()
+
+
+class NotificationHub:
+    """
+    通知中心服务类
+    
+    功能：
+    - 发送站内信通知
+    - 发送邮件通知（支持附件）
+    - 预留企业微信集成
+    - 管理消息已读/未读状态
+    - 统计未读消息数量
+    """
+    
+    @staticmethod
+    async def send_notification(
+        db: AsyncSession,
+        user_ids: List[int],
+        message_type: str,
+        title: str,
+        content: str,
+        link: Optional[str] = None
+    ) -> List[Notification]:
+        """
+        发送站内信通知
+        
+        Args:
+            db: 数据库会话
+            user_ids: 接收用户ID列表
+            message_type: 消息类型 (workflow_exception/system_alert/warning)
+            title: 消息标题
+            content: 消息内容
+            link: 跳转链接（可选）
+            
+        Returns:
+            List[Notification]: 创建的通知对象列表
+        """
+        notifications = []
+        
+        for user_id in user_ids:
+            notification = Notification(
+                user_id=user_id,
+                message_type=message_type,
+                title=title,
+                content=content,
+                link=link,
+                is_read=False,
+                created_at=datetime.utcnow()
+            )
+            db.add(notification)
+            notifications.append(notification)
+        
+        await db.commit()
+        
+        # 刷新对象以获取生成的ID
+        for notification in notifications:
+            await db.refresh(notification)
+        
+        return notifications
+    
+    @staticmethod
+    async def send_email(
+        to_emails: List[str],
+        subject: str,
+        body: str,
+        attachments: Optional[List[tuple]] = None
+    ) -> bool:
+        """
+        发送邮件通知（支持附件）
+        
+        Args:
+            to_emails: 收件人邮箱列表
+            subject: 邮件主题
+            body: 邮件正文（支持HTML）
+            attachments: 附件列表，格式为 [(filename, content_bytes), ...]
+            
+        Returns:
+            bool: 是否发送成功
+        """
+        # 检查 SMTP 配置
+        if not all([
+            settings.SMTP_SERVER,
+            settings.SMTP_USERNAME,
+            settings.SMTP_PASSWORD,
+            settings.SMTP_FROM_EMAIL
+        ]):
+            print("警告：SMTP 配置不完整，邮件发送已跳过")
+            return False
+        
+        try:
+            # 创建邮件对象
+            message = MIMEMultipart()
+            message["From"] = settings.SMTP_FROM_EMAIL
+            message["To"] = ", ".join(to_emails)
+            message["Subject"] = subject
+            
+            # 添加邮件正文（支持HTML）
+            message.attach(MIMEText(body, "html", "utf-8"))
+            
+            # 添加附件
+            if attachments:
+                for filename, content_bytes in attachments:
+                    part = MIMEBase("application", "octet-stream")
+                    part.set_payload(content_bytes)
+                    encoders.encode_base64(part)
+                    part.add_header(
+                        "Content-Disposition",
+                        f"attachment; filename= {filename}",
+                    )
+                    message.attach(part)
+            
+            # 发送邮件
+            await aiosmtplib.send(
+                message,
+                hostname=settings.SMTP_SERVER,
+                port=settings.SMTP_PORT,
+                username=settings.SMTP_USERNAME,
+                password=settings.SMTP_PASSWORD,
+                use_tls=settings.SMTP_USE_TLS,
+            )
+            
+            print(f"邮件已发送至: {', '.join(to_emails)}")
+            return True
+            
+        except Exception as e:
+            print(f"邮件发送失败: {str(e)}")
+            return False
+    
+    @staticmethod
+    async def send_wechat_work(
+        user_ids: List[int],
+        message: str
+    ) -> bool:
+        """
+        发送企业微信通知（预留功能）
+        
+        Args:
+            user_ids: 接收用户ID列表
+            message: 消息内容
+            
+        Returns:
+            bool: 是否发送成功
+            
+        Note:
+            此功能为预留接口，Phase 1 阶段暂不实现。
+            后续可集成企业微信 Webhook API。
+        """
+        # TODO: 集成企业微信 API
+        print(f"企业微信通知功能预留中，目标用户: {user_ids}, 消息: {message}")
+        return False
+    
+    @staticmethod
+    async def mark_as_read(
+        db: AsyncSession,
+        notification_id: int,
+        user_id: int
+    ) -> bool:
+        """
+        标记单条消息为已读
+        
+        Args:
+            db: 数据库会话
+            notification_id: 通知ID
+            user_id: 用户ID（用于权限验证）
+            
+        Returns:
+            bool: 是否标记成功
+        """
+        # 查询通知
+        result = await db.execute(
+            select(Notification).where(
+                Notification.id == notification_id,
+                Notification.user_id == user_id
+            )
+        )
+        notification = result.scalar_one_or_none()
+        
+        if not notification:
+            return False
+        
+        # 更新已读状态
+        notification.is_read = True
+        notification.read_at = datetime.utcnow()
+        
+        await db.commit()
+        return True
+    
+    @staticmethod
+    async def mark_all_as_read(
+        db: AsyncSession,
+        user_id: int
+    ) -> int:
+        """
+        一键标记全部消息为已读
+        
+        Args:
+            db: 数据库会话
+            user_id: 用户ID
+            
+        Returns:
+            int: 标记的消息数量
+        """
+        # 批量更新未读消息
+        result = await db.execute(
+            update(Notification)
+            .where(
+                Notification.user_id == user_id,
+                Notification.is_read == False
+            )
+            .values(
+                is_read=True,
+                read_at=datetime.utcnow()
+            )
+        )
+        
+        await db.commit()
+        
+        return result.rowcount
+    
+    @staticmethod
+    async def get_unread_count(
+        db: AsyncSession,
+        user_id: int
+    ) -> int:
+        """
+        获取未读消息数量
+        
+        Args:
+            db: 数据库会话
+            user_id: 用户ID
+            
+        Returns:
+            int: 未读消息数量
+        """
+        result = await db.execute(
+            select(Notification).where(
+                Notification.user_id == user_id,
+                Notification.is_read == False
+            )
+        )
+        
+        notifications = result.scalars().all()
+        return len(notifications)
+
+
+# 创建全局通知中心实例
+notification_hub = NotificationHub()

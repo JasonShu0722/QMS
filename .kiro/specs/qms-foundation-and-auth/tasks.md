@@ -285,7 +285,7 @@
     - 统计逾期任务清单
   - _Requirements: 2.3.1_
 
-- [ ] 4.3 实现通知中心服务
+- [x] 4.3 实现通知中心服务
   - 创建 backend/app/services/notification.py 通知中心服务
   - 实现 NotificationHub 类：
     - send_notification(user_ids, message_type, title, content, link)

@@ -148,7 +148,7 @@
 
 ### 3. 认证授权与权限引擎
 
-- [ ] 3.1 实现可插拔认证策略（Strategy Pattern）
+- [x] 3.1 实现可插拔认证策略（Strategy Pattern）
   - 创建 backend/app/core/auth_strategy.py 认证策略接口
     - 定义 AuthStrategy 抽象基类：
       - authenticate(username, password) -> User

@@ -48,7 +48,7 @@
   - 配置静态文件缓存策略
   - _Requirements: 2.12.1, 2.12.2_
 
-- [ ] 1.4 配置后端开发环境
+- [x] 1.4 配置后端开发环境
   - 初始化 FastAPI 项目结构（app/api/, app/core/, app/models/, app/schemas/, app/services/）
   - 创建 requirements.txt 依赖包：
     - FastAPI, Uvicorn (ASGI 服务器)

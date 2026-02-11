@@ -1,0 +1,48 @@
+"""
+FastAPI 应用主入口
+"""
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+from app.core.config import settings
+
+# 创建 FastAPI 应用实例
+app = FastAPI(
+    title=settings.APP_NAME,
+    version=settings.APP_VERSION,
+    description="质量管理系统 - 基础架构与认证授权模块",
+    docs_url="/api/docs",
+    redoc_url="/api/redoc",
+    openapi_url="/api/openapi.json",
+)
+
+# 配置 CORS 中间件
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.CORS_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.get("/")
+async def root():
+    """根路径健康检查"""
+    return {
+        "message": "QMS Backend API",
+        "version": settings.APP_VERSION,
+        "environment": settings.ENVIRONMENT,
+        "status": "running"
+    }
+
+
+@app.get("/health")
+async def health_check():
+    """健康检查端点"""
+    return {"status": "healthy"}
+
+
+# 导入并注册 API 路由（后续任务中实现）
+# from app.api.v1 import api_router
+# app.include_router(api_router, prefix="/api/v1")

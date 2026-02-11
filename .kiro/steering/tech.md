@@ -35,8 +35,8 @@ inclusion: always
 ### 2. Frontend (前端 - 交互界面)
 - **Framework (框架)**: Vue.js 3 (Composition API)
   - *理由*：比 React 更容易上手，逻辑更清晰。
-- **UI Component (组件库)**: Element Plus
-  - *理由*：国内最流行的企业级后台组件库。内置了丰富的**表格**、**表单**、**上传**组件。
+- **UI Component (组件库)**: Element Plus (Desktop) + Tailwind CSS (Mobile)
+    * *理由*：Element Plus 用于复杂的 PC 端管理后台。Tailwind CSS 用于构建 **2.1.3 移动端/PDA 页面** 的响应式布局，确保扫码页面在手持设备上操作流畅。
 - **State Management (状态管理)**: Pinia
   - *理由*：轻量级状态管理，用于存储“当前登录用户信息”和“权限配置”。
 - **Visualization (图表)**: ECharts
@@ -51,6 +51,8 @@ inclusion: always
   - *理由*：既作为缓存加速 API，也作为 Celery 任务队列的消息中间件。
 - **Gateway (网关)**: Nginx
   - *理由*：反向代理服务器，处理静态文件，保护后端接口。
+- **Migration Tool**: Alembic
+  - *约束*：严格遵循 **2.10 版本管理** 策略。生产环境迁移脚本必须是“非破坏性”的（Add Column Only），禁止 Drop Column 操作。
 
 ### 4. Integration & AI (集成与智能)
 - **AI SDK**: OpenAI API Client (Compatible with DeepSeek)
@@ -60,6 +62,8 @@ inclusion: always
   - ### 4. Integration & AI (集成与智能)
 - **IMS Integration**: 
   - *Network Note*: 系统将部署在 DMZ 区。FastAPI 后端需具备同时访问外网（响应前端）和内网（请求 IMS）的网络权限。
+- **Authentication**: Python-Jose + LDAP3
+    - *理由*：实现 **2.1.1** 定义的双重认证：内部员工可走 LDAP/AD 验证，外部供应商走 JWT 令牌验证。
 
 ## Common Commands
 

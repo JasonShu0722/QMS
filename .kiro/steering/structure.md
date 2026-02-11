@@ -96,52 +96,64 @@ frontend/
 graph TD
     %% Define Styles
     classDef external fill:#f9f,stroke:#333,stroke-width:2px;
-    classDef dmz fill:#ff9,stroke:#333,stroke-width:2px;
-    classDef internal fill:#9f9,stroke:#333,stroke-width:2px;
+    classDef preview fill:#eef,stroke:#333,stroke-width:2px,stroke-dasharray: 5 5;
+    classDef stable fill:#dfd,stroke:#333,stroke-width:2px;
+    classDef shared fill:#ffd,stroke:#333,stroke-width:4px;
 
-    %% 1. External Zone (Internet)
-    subgraph Internet [公网 / Internet]
-        Supplier[供应商 PC / 手机]:::external
-        Manager[公司领导 (外网访问)]:::external
+    %% 1. Users
+    subgraph Users [用户层]
+        Supplier[供应商 (Stable)]:::external
+        Staff[内部员工 (SSO)]:::external
+        KeyUser[关键用户 (Preview)]:::external
     end
 
-    %% 2. DMZ / Server Zone (Your QMS Server)
-    subgraph QMS_Server [QMS 服务器 (DMZ区域)]
-        direction TB
-        
-        %% Entry Point
-        Nginx[Nginx 网关 (Port 80/443)]:::dmz
-        
-        %% Frontend Container
-        Vue[前端容器 (Vue3 + Element Plus)]:::dmz
-        
-        %% Backend Container
-        FastAPI[后端容器 (FastAPI + Python)]:::dmz
-        
-        %% Async Task Queue
-        Celery[Celery 任务队列]:::dmz
+    %% 2. Gateway Layer
+    subgraph Gateway [网关层]
+        Nginx[Nginx Reverse Proxy]:::shared
     end
 
-    %% 3. Internal Zone (Intranet)
-    subgraph Intranet [公司内网 / Intranet]
-        %% QMS Data Storage
-        Postgres[(QMS 数据库 - PostgreSQL)]:::internal
-        Redis[(缓存 - Redis)]:::internal
+    %% 3. Application Layer (Dual Track)
+    subgraph App_Cluster [应用服务集群]
+        %% Stable Track
+        subgraph Stable_Env [正式环境 (Stable)]
+            Vue_Prod[前端 - Stable]:::stable
+            API_Prod[后端 - Stable]:::stable
+        end
         
-        %% External Systems
-        IMS_DB[(IMS 数据库/接口)]:::internal
-        OA_System[OA / SAP 系统]:::internal
+        %% Preview Track (Canary)
+        subgraph Preview_Env [预览环境 (Preview)]
+            Vue_Beta[前端 - Preview]:::preview
+            API_Beta[后端 - Preview]:::preview
+        end
     end
 
-    %% --- Data Flows ---
-    Supplier -->|HTTPS Request| Nginx
-    Nginx -->|Reverse Proxy| Vue
-    Nginx -->|API Proxy /api| FastAPI
+    %% 4. Shared Data Kernel
+    subgraph Data_Kernel [共享数据底座 (Shared Kernel)]
+        Postgres[(PostgreSQL DB)]:::shared
+        Redis[(Redis Cache)]:::shared
+        IMS_Adapter[IMS 适配器]:::shared
+    end
 
-    %% Backend Logic
-    FastAPI -->|Read/Write| Postgres
-    FastAPI -->|Cache/Queue| Redis
+    %% --- Connections ---
     
-    %% IMS Integration (The Bridge)
-    FastAPI -->|HTTPX / SQL (Read Only)| IMS_DB
-    Celery -->|Scheduled Sync (Nightly)| IMS_DB
+    %% Access Routes
+    Supplier -->|qms.company.com| Nginx
+    Staff -->|qms.company.com| Nginx
+    KeyUser -->|preview.company.com| Nginx
+
+    %% Nginx Routing
+    Nginx -->|Host: qms| Vue_Prod
+    Nginx -->|Host: preview| Vue_Beta
+    Nginx -->|/api| API_Prod
+    Nginx -->|/api/preview| API_Beta
+
+    %% Backend to Data (THE CRITICAL PART)
+    API_Prod -->|Read/Write| Postgres
+    API_Beta -->|Read/Write (Compatible)| Postgres
+    
+    %% Shared Services
+    API_Prod --> Redis
+    API_Beta --> Redis
+    
+    %% Auth
+    API_Prod -.->|LDAP Auth| AD_Server[公司 AD 域]

@@ -37,12 +37,14 @@ export const useAuthStore = defineStore('auth', () => {
    * @param password 密码
    * @param userType 用户类型 (internal/supplier)
    * @param captcha 图形验证码（供应商登录必填）
+   * @param captchaId 验证码ID（供应商登录必填）
    */
   async function login(
     username: string,
     password: string,
     userType: 'internal' | 'supplier',
-    captcha?: string
+    captcha?: string,
+    captchaId?: string
   ): Promise<void> {
     // 动态导入避免循环依赖
     const { authApi } = await import('@/api/auth')
@@ -51,7 +53,8 @@ export const useAuthStore = defineStore('auth', () => {
       username,
       password,
       user_type: userType,
-      captcha
+      captcha,
+      captcha_id: captchaId
     })
 
     // 保存 Token 和用户信息

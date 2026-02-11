@@ -403,7 +403,7 @@
   - _Requirements: 2.1.5_
 
 
-- [ ] 6.2 实现登录注册页面（多入口支持）
+- [x] 6.2 实现登录注册页面（多入口支持）
   - 创建 frontend/src/views/Login.vue 登录页面
     - 桌面端布局（Element Plus）：
       - 用户类型选择：员工登录 / 供应商登录

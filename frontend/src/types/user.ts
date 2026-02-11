@@ -46,6 +46,7 @@ export interface LoginRequest {
   password: string
   user_type: UserType
   captcha?: string
+  captcha_id?: string
 }
 
 /**

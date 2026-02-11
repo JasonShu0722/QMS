@@ -13,6 +13,20 @@ export const authApi = {
   },
 
   /**
+   * 用户注册
+   */
+  register(data: any): Promise<any> {
+    return request.post('/v1/auth/register', data)
+  },
+
+  /**
+   * 供应商模糊搜索
+   */
+  searchSuppliers(query: string): Promise<any[]> {
+    return request.get('/v1/auth/suppliers/search', { params: { q: query } })
+  },
+
+  /**
    * 获取当前用户信息
    */
   getCurrentUser(): Promise<User> {

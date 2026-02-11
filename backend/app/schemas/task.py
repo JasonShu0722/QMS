@@ -2,7 +2,7 @@
 任务相关的 Pydantic 数据模型
 Task Schemas - 用于 API 请求和响应的数据校验
 """
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 from pydantic import BaseModel, Field
 

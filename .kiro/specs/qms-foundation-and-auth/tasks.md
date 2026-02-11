@@ -353,7 +353,7 @@
 
 ### 5. 功能特性开关与系统配置
 
-- [ ] 5.1 实现功能特性开关服务
+- [x] 5.1 实现功能特性开关服务
   - 创建 backend/app/services/feature_flag_service.py 功能开关服务
   - 实现 FeatureFlagService 类：
     - is_feature_enabled(feature_key, user_id, supplier_id) -> bool

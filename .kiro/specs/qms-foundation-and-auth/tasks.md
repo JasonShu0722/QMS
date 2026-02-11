@@ -369,7 +369,7 @@
   - 实现 GET /api/v1/feature-flags/my-features 获取当前用户可用功能列表
   - _Requirements: 2.12.3_
 
-- [ ] 5.2 实现系统全局配置管理
+- [x] 5.2 实现系统全局配置管理
   - 创建 backend/app/api/v1/admin/system_config.py 系统配置路由
   - 实现 GET /api/v1/admin/system-config 获取所有配置项
   - 实现 PUT /api/v1/admin/system-config/{key} 更新配置项：

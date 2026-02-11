@@ -4,7 +4,15 @@ API Version 1
 """
 from fastapi import APIRouter
 from app.api.v1 import auth, tasks, notifications, profile, announcements, feature_flags
-from app.api.v1.admin import permissions, users, operation_logs, tasks as admin_tasks, notification_rules, feature_flags as admin_feature_flags
+from app.api.v1.admin import (
+    permissions, 
+    users, 
+    operation_logs, 
+    tasks as admin_tasks, 
+    notification_rules, 
+    feature_flags as admin_feature_flags,
+    system_config
+)
 
 # 创建 v1 API 路由器
 api_router = APIRouter(prefix="/v1")
@@ -22,5 +30,6 @@ api_router.include_router(operation_logs.router)
 api_router.include_router(admin_tasks.router)
 api_router.include_router(notification_rules.router)
 api_router.include_router(admin_feature_flags.router)
+api_router.include_router(system_config.router)
 
 __all__ = ["api_router"]

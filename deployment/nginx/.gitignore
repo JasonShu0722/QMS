@@ -1,0 +1,7 @@
+# SSL 证书文件（包含私钥，不应提交到版本控制）
+ssl/*.key
+ssl/*.crt
+ssl/*.pem
+
+# 但保留目录结构
+!ssl/.gitkeep

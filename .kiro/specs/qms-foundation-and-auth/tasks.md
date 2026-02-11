@@ -39,7 +39,7 @@
   - _Requirements: 2.12.1, 2.12.2_
 
 
-- [ ] 1.3 配置 Nginx 双轨路由分发
+- [x] 1.3 配置 Nginx 双轨路由分发
   - 创建 deployment/nginx/nginx.conf 配置文件
   - 配置正式环境路由：qms.company.com -> frontend-stable, /api -> backend-stable
   - 配置预览环境路由：preview.company.com -> frontend-preview, /api -> backend-preview

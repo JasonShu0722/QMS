@@ -441,7 +441,7 @@
     - 需要行动的任务卡片
   - _Requirements: 2.1.6, 2.2.1, 2.2.2, 2.2.3_
 
-- [ ] 6.4 实现站内信通知组件
+- [x] 6.4 实现站内信通知组件
   - 创建 frontend/src/components/NotificationBell.vue 铃铛图标组件
     - 未读消息数量红点标识
     - 点击展开站内信列表弹窗

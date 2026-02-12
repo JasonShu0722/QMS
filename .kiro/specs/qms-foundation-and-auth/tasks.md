@@ -422,7 +422,7 @@
   - 存储 JWT Token 到 localStorage
   - _Requirements: 2.1.3, 2.1.5_
 
-- [ ] 6.3 实现个人中心页面（动态工作台）
+- [x] 6.3 实现个人中心页面（动态工作台）
   - 创建 frontend/src/views/PersonalCenter.vue 个人中心页面
   - 实现个人信息模块：
     - 展示头像、姓名、部门、职位

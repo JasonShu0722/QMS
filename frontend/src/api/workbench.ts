@@ -1,0 +1,46 @@
+import request from '@/utils/request'
+import type { 
+  DashboardData, 
+  ChangePasswordRequest, 
+  SignatureUploadResponse 
+} from '@/types/workbench'
+
+/**
+ * 工作台相关 API
+ */
+export const workbenchApi = {
+  /**
+   * 获取工作台数据（根据用户类型返回不同数据）
+   */
+  getDashboardData(): Promise<DashboardData> {
+    return request.get('/v1/workbench/dashboard')
+  },
+
+  /**
+   * 获取个人信息
+   */
+  getProfile(): Promise<any> {
+    return request.get('/v1/profile')
+  },
+
+  /**
+   * 修改密码
+   */
+  changePassword(data: ChangePasswordRequest): Promise<{ message: string }> {
+    return request.put('/v1/profile/password', data)
+  },
+
+  /**
+   * 上传电子签名
+   */
+  uploadSignature(file: File): Promise<SignatureUploadResponse> {
+    const formData = new FormData()
+    formData.append('file', file)
+    
+    return request.post('/v1/profile/signature', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    })
+  }
+}

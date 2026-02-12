@@ -1,0 +1,61 @@
+"""Add electronic signature field to users
+
+Revision ID: 001_good_example
+Revises: 
+Create Date: 2024-01-15 10:00:00.000000
+
+✅ 这是一个符合规范的迁移脚本示例
+"""
+from alembic import op
+import sqlalchemy as sa
+
+
+# revision identifiers, used by Alembic.
+revision = '001_good_example'
+down_revision = None
+branch_labels = None
+depends_on = None
+
+
+def upgrade():
+    """
+    ✅ 正确示例：新增字段设置为 nullable=True
+    
+    原因：Stable 环境的旧代码不知道这个字段的存在，
+    必须允许空值，否则插入数据时会报错。
+    """
+    op.add_column(
+        'users',
+        sa.Column('signature_image_path', sa.String(255), nullable=True)
+    )
+    
+    # ✅ 正确示例：新增字段提供 server_default
+    op.add_column(
+        'users',
+        sa.Column('status', sa.String(20), server_default='active', nullable=False)
+    )
+    
+    # ✅ 正确示例：新增索引
+    op.create_index('idx_users_signature', 'users', ['signature_image_path'])
+    
+    # ✅ 正确示例：新增表
+    op.create_table(
+        'feature_flags',
+        sa.Column('id', sa.Integer(), primary_key=True),
+        sa.Column('feature_key', sa.String(100), unique=True, nullable=False),
+        sa.Column('is_enabled', sa.Boolean(), server_default='false', nullable=False),
+        sa.Column('created_at', sa.DateTime(), server_default=sa.text('CURRENT_TIMESTAMP'))
+    )
+
+
+def downgrade():
+    """
+    回滚操作
+    
+    注意：downgrade 中可以包含 drop_column 等操作，
+    因为回滚通常是在出现问题时手动执行的。
+    """
+    op.drop_table('feature_flags')
+    op.drop_index('idx_users_signature', 'users')
+    op.drop_column('users', 'status')
+    op.drop_column('users', 'signature_image_path')

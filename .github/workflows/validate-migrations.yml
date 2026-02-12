@@ -1,0 +1,62 @@
+name: Validate Alembic Migrations
+
+on:
+  pull_request:
+    paths:
+      - 'backend/alembic/versions/**'
+  push:
+    branches:
+      - preview
+      - main
+    paths:
+      - 'backend/alembic/versions/**'
+
+jobs:
+  validate-migrations:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+      
+      - name: Install dependencies
+        run: |
+          cd backend
+          pip install -r requirements.txt
+      
+      - name: Validate migration scripts
+        run: |
+          cd backend
+          chmod +x scripts/ci_validate_migrations.sh
+          ./scripts/ci_validate_migrations.sh
+      
+      - name: Comment on PR (if failed)
+        if: failure() && github.event_name == 'pull_request'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `❌ **迁移脚本验证失败**
+              
+              您的 Alembic 迁移脚本不符合双轨部署兼容性规范。
+              
+              **常见问题：**
+              1. 新增字段未设置 \`nullable=True\` 或 \`server_default\`
+              2. 使用了 \`drop_column\`、\`drop_table\` 等破坏性操作
+              3. 使用了 \`rename_column\` 或 \`alter_column type_\`
+              
+              **修复建议：**
+              - 新增字段必须允许空值或提供默认值
+              - 禁止删除、重命名、修改类型等操作
+              - 等待 Stable 环境代码更新后，再清理废弃字段
+              
+              详细错误信息请查看 CI 日志。`
+            })

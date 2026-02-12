@@ -261,7 +261,7 @@
 
 ### 8. 测试与部署
 
-- [ ]* 8.1 编写后端单元测试（可选）
+- [x] 8.1 编写后端单元测试（可选）
   - 创建 test_auth.py 认证模块测试
   - 创建 test_permissions.py 权限模块测试
   - 创建 test_task_aggregator.py 任务聚合测试

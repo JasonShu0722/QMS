@@ -462,7 +462,7 @@
     - 强制阅读（点击"我已阅读"后记录）
   - _Requirements: 2.2.5_
 
-- [ ] 6.6 实现系统管理后台页面
+- [x] 6.6 实现系统管理后台页面
   - 创建 frontend/src/views/admin/UserApproval.vue 用户审核页面
     - 待审核用户列表展示
     - 批准/拒绝操作

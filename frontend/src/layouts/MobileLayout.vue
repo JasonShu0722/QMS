@@ -54,7 +54,7 @@
         </div>
         <el-divider />
         <el-button type="primary" @click="switchEnvironment" class="menu-button">
-          {{ isPreview ? '切换到正式版' : '切换到预览版' }}
+          {{ switchButtonText }}
         </el-button>
         <el-button @click="goToProfile" class="menu-button">个人中心</el-button>
         <el-button type="danger" @click="handleLogout" class="menu-button">退出登录</el-button>
@@ -67,6 +67,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { Menu, User, HomeFilled } from '@element-plus/icons-vue'
+import { useEnvironment } from '@/composables/useEnvironment'
 
 const router = useRouter()
 const route = useRoute()
@@ -75,10 +76,8 @@ const drawerVisible = ref(false)
 const showUserMenu = ref(false)
 const userInfo = ref<any>(null)
 
-// 判断是否为预览环境
-const isPreview = computed(() => {
-  return window.location.hostname.includes('preview')
-})
+// 使用环境管理 composable
+const { isPreview, switchButtonText, switchEnvironment } = useEnvironment()
 
 // 当前激活的菜单
 const activeMenu = computed(() => route.path)
@@ -91,16 +90,6 @@ const toggleDrawer = () => {
 // 菜单选择后关闭抽屉
 const handleMenuSelect = () => {
   drawerVisible.value = false
-}
-
-// 切换环境
-const switchEnvironment = () => {
-  const currentHost = window.location.hostname
-  if (isPreview.value) {
-    window.location.href = window.location.href.replace('preview.', '')
-  } else {
-    window.location.href = window.location.href.replace(currentHost, `preview.${currentHost}`)
-  }
 }
 
 // 前往个人中心

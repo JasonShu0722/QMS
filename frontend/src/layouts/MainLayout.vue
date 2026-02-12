@@ -33,7 +33,7 @@
           </div>
           <div class="header-right">
             <el-button link @click="switchEnvironment">
-              {{ isPreview ? '切换到正式版' : '切换到预览版' }}
+              {{ switchButtonText }}
             </el-button>
             <el-dropdown @command="handleCommand">
               <span class="user-info">
@@ -69,6 +69,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { HomeFilled, User, Fold, Expand } from '@element-plus/icons-vue'
 import MobileLayout from './MobileLayout.vue'
+import { useEnvironment } from '@/composables/useEnvironment'
 
 const router = useRouter()
 const route = useRoute()
@@ -77,10 +78,8 @@ const isCollapse = ref(false)
 const isMobile = ref(false)
 const userInfo = ref<any>(null)
 
-// 判断是否为预览环境
-const isPreview = computed(() => {
-  return window.location.hostname.includes('preview')
-})
+// 使用环境管理 composable
+const { isPreview, switchButtonText, switchEnvironment } = useEnvironment()
 
 // 当前激活的菜单
 const activeMenu = computed(() => route.path)
@@ -88,18 +87,6 @@ const activeMenu = computed(() => route.path)
 // 切换侧边栏折叠状态
 const toggleCollapse = () => {
   isCollapse.value = !isCollapse.value
-}
-
-// 切换环境
-const switchEnvironment = () => {
-  const currentHost = window.location.hostname
-  if (isPreview.value) {
-    // 切换到正式环境
-    window.location.href = window.location.href.replace('preview.', '')
-  } else {
-    // 切换到预览环境
-    window.location.href = window.location.href.replace(currentHost, `preview.${currentHost}`)
-  }
 }
 
 // 处理用户菜单命令

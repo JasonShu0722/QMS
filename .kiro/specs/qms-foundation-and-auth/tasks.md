@@ -267,7 +267,7 @@
   - 创建 test_task_aggregator.py 任务聚合测试
   - _Requirements: 2.1.1, 2.1.5, 2.2.3_
 
-- [ ]* 8.2 编写前端单元测试（可选）
+- [x] 8.2 编写前端单元测试（可选）
   - 创建 TaskCard.spec.ts 任务卡片组件测试
   - 创建 NotificationBell.spec.ts 通知组件测试
   - 创建 login.spec.ts E2E 登录流程测试

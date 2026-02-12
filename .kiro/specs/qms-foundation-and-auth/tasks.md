@@ -289,7 +289,7 @@
 
 ### 9. 质量数据面板（2.4 Quality Data Dashboard）
 
-- [ ] 9.1 设计质量数据模型
+- [x] 9.1 设计质量数据模型
   - 创建 QualityMetric 模型：id, metric_type, metric_date, value, target_value, product_type, supplier_id, line_id, process_id
   - 创建 IMSSyncLog 模型：id, sync_type, sync_date, status, records_count, error_message
   - 指标类型枚举：incoming_batch_pass_rate, material_online_ppm, process_defect_rate, process_fpy, okm_ppm, mis_3_ppm, mis_12_ppm

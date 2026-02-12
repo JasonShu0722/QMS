@@ -13,6 +13,8 @@ from app.models.notification_rule import NotificationRule, ActionType
 from app.models.smtp_config import SMTPConfig, TestResult
 from app.models.instrument_calibration import InstrumentCalibration, CalibrationStatus
 from app.models.quality_cost import QualityCost, CostType
+from app.models.quality_metric import QualityMetric, MetricType
+from app.models.ims_sync_log import IMSSyncLog, SyncStatus, SyncType
 
 __all__ = [
     "Base",
@@ -43,4 +45,9 @@ __all__ = [
     "CalibrationStatus",
     "QualityCost",
     "CostType",
+    "QualityMetric",
+    "MetricType",
+    "IMSSyncLog",
+    "SyncStatus",
+    "SyncType",
 ]

@@ -37,6 +37,15 @@ const routes: RouteRecordRaw[] = [
           title: '工作台',
           requiresAuth: true
         }
+      },
+      {
+        path: 'announcements',
+        name: 'Announcements',
+        component: () => import('@/views/Announcements.vue'),
+        meta: { 
+          title: '公告栏',
+          requiresAuth: true
+        }
       }
     ]
   },

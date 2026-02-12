@@ -1,5 +1,12 @@
 <template>
   <div class="workbench-container">
+    <!-- 重要公告弹窗 -->
+    <AnnouncementDialog
+      v-model="showAnnouncementDialog"
+      :announcements="unreadImportantAnnouncements"
+      @all-read="handleAllAnnouncementsRead"
+    />
+
     <!-- 加载状态 -->
     <div v-if="loading" class="loading-container">
       <el-skeleton :rows="5" animated />
@@ -274,8 +281,11 @@ import { ElMessage, type FormInstance, type FormRules, type UploadInstance, type
 import { User, Lock, Edit, UploadFilled } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
 import { workbenchApi } from '@/api/workbench'
+import { announcementApi } from '@/api/announcement'
 import TaskCard from '@/components/TaskCard.vue'
+import AnnouncementDialog from '@/components/AnnouncementDialog.vue'
 import type { InternalDashboard, SupplierDashboard, TodoTask, ChangePasswordRequest } from '@/types/workbench'
+import type { Announcement } from '@/types/announcement'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -284,6 +294,10 @@ const authStore = useAuthStore()
 const loading = ref(false)
 const dashboardData = ref<InternalDashboard | null>(null)
 const supplierDashboard = ref<SupplierDashboard | null>(null)
+
+// 公告相关
+const showAnnouncementDialog = ref(false)
+const unreadImportantAnnouncements = ref<Announcement[]>([])
 
 // 修改密码相关
 const showPasswordDialog = ref(false)
@@ -373,6 +387,31 @@ async function loadDashboardData() {
   } finally {
     loading.value = false
   }
+}
+
+/**
+ * 加载未读重要公告
+ */
+async function loadUnreadImportantAnnouncements() {
+  try {
+    const announcements = await announcementApi.getUnreadImportantAnnouncements()
+    
+    if (announcements && announcements.length > 0) {
+      unreadImportantAnnouncements.value = announcements
+      showAnnouncementDialog.value = true
+    }
+  } catch (error: any) {
+    console.error('Failed to load unread important announcements:', error)
+    // 不显示错误消息，避免干扰用户体验
+  }
+}
+
+/**
+ * 处理所有公告已读
+ */
+function handleAllAnnouncementsRead() {
+  unreadImportantAnnouncements.value = []
+  ElMessage.success('所有重要公告已阅读完毕')
 }
 
 /**
@@ -474,6 +513,7 @@ async function handleUploadSignature() {
 // 组件挂载时加载数据
 onMounted(() => {
   loadDashboardData()
+  loadUnreadImportantAnnouncements()
 })
 </script>
 

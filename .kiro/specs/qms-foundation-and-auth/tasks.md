@@ -453,7 +453,7 @@
   - _Requirements: 2.2.4_
 
 
-- [ ] 6.5 实现公告栏组件
+- [x] 6.5 实现公告栏组件
   - 创建 frontend/src/components/AnnouncementList.vue 公告列表组件
     - 按发布时间倒序展示
     - 未读公告置顶并高亮显示

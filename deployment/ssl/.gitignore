@@ -1,0 +1,16 @@
+# SSL Certificate Files - DO NOT COMMIT TO VERSION CONTROL
+# SSL 证书文件 - 不要提交到版本控制系统
+
+# Certificate files
+*.pem
+*.crt
+*.key
+*.csr
+
+# Backup files
+*.bak
+*.old
+
+# Keep README
+!README.md
+!.gitignore

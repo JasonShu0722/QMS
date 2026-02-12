@@ -160,6 +160,9 @@ onMounted(() => {
 .user-icon {
   font-size: 24px;
   cursor: pointer;
+  /* 放大触控区域 */
+  padding: 8px;
+  margin: -8px;
 }
 
 .logo {
@@ -208,7 +211,23 @@ onMounted(() => {
 
 .menu-button {
   width: 100%;
+  /* 放大按钮高度以适应手指触控 */
   height: 48px;
   font-size: 16px;
+  /* 增加触控区域 */
+  min-height: 44px;
+}
+
+/* 移动端输入框放大 */
+:deep(.el-input__inner) {
+  height: 44px !important;
+  font-size: 16px !important;
+}
+
+/* 移动端按钮放大 */
+:deep(.el-button) {
+  min-height: 44px;
+  font-size: 16px;
+  padding: 12px 20px;
 }
 </style>

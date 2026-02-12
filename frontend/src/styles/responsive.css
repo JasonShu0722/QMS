@@ -1,0 +1,216 @@
+/**
+ * 响应式工具类
+ * 基于 Tailwind CSS 断点配置
+ * sm: 640px（手机）
+ * md: 768px（平板）
+ * lg: 1024px（桌面）
+ */
+
+/* 移动端触控优化 - 放大按钮和输入框 */
+@media (max-width: 767px) {
+  /* 按钮最小触控区域 44x44px (Apple HIG 标准) */
+  .mobile-touch-target {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 12px 20px;
+  }
+
+  /* 输入框放大 */
+  .mobile-input {
+    height: 44px;
+    font-size: 16px; /* 防止 iOS 自动缩放 */
+    padding: 10px 15px;
+  }
+
+  /* 表单元素间距增大 */
+  .mobile-form-item {
+    margin-bottom: 20px;
+  }
+
+  /* 文字大小调整 */
+  .mobile-text-base {
+    font-size: 16px;
+  }
+
+  .mobile-text-lg {
+    font-size: 18px;
+  }
+
+  .mobile-text-xl {
+    font-size: 20px;
+  }
+}
+
+/* 平板适配 */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .tablet-layout {
+    max-width: 768px;
+    margin: 0 auto;
+  }
+}
+
+/* 桌面端 */
+@media (min-width: 1024px) {
+  .desktop-layout {
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+}
+
+/* 隐藏/显示工具类 */
+.hide-on-mobile {
+  display: block;
+}
+
+@media (max-width: 767px) {
+  .hide-on-mobile {
+    display: none !important;
+  }
+}
+
+.show-on-mobile {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .show-on-mobile {
+    display: block !important;
+  }
+}
+
+/* 全屏模式工具类 */
+.fullscreen-mode {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 9999;
+  overflow: hidden;
+}
+
+.fullscreen-mode .hide-in-fullscreen {
+  display: none !important;
+}
+
+/* 离线模式指示器 */
+.offline-indicator {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  background-color: #f56c6c;
+  color: #fff;
+  text-align: center;
+  padding: 8px;
+  font-size: 14px;
+  z-index: 10000;
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    transform: translateY(-100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+/* 移动端卡片样式 */
+@media (max-width: 767px) {
+  .mobile-card {
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 12px;
+    background-color: #fff;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  .mobile-card-title {
+    font-size: 16px;
+    font-weight: bold;
+    margin-bottom: 12px;
+  }
+
+  .mobile-card-content {
+    font-size: 14px;
+    line-height: 1.6;
+  }
+}
+
+/* 移动端列表样式 */
+@media (max-width: 767px) {
+  .mobile-list-item {
+    padding: 16px;
+    border-bottom: 1px solid #e6e6e6;
+    background-color: #fff;
+  }
+
+  .mobile-list-item:active {
+    background-color: #f5f5f5;
+  }
+
+  .mobile-list-item:last-child {
+    border-bottom: none;
+  }
+}
+
+/* 移动端底部安全区域 (iOS) */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .mobile-safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* 移动端固定底部按钮 */
+@media (max-width: 767px) {
+  .mobile-fixed-bottom {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 16px;
+    background-color: #fff;
+    box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+  }
+}
+
+/* 响应式网格 */
+.responsive-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 768px) {
+  .responsive-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .responsive-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* 响应式间距 */
+.responsive-padding {
+  padding: 12px;
+}
+
+@media (min-width: 768px) {
+  .responsive-padding {
+    padding: 20px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .responsive-padding {
+    padding: 24px;
+  }
+}

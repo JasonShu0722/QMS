@@ -68,6 +68,15 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/scanner',
+    name: 'Scanner',
+    component: () => import('@/views/Scanner.vue'),
+    meta: { 
+      title: '扫码',
+      requiresAuth: true
+    }
+  },
+  {
     path: '/:pathMatch(.*)*',
     name: 'NotFound',
     component: () => import('@/views/NotFound.vue'),

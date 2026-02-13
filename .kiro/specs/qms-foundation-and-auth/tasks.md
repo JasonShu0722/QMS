@@ -422,7 +422,7 @@
   - 实现违规处罚逻辑（未参会自动扣分）
   - _Requirements: 2.5.6_
 
-- [ ] 10.8 实现 PPAP 管理
+- [x] 10.8 实现 PPAP 管理
   - 实现 POST /api/v1/ppap 创建 PPAP 提交任务
   - 实现 18 项文件检查表配置
   - 实现 POST /api/v1/ppap/{id}/documents 供应商上传文件

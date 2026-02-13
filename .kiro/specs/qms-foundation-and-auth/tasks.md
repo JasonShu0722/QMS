@@ -363,7 +363,7 @@
   - 创建 BarcodeValidation 模型：id, material_code, validation_rules (JSON), regex_pattern, is_unique_check
   - _Requirements: 2.5.2, 2.5.3, 2.5.4, 2.5.5, 2.5.7, 2.5.8, 2.5.9_
 
-- [ ] 10.2 实现 IQC 数据集成
+- [x] 10.2 实现 IQC 数据集成
   - 扩展 IMSIntegrationService 类
   - 实现 sync_iqc_inspection_results() 同步 IQC 检验结果
   - 实现 auto_create_scar_on_ng() NG 自动立案逻辑

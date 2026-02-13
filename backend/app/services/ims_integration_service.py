@@ -366,6 +366,318 @@ class IMSIntegrationService:
                 "error": error_message
             }
     
+    async def sync_iqc_inspection_results(
+        self,
+        db: AsyncSession,
+        start_date: date,
+        end_date: Optional[date] = None
+    ) -> Dict[str, Any]:
+        """
+        同步 IQC 检验结果
+        
+        用途：
+        - 为 2.4.1 质量数据中心提供计算源数据
+        - 触发 NG 自动立案逻辑 (2.5.1)
+        - 流向 2.5.4 绩效评分
+        
+        Args:
+            db: 数据库会话
+            start_date: 开始日期
+            end_date: 结束日期（默认为开始日期）
+            
+        Returns:
+            Dict[str, Any]: 包含同步结果的字典
+            {
+                "success": bool,
+                "records_count": int,
+                "ng_count": int,  # NG 记录数量
+                "auto_scar_count": int,  # 自动创建的 SCAR 数量
+                "data": List[Dict],
+                "error": Optional[str]
+            }
+        """
+        if end_date is None:
+            end_date = start_date
+        
+        # 创建同步日志
+        sync_log = IMSSyncLog(
+            sync_type=SyncType.IQC_RESULTS,
+            sync_date=start_date,
+            status=SyncStatus.IN_PROGRESS,
+            records_count=0,
+            started_at=datetime.utcnow()
+        )
+        db.add(sync_log)
+        await db.commit()
+        await db.refresh(sync_log)
+        
+        try:
+            # 调用 IMS API 获取 IQC 检验结果
+            response_data = await self._make_request(
+                method="GET",
+                endpoint="/api/quality/iqc-inspection-results",
+                params={
+                    "start_date": start_date.isoformat(),
+                    "end_date": end_date.isoformat()
+                }
+            )
+            
+            # 解析响应数据
+            records = response_data.get("data", [])
+            records_count = len(records)
+            
+            # 统计 NG 记录数量
+            ng_records = [r for r in records if r.get("inspection_result") == "NG"]
+            ng_count = len(ng_records)
+            
+            # 触发 NG 自动立案逻辑
+            auto_scar_count = 0
+            if ng_records:
+                auto_scar_result = await self.auto_create_scar_on_ng(db, ng_records)
+                auto_scar_count = auto_scar_result.get("created_count", 0)
+            
+            # 更新同步日志
+            sync_log.status = SyncStatus.SUCCESS
+            sync_log.records_count = records_count
+            sync_log.completed_at = datetime.utcnow()
+            await db.commit()
+            
+            print(f"✅ IQC 检验结果同步成功: {records_count} 条记录, {ng_count} 条 NG, 自动创建 {auto_scar_count} 个 SCAR")
+            
+            return {
+                "success": True,
+                "records_count": records_count,
+                "ng_count": ng_count,
+                "auto_scar_count": auto_scar_count,
+                "data": records,
+                "error": None
+            }
+            
+        except Exception as e:
+            # 记录错误
+            error_message = f"IQC 检验结果同步失败: {str(e)}"
+            sync_log.status = SyncStatus.FAILED
+            sync_log.error_message = error_message
+            sync_log.completed_at = datetime.utcnow()
+            await db.commit()
+            
+            print(f"❌ {error_message}")
+            
+            return {
+                "success": False,
+                "records_count": 0,
+                "ng_count": 0,
+                "auto_scar_count": 0,
+                "data": [],
+                "error": error_message
+            }
+    
+    async def auto_create_scar_on_ng(
+        self,
+        db: AsyncSession,
+        ng_records: List[Dict[str, Any]]
+    ) -> Dict[str, Any]:
+        """
+        NG 自动立案逻辑
+        
+        当检测到 IMS 出现"检验结果 = 不合格"时，自动生成 SCAR 单
+        
+        Args:
+            db: 数据库会话
+            ng_records: NG 检验记录列表
+            
+        Returns:
+            Dict[str, Any]: 包含创建结果的字典
+            {
+                "created_count": int,
+                "skipped_count": int,
+                "errors": List[str]
+            }
+        """
+        from app.models.scar import SCAR, SCARSeverity, SCARStatus
+        from app.models.supplier import Supplier
+        from sqlalchemy import select
+        
+        created_count = 0
+        skipped_count = 0
+        errors = []
+        
+        for record in ng_records:
+            try:
+                # 提取关键字段
+                material_code = record.get("material_code")
+                supplier_code = record.get("supplier_code")
+                defect_description = record.get("defect_description", "IQC检验不合格")
+                defect_qty = record.get("defect_qty", 0)
+                batch_number = record.get("batch_number", "")
+                
+                # 验证必填字段
+                if not material_code or not supplier_code:
+                    skipped_count += 1
+                    errors.append(f"记录缺少必填字段: material_code={material_code}, supplier_code={supplier_code}")
+                    continue
+                
+                # 查询供应商 ID
+                supplier_query = select(Supplier).where(Supplier.code == supplier_code)
+                supplier_result = await db.execute(supplier_query)
+                supplier = supplier_result.scalar_one_or_none()
+                
+                if not supplier:
+                    skipped_count += 1
+                    errors.append(f"未找到供应商: {supplier_code}")
+                    continue
+                
+                # 生成 SCAR 编号（格式：SCAR-YYYYMMDD-XXXX）
+                today = datetime.utcnow().date()
+                date_str = today.strftime("%Y%m%d")
+                
+                # 查询当天已有的 SCAR 数量
+                count_query = select(SCAR).where(
+                    SCAR.scar_number.like(f"SCAR-{date_str}-%")
+                )
+                count_result = await db.execute(count_query)
+                existing_count = len(count_result.scalars().all())
+                
+                # 生成序号（4位数字，从0001开始）
+                sequence = str(existing_count + 1).zfill(4)
+                scar_number = f"SCAR-{date_str}-{sequence}"
+                
+                # 判断严重度（基于不良数量）
+                if defect_qty >= 100:
+                    severity = SCARSeverity.CRITICAL
+                elif defect_qty >= 50:
+                    severity = SCARSeverity.HIGH
+                elif defect_qty >= 10:
+                    severity = SCARSeverity.MEDIUM
+                else:
+                    severity = SCARSeverity.LOW
+                
+                # 设置截止日期（默认7个工作日）
+                deadline = datetime.utcnow() + timedelta(days=7)
+                
+                # 创建 SCAR 记录
+                new_scar = SCAR(
+                    scar_number=scar_number,
+                    supplier_id=supplier.id,
+                    material_code=material_code,
+                    defect_description=f"{defect_description} (批次: {batch_number})",
+                    defect_qty=defect_qty,
+                    severity=severity,
+                    status=SCARStatus.OPEN,
+                    current_handler_id=None,  # 待指派
+                    deadline=deadline,
+                    created_by=None,  # 系统自动创建
+                )
+                
+                db.add(new_scar)
+                created_count += 1
+                
+                print(f"  ✅ 自动创建 SCAR: {scar_number} (供应商: {supplier.name}, 物料: {material_code})")
+                
+            except Exception as e:
+                skipped_count += 1
+                errors.append(f"创建 SCAR 失败: {str(e)}")
+                print(f"  ❌ 创建 SCAR 失败: {str(e)}")
+        
+        # 提交所有创建的 SCAR
+        if created_count > 0:
+            await db.commit()
+        
+        return {
+            "created_count": created_count,
+            "skipped_count": skipped_count,
+            "errors": errors
+        }
+    
+    async def sync_special_approval_records(
+        self,
+        db: AsyncSession,
+        start_date: date,
+        end_date: Optional[date] = None
+    ) -> Dict[str, Any]:
+        """
+        同步特采记录
+        
+        用途：
+        - 标记特采批次，用于后续追踪该批次物料在产线上的表现
+        - 为质量追溯提供数据支持
+        
+        Args:
+            db: 数据库会话
+            start_date: 开始日期
+            end_date: 结束日期（默认为开始日期）
+            
+        Returns:
+            Dict[str, Any]: 包含同步结果的字典
+            {
+                "success": bool,
+                "records_count": int,
+                "data": List[Dict],
+                "error": Optional[str]
+            }
+        """
+        if end_date is None:
+            end_date = start_date
+        
+        # 创建同步日志
+        sync_log = IMSSyncLog(
+            sync_type=SyncType.SPECIAL_APPROVAL,
+            sync_date=start_date,
+            status=SyncStatus.IN_PROGRESS,
+            records_count=0,
+            started_at=datetime.utcnow()
+        )
+        db.add(sync_log)
+        await db.commit()
+        await db.refresh(sync_log)
+        
+        try:
+            # 调用 IMS API 获取特采记录
+            response_data = await self._make_request(
+                method="GET",
+                endpoint="/api/quality/special-approval-records",
+                params={
+                    "start_date": start_date.isoformat(),
+                    "end_date": end_date.isoformat()
+                }
+            )
+            
+            # 解析响应数据
+            records = response_data.get("data", [])
+            records_count = len(records)
+            
+            # 更新同步日志
+            sync_log.status = SyncStatus.SUCCESS
+            sync_log.records_count = records_count
+            sync_log.completed_at = datetime.utcnow()
+            await db.commit()
+            
+            print(f"✅ 特采记录同步成功: {records_count} 条记录")
+            
+            return {
+                "success": True,
+                "records_count": records_count,
+                "data": records,
+                "error": None
+            }
+            
+        except Exception as e:
+            # 记录错误
+            error_message = f"特采记录同步失败: {str(e)}"
+            sync_log.status = SyncStatus.FAILED
+            sync_log.error_message = error_message
+            sync_log.completed_at = datetime.utcnow()
+            await db.commit()
+            
+            print(f"❌ {error_message}")
+            
+            return {
+                "success": False,
+                "records_count": 0,
+                "data": [],
+                "error": error_message
+            }
+    
     async def sync_all_data(
         self,
         db: AsyncSession,
@@ -393,6 +705,8 @@ class IMSIntegrationService:
             "incoming_inspection": None,
             "production_output": None,
             "process_test": None,
+            "iqc_results": None,
+            "special_approval": None,
             "overall_success": False
         }
         
@@ -417,11 +731,27 @@ class IMSIntegrationService:
         )
         results["process_test"] = test_result
         
+        # 4. 同步 IQC 检验结果
+        iqc_result = await self.sync_iqc_inspection_results(
+            db=db,
+            start_date=target_date
+        )
+        results["iqc_results"] = iqc_result
+        
+        # 5. 同步特采记录
+        special_approval_result = await self.sync_special_approval_records(
+            db=db,
+            start_date=target_date
+        )
+        results["special_approval"] = special_approval_result
+        
         # 判断整体是否成功
         results["overall_success"] = all([
             incoming_result["success"],
             output_result["success"],
-            test_result["success"]
+            test_result["success"],
+            iqc_result["success"],
+            special_approval_result["success"]
         ])
         
         results["completed_at"] = datetime.utcnow().isoformat()

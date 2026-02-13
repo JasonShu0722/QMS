@@ -352,7 +352,7 @@
 
 ### 10. 供应商质量管理（2.5 Supplier Quality Management）
 
-- [ ] 10.1 设计供应商质量数据模型
+- [x] 10.1 设计供应商质量数据模型
   - 创建 SCAR 模型（Supplier Corrective Action Request）：id, scar_number, supplier_id, material_code, defect_description, defect_qty, severity, status, current_handler_id, deadline
   - 创建 EightD 模型（8D Report）：id, scar_id, d0_d3_data (JSON), d4_d7_data (JSON), d8_data (JSON), status, submitted_by, reviewed_by, review_comments
   - 创建 SupplierAudit 模型：id, supplier_id, audit_type, audit_date, auditor_id, audit_result, score, nc_items (JSON)

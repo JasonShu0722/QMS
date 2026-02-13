@@ -16,6 +16,16 @@ from app.models.quality_cost import QualityCost, CostType
 from app.models.quality_metric import QualityMetric, MetricType
 from app.models.ims_sync_log import IMSSyncLog, SyncStatus, SyncType
 
+# Supplier Quality Management Models (供应商质量管理模型)
+from app.models.scar import SCAR, SCARSeverity, SCARStatus
+from app.models.eight_d import EightD, EightDStatus
+from app.models.supplier_audit import SupplierAudit, AuditType, AuditResult
+from app.models.supplier_performance import SupplierPerformance, PerformanceGrade
+from app.models.supplier_target import SupplierTarget, TargetType
+from app.models.ppap import PPAP, PPAPLevel, PPAPStatus
+from app.models.inspection_spec import InspectionSpec, InspectionSpecStatus
+from app.models.barcode_validation import BarcodeValidation, BarcodeScanRecord
+
 __all__ = [
     "Base",
     "Supplier",
@@ -50,4 +60,24 @@ __all__ = [
     "IMSSyncLog",
     "SyncStatus",
     "SyncType",
+    # Supplier Quality Management
+    "SCAR",
+    "SCARSeverity",
+    "SCARStatus",
+    "EightD",
+    "EightDStatus",
+    "SupplierAudit",
+    "AuditType",
+    "AuditResult",
+    "SupplierPerformance",
+    "PerformanceGrade",
+    "SupplierTarget",
+    "TargetType",
+    "PPAP",
+    "PPAPLevel",
+    "PPAPStatus",
+    "InspectionSpec",
+    "InspectionSpecStatus",
+    "BarcodeValidation",
+    "BarcodeScanRecord",
 ]

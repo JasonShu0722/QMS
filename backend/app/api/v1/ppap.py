@@ -19,7 +19,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.auth import get_current_user
+from app.core.dependencies import get_current_user
 from app.models.user import User
 from app.models.ppap import PPAPStatus
 from app.schemas.ppap import (

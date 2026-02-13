@@ -430,7 +430,7 @@
   - 实现年度再鉴定自动提醒（Celery 定时任务）
   - _Requirements: 2.5.7_
 
-- [ ] 10.9 实现物料检验规范管理
+- [x] 10.9 实现物料检验规范管理
   - 实现 POST /api/v1/inspection-specs SQE 发起规范提交任务
   - 实现 POST /api/v1/inspection-specs/{id}/submit 供应商提交 SIP
   - 实现版本管理（V1.0, V1.1...）

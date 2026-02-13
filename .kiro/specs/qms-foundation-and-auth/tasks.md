@@ -391,7 +391,7 @@
   - 实现 NC 整改任务指派和闭环跟踪
   - _Requirements: 2.5.3_
 
-- [ ] 10.5 实现供应商质量目标管理
+- [x] 10.5 实现供应商质量目标管理
   - 实现 POST /api/v1/supplier-targets/batch 批量设定目标
   - 实现 POST /api/v1/supplier-targets/individual 单独设定目标
   - 实现目标优先级逻辑（单独设定 > 批量设定 > 全局默认值）

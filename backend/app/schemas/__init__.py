@@ -6,8 +6,33 @@ from app.schemas.task import (
     TaskStatisticsResponse
 )
 
+from app.schemas.supplier_target import (
+    BatchTargetCreate,
+    BatchTargetCreateResponse,
+    IndividualTargetCreate,
+    IndividualTargetUpdate,
+    TargetSignRequest,
+    TargetApprovalRequest,
+    TargetQueryParams,
+    TargetResponse,
+    TargetListResponse,
+    HistoricalPerformanceData,
+    UnsignedTargetsSummary
+)
+
 __all__ = [
     "TaskItemResponse",
     "TaskListResponse",
-    "TaskStatisticsResponse"
+    "TaskStatisticsResponse",
+    "BatchTargetCreate",
+    "BatchTargetCreateResponse",
+    "IndividualTargetCreate",
+    "IndividualTargetUpdate",
+    "TargetSignRequest",
+    "TargetApprovalRequest",
+    "TargetQueryParams",
+    "TargetResponse",
+    "TargetListResponse",
+    "HistoricalPerformanceData",
+    "UnsignedTargetsSummary"
 ]

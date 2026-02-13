@@ -46,6 +46,19 @@ const routes: RouteRecordRaw[] = [
           title: '公告栏',
           requiresAuth: true
         }
+      },
+      {
+        path: 'quality-dashboard',
+        name: 'QualityDashboard',
+        component: () => import('@/views/QualityDashboard.vue'),
+        meta: { 
+          title: '质量数据仪表盘',
+          requiresAuth: true,
+          permission: {
+            modulePath: 'quality.dashboard',
+            operation: 'read'
+          }
+        }
       }
     ]
   },

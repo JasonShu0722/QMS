@@ -295,7 +295,7 @@
   - 指标类型枚举：incoming_batch_pass_rate, material_online_ppm, process_defect_rate, process_fpy, okm_ppm, mis_3_ppm, mis_12_ppm
   - _Requirements: 2.4.1_
 
-- [ ] 9.2 实现 IMS 数据集成服务
+- [x] 9.2 实现 IMS 数据集成服务
   - 创建 IMSIntegrationService 类（使用 HTTPX 异步客户端）
   - 实现 fetch_incoming_inspection_data() 拉取入库检验数据
   - 实现 fetch_production_output_data() 拉取成品产出数据

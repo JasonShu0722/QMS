@@ -370,7 +370,7 @@
   - 实现 sync_special_approval_records() 同步特采记录
   - _Requirements: 2.5.1_
 
-- [ ] 10.3 实现 SCAR 与 8D 闭环管理
+- [x] 10.3 实现 SCAR 与 8D 闭环管理
   - 实现 POST /api/v1/scar 创建 SCAR 单
   - 实现 GET /api/v1/scar 获取 SCAR 列表（供应商仅见自己的数据）
   - 实现 POST /api/v1/scar/{id}/8d 供应商提交 8D 报告

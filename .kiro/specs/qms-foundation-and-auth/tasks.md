@@ -414,7 +414,7 @@
   - 实现 GET /api/v1/supplier-performance 获取绩效卡
   - _Requirements: 2.5.5_
 
-- [ ] 10.7 实现供应商会议与改进监控
+- [x] 10.7 实现供应商会议与改进监控
   - 实现 C/D 级供应商自动立项会议任务
   - 实现参会人员要求通知（C 级副总、D 级总经理）
   - 实现 POST /api/v1/supplier-meetings 创建会议记录

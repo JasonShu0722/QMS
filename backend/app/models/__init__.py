@@ -24,6 +24,7 @@ from app.models.supplier_pcn import SupplierPCN
 from app.models.supplier_audit import SupplierAuditPlan, SupplierAudit, SupplierAuditNC
 from app.models.supplier_performance import SupplierPerformance, PerformanceGrade
 from app.models.supplier_target import SupplierTarget, TargetType
+from app.models.supplier_meeting import SupplierMeeting
 from app.models.ppap import PPAP, PPAPLevel, PPAPStatus
 from app.models.inspection_spec import InspectionSpec, InspectionSpecStatus
 from app.models.barcode_validation import BarcodeValidation, BarcodeScanRecord
@@ -77,6 +78,7 @@ __all__ = [
     "PerformanceGrade",
     "SupplierTarget",
     "TargetType",
+    "SupplierMeeting",
     "PPAP",
     "PPAPLevel",
     "PPAPStatus",

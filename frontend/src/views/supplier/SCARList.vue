@@ -232,7 +232,7 @@ const pagination = reactive({
 })
 
 // 创建表单
-const createForm = reactive({
+const createForm = reactive<any>({
   supplier_id: undefined,
   material_code: '',
   defect_description: '',

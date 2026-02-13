@@ -54,8 +54,8 @@
           </template>
         </el-table-column>
         <el-table-column label="操作" width="150">
-          <template #default="{ row }">
-            <el-button type="primary" size="small" @click="handleView(row)">
+          <template #default>
+            <el-button type="primary" size="small" @click="handleView">
               查看详情
             </el-button>
           </template>
@@ -141,7 +141,7 @@ const formatDate = (date: string) => {
 }
 
 // 查看详情
-const handleView = (row: SupplierAudit) => {
+const handleView = () => {
   ElMessage.info('查看审核详情功能开发中')
 }
 

@@ -98,7 +98,7 @@
         </el-descriptions-item>
       </el-descriptions>
 
-      <div v-if="selectedPerformance.deduction_details" class="deduction-details">
+      <div v-if="selectedPerformance?.deduction_details" class="deduction-details">
         <h4>扣分明细</h4>
         <pre>{{ JSON.stringify(selectedPerformance.deduction_details, null, 2) }}</pre>
       </div>

@@ -236,7 +236,7 @@ import {
   InfoFilled 
 } from '@element-plus/icons-vue'
 import { supplierApi } from '@/api/supplier'
-import type { SCAR, EightDReport } from '@/types/supplier'
+import type { SCAR } from '@/types/supplier'
 
 const route = useRoute()
 const router = useRouter()
@@ -320,7 +320,7 @@ const isOverdue = (deadline?: string) => {
 }
 
 // 文件上传成功
-const handleUploadSuccess = (response: any) => {
+const handleUploadSuccess = () => {
   ElMessage.success('文件上传成功')
 }
 
@@ -333,7 +333,7 @@ const goBack = () => {
 const handleSaveDraft = async () => {
   try {
     saving.value = true
-    const reportData = {
+    const reportData: any = {
       d0_d3_data: {
         d0_emergency_action: formData.d0_emergency_action,
         d1_team_members: formData.d1_team_members,
@@ -382,7 +382,7 @@ const handleSubmit = async () => {
     )
 
     submitting.value = true
-    const reportData = {
+    const reportData: any = {
       d0_d3_data: {
         d0_emergency_action: formData.d0_emergency_action,
         d1_team_members: formData.d1_team_members,

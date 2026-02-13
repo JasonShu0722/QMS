@@ -28,7 +28,7 @@
         <el-table-column prop="reviewer_name" label="审核员" width="100" />
         <el-table-column label="操作" width="200">
           <template #default="{ row }">
-            <el-button type="primary" size="small" @click="handleView(row)">
+            <el-button type="primary" size="small" @click="handleView">
               查看
             </el-button>
             <el-button 
@@ -131,7 +131,7 @@ const formatDate = (date: string) => {
   return new Date(date).toLocaleDateString('zh-CN')
 }
 
-const handleView = (row: PPAP) => {
+const handleView = () => {
   ElMessage.info('查看 PPAP 详情功能开发中')
 }
 

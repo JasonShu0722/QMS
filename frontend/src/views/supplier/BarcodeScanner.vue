@@ -89,7 +89,7 @@
             autofocus
           >
             <template #prefix>
-              <el-icon><Scan /></el-icon>
+              <el-icon><Search /></el-icon>
             </template>
           </el-input>
         </div>
@@ -155,7 +155,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { 
   FullScreen, 
   Close, 
-  Scan, 
+  Search,
   CircleCheck, 
   CircleClose, 
   Delete, 

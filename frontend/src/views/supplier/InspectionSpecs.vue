@@ -28,7 +28,7 @@
         </el-table-column>
         <el-table-column label="操作" width="200">
           <template #default="{ row }">
-            <el-button type="primary" size="small" @click="handleView(row)">
+            <el-button type="primary" size="small" @click="handleView">
               查看
             </el-button>
             <el-button 
@@ -169,7 +169,7 @@ const removeCharacteristic = (index: number) => {
   submitForm.key_characteristics.splice(index, 1)
 }
 
-const handleView = (row: InspectionSpec) => {
+const handleView = () => {
   ElMessage.info('查看检验规范详情功能开发中')
 }
 

@@ -316,7 +316,7 @@
   - 按供应商、产品类型、工序、线体进行分类统计
   - _Requirements: 2.4.1_
 
-- [ ] 9.4 实现质量数据 API
+- [x] 9.4 实现质量数据 API
   - 实现 GET /api/v1/quality-metrics/dashboard 获取仪表盘数据
   - 实现 GET /api/v1/quality-metrics/trend 获取指标趋势（支持时间范围筛选）
   - 实现 GET /api/v1/quality-metrics/drill-down 下钻查询（点击指标查看明细）

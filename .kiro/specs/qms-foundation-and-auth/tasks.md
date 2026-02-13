@@ -449,7 +449,7 @@
   - 实现数据追溯和导出功能
   - _Requirements: 2.5.9_
 
-- [ ] 10.11 实现供应商质量管理前端
+- [x] 10.11 实现供应商质量管理前端
   - 创建 SupplierDashboard.vue 供应商仪表盘（供应商视图）
   - 创建 SCARList.vue SCAR 列表页面
   - 创建 EightDForm.vue 8D 报告填写页面

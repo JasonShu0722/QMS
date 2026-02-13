@@ -44,7 +44,7 @@ class DashboardMetricSummary(BaseModel):
 
 class DashboardResponse(BaseModel):
     """仪表盘数据响应"""
-    date: date = Field(..., description="数据日期")
+    data_date: date = Field(..., description="数据日期")
     metrics: List[DashboardMetricSummary] = Field(..., description="指标列表")
     summary: Dict[str, Any] = Field(..., description="汇总信息")
 

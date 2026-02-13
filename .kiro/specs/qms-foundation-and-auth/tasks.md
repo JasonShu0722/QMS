@@ -304,7 +304,7 @@
   - 实现错误处理和重试机制
   - _Requirements: 2.4.1_
 
-- [ ] 9.3 实现质量指标计算引擎
+- [x] 9.3 实现质量指标计算引擎
   - 创建 MetricsCalculator 类
   - 实现 calculate_incoming_batch_pass_rate() 来料批次合格率计算
   - 实现 calculate_material_online_ppm() 物料上线不良 PPM 计算

@@ -326,7 +326,7 @@
   - 实现权限控制（用户只能查看被授权的指标）
   - _Requirements: 2.4.2, 2.4.3_
 
-- [ ] 9.5 实现 AI 智能诊断服务
+- [x] 9.5 实现 AI 智能诊断服务
   - 创建 AIAnalysisService 类（集成 OpenAI API / DeepSeek）
   - 实现 analyze_anomaly() 异常自动寻源（指标飙升时触发）
   - 实现 natural_language_query() 自然语言查询（用户提问转 SQL）

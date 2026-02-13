@@ -380,7 +380,7 @@
   - 实现邮件通知（SCAR 创建、8D 提交、审核结果）
   - _Requirements: 2.5.2_
 
-- [ ] 10.4 实现供应商生命周期管理
+- [x] 10.4 实现供应商生命周期管理
   - 实现 POST /api/v1/suppliers/qualification 供应商准入审核
   - 实现 POST /api/v1/suppliers/{id}/documents 上传资质文件
   - 实现证书有效期自动预警（Celery 定时任务）

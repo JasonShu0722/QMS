@@ -19,7 +19,9 @@ from app.models.ims_sync_log import IMSSyncLog, SyncStatus, SyncType
 # Supplier Quality Management Models (供应商质量管理模型)
 from app.models.scar import SCAR, SCARSeverity, SCARStatus
 from app.models.eight_d import EightD, EightDStatus
-from app.models.supplier_audit import SupplierAudit, AuditType, AuditResult
+from app.models.supplier_document import SupplierDocument
+from app.models.supplier_pcn import SupplierPCN
+from app.models.supplier_audit import SupplierAuditPlan, SupplierAudit, SupplierAuditNC
 from app.models.supplier_performance import SupplierPerformance, PerformanceGrade
 from app.models.supplier_target import SupplierTarget, TargetType
 from app.models.ppap import PPAP, PPAPLevel, PPAPStatus
@@ -66,9 +68,11 @@ __all__ = [
     "SCARStatus",
     "EightD",
     "EightDStatus",
+    "SupplierDocument",
+    "SupplierPCN",
+    "SupplierAuditPlan",
     "SupplierAudit",
-    "AuditType",
-    "AuditResult",
+    "SupplierAuditNC",
     "SupplierPerformance",
     "PerformanceGrade",
     "SupplierTarget",

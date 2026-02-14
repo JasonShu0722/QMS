@@ -40,6 +40,14 @@ from app.models.customer_claim import CustomerClaim
 from app.models.supplier_claim import SupplierClaim, SupplierClaimStatus
 from app.models.lesson_learned import LessonLearned, SourceType
 
+# New Product Quality Management Models (新品质量管理模型)
+from app.models.lesson_learned_library import LessonLearnedLibrary, SourceModule
+from app.models.new_product_project import NewProductProject, ProjectStage, ProjectStatus
+from app.models.project_lesson_check import ProjectLessonCheck
+from app.models.stage_review import StageReview, ReviewResult
+from app.models.trial_production import TrialProduction, TrialStatus
+from app.models.trial_issue import TrialIssue, IssueType, IssueStatus
+
 __all__ = [
     "Base",
     "Supplier",
@@ -115,4 +123,18 @@ __all__ = [
     "SupplierClaimStatus",
     "LessonLearned",
     "SourceType",
+    # New Product Quality Management
+    "LessonLearnedLibrary",
+    "SourceModule",
+    "NewProductProject",
+    "ProjectStage",
+    "ProjectStatus",
+    "ProjectLessonCheck",
+    "StageReview",
+    "ReviewResult",
+    "TrialProduction",
+    "TrialStatus",
+    "TrialIssue",
+    "IssueType",
+    "IssueStatus",
 ]

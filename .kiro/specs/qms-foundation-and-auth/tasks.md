@@ -579,7 +579,7 @@
 
 ### 13. 新品质量管理（2.8 New Product Quality Management）
 
-- [ ] 13.1 设计新品质量数据模型
+- [x] 13.1 设计新品质量数据模型
   - 创建 LessonLearnedLibrary 模型：id, lesson_title, lesson_content, source_module, root_cause, preventive_action, applicable_scenarios, is_active
   - 创建 NewProductProject 模型：id, project_code, project_name, product_type, project_manager, current_stage, status
   - 创建 ProjectLessonCheck 模型：id, project_id, lesson_id, is_applicable, reason_if_not, evidence_file_path, checked_by, checked_at

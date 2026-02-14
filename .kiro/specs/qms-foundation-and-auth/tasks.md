@@ -606,7 +606,7 @@
   - 实现 POST /api/v1/projects/{id}/stage-reviews/{stage_id}/approve 阶段评审批准
   - _Requirements: 2.8.2_
 
-- [ ] 13.4 实现试产目标与实绩管理
+- [x] 13.4 实现试产目标与实绩管理
   - 实现 POST /api/v1/trial-production 创建试产记录
   - 实现关联 IMS 工单号
   - 实现设定质量目标（直通率、CPK、尺寸合格率）

@@ -1438,6 +1438,88 @@ class IMSIntegrationService:
         
         result = await db.execute(query)
         return result.scalars().all()
+    
+    async def fetch_trial_production_data(
+        self,
+        work_order: str,
+        target_date: Optional[date] = None
+    ) -> Dict[str, Any]:
+        """
+        根据工单号获取试产数据
+        
+        用途：
+        - 为试产记录提供IMS数据（投入数、产出数、一次合格数、不良数）
+        - 支持2.8.3试产目标与实绩管理
+        
+        Args:
+            work_order: IMS工单号
+            target_date: 目标日期（默认为当前日期）
+            
+        Returns:
+            Dict[str, Any]: 包含试产数据的字典
+            {
+                "success": bool,
+                "work_order": str,
+                "data": Optional[Dict],  # 包含: input_qty, output_qty, first_pass_qty, defect_qty
+                "error": Optional[str]
+            }
+        """
+        if target_date is None:
+            target_date = date.today()
+        
+        try:
+            # 调用IMS API获取工单数据
+            response_data = await self._make_request(
+                method="GET",
+                endpoint="/api/production/work-order-details",
+                params={
+                    "work_order": work_order,
+                    "date": target_date.isoformat()
+                }
+            )
+            
+            # 解析响应数据
+            # 预期数据格式：
+            # {
+            #   "work_order": "WO202602140001",
+            #   "date": "2026-02-14",
+            #   "input_qty": 1000,  # 投入数
+            #   "output_qty": 950,  # 产出数
+            #   "first_pass_qty": 920,  # 一次测试通过数
+            #   "total_test_qty": 1000,  # 一次测试总数量
+            #   "defect_qty": 30,  # 不良数
+            #   "product_type": "MCU",
+            #   "line_id": "LINE01"
+            # }
+            work_order_data = response_data.get("data")
+            
+            if not work_order_data:
+                return {
+                    "success": False,
+                    "work_order": work_order,
+                    "data": None,
+                    "error": f"未找到工单号 {work_order} 的数据"
+                }
+            
+            print(f"✅ 获取试产数据成功: 工单号={work_order}")
+            
+            return {
+                "success": True,
+                "work_order": work_order,
+                "data": work_order_data,
+                "error": None
+            }
+            
+        except Exception as e:
+            error_message = f"获取试产数据失败: {str(e)}"
+            print(f"❌ {error_message}")
+            
+            return {
+                "success": False,
+                "work_order": work_order,
+                "data": None,
+                "error": error_message
+            }
 
 
 # 创建全局 IMS 集成服务实例

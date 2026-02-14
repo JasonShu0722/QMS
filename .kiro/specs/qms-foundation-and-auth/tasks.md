@@ -617,7 +617,7 @@
   - 实现一键导出 Excel/PDF
   - _Requirements: 2.8.3_
 
-- [ ] 13.5 实现试产问题跟进
+- [x] 13.5 实现试产问题跟进
   - 实现 POST /api/v1/trial-issues 录入试产问题
   - 实现问题清单管理（指派责任人、上传对策、关闭）
   - 实现 POST /api/v1/trial-issues/{id}/escalate 升级为 8D 报告

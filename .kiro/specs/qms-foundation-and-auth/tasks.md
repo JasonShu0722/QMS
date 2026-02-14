@@ -562,7 +562,7 @@
   - 实现索赔金额统计和报表
   - _Requirements: 2.7.4_
 
-- [ ] 12.6 实现客户质量管理前端
+- [x] 12.6 实现客户质量管理前端
   - 创建 CustomerComplaintList.vue 客诉列表页面
   - 创建 CustomerComplaintForm.vue 客诉录入表单
   - 创建 EightDCustomerForm.vue 客诉 8D 报告页面

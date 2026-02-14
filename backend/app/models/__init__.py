@@ -49,6 +49,9 @@ from app.models.trial_production import TrialProduction, TrialStatus
 from app.models.trial_issue import TrialIssue, IssueType, IssueStatus
 from app.models.initial_flow_control import InitialFlowControl, FlowControlStatus, FlowControlType
 
+# Audit Management Models (审核管理模型)
+from app.models.audit import AuditPlan, AuditTemplate, AuditExecution, AuditNC, CustomerAudit
+
 __all__ = [
     "Base",
     "Supplier",
@@ -141,4 +144,10 @@ __all__ = [
     "InitialFlowControl",
     "FlowControlStatus",
     "FlowControlType",
+    # Audit Management
+    "AuditPlan",
+    "AuditTemplate",
+    "AuditExecution",
+    "AuditNC",
+    "CustomerAudit",
 ]

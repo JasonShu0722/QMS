@@ -650,7 +650,7 @@
 
 ### 14. 审核管理（2.9 Audit Management）
 
-- [ ] 14.1 设计审核管理数据模型
+- [x] 14.1 设计审核管理数据模型
   - 创建 AuditPlan 模型：id, audit_type, audit_name, planned_date, auditor_id, auditee_dept, status
   - 创建 AuditTemplate 模型：id, template_name, audit_type, checklist_items (JSON), scoring_rules (JSON)
   - 创建 AuditExecution 模型：id, audit_plan_id, template_id, audit_date, auditor_id, checklist_results (JSON), final_score, grade, audit_report_path

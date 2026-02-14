@@ -100,7 +100,53 @@ async def test_ims_integration():
                 print(f"   - 错误: {result3['error']}")
             
             print("\n" + "=" * 60)
-            print("测试 4: 同步所有数据")
+            print("测试 4: 同步成品入库数据（制程质量管理）")
+            print("=" * 60)
+            
+            result4 = await ims_integration_service.sync_production_output(
+                db=db,
+                start_date=test_date
+            )
+            
+            print(f"✅ 测试完成")
+            print(f"   - 成功: {result4['success']}")
+            print(f"   - 记录数: {result4['records_count']}")
+            if result4['error']:
+                print(f"   - 错误: {result4['error']}")
+            
+            print("\n" + "=" * 60)
+            print("测试 5: 同步一次测试数据（制程质量管理）")
+            print("=" * 60)
+            
+            result5 = await ims_integration_service.sync_first_pass_test(
+                db=db,
+                start_date=test_date
+            )
+            
+            print(f"✅ 测试完成")
+            print(f"   - 成功: {result5['success']}")
+            print(f"   - 记录数: {result5['records_count']}")
+            if result5['error']:
+                print(f"   - 错误: {result5['error']}")
+            
+            print("\n" + "=" * 60)
+            print("测试 6: 同步制程不良记录（制程质量管理）")
+            print("=" * 60)
+            
+            result6 = await ims_integration_service.sync_process_defects(
+                db=db,
+                start_date=test_date
+            )
+            
+            print(f"✅ 测试完成")
+            print(f"   - 成功: {result6['success']}")
+            print(f"   - 记录数: {result6['records_count']}")
+            print(f"   - 保存数: {result6.get('saved_count', 0)}")
+            if result6['error']:
+                print(f"   - 错误: {result6['error']}")
+            
+            print("\n" + "=" * 60)
+            print("测试 7: 同步所有数据")
             print("=" * 60)
             
             result_all = await ims_integration_service.sync_all_data(
@@ -113,9 +159,12 @@ async def test_ims_integration():
             print(f"   - 入库检验: {result_all['incoming_inspection']['records_count']} 条")
             print(f"   - 成品产出: {result_all['production_output']['records_count']} 条")
             print(f"   - 制程测试: {result_all['process_test']['records_count']} 条")
+            print(f"   - 成品入库（新）: {result_all['sync_production_output']['records_count']} 条")
+            print(f"   - 一次测试（新）: {result_all['sync_first_pass_test']['records_count']} 条")
+            print(f"   - 制程不良（新）: {result_all['sync_process_defects']['records_count']} 条")
             
             print("\n" + "=" * 60)
-            print("测试 5: 查询同步历史")
+            print("测试 8: 查询同步历史")
             print("=" * 60)
             
             logs = await ims_integration_service.get_sync_history(

@@ -20,6 +20,17 @@ from app.schemas.supplier_target import (
     UnsignedTargetsSummary
 )
 
+from app.schemas.process_defect import (
+    ProcessDefectCreate,
+    ProcessDefectUpdate,
+    ProcessDefectResponse,
+    ProcessDefectListQuery,
+    DefectTypeOption,
+    DefectTypeListResponse,
+    ResponsibilityCategoryOption,
+    ResponsibilityCategoryListResponse
+)
+
 __all__ = [
     "TaskItemResponse",
     "TaskListResponse",
@@ -34,5 +45,13 @@ __all__ = [
     "TargetResponse",
     "TargetListResponse",
     "HistoricalPerformanceData",
-    "UnsignedTargetsSummary"
+    "UnsignedTargetsSummary",
+    "ProcessDefectCreate",
+    "ProcessDefectUpdate",
+    "ProcessDefectResponse",
+    "ProcessDefectListQuery",
+    "DefectTypeOption",
+    "DefectTypeListResponse",
+    "ResponsibilityCategoryOption",
+    "ResponsibilityCategoryListResponse"
 ]

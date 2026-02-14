@@ -678,6 +678,398 @@ class IMSIntegrationService:
                 "error": error_message
             }
     
+    async def sync_production_output(
+        self,
+        db: AsyncSession,
+        start_date: date,
+        end_date: Optional[date] = None
+    ) -> Dict[str, Any]:
+        """
+        同步成品入库数据（用于制程质量管理 2.6.1）
+        
+        用途：
+        - 为核心指标计算提供准确的"分母"数据
+        - 计算制程不合格率 (2.4.1)
+        - 试产数据自动抓取 (2.8.3)
+        
+        维度要求：日期、工单号、工序、产线
+        
+        Args:
+            db: 数据库会话
+            start_date: 开始日期
+            end_date: 结束日期（默认为开始日期）
+            
+        Returns:
+            Dict[str, Any]: 包含同步结果的字典
+            {
+                "success": bool,
+                "records_count": int,
+                "data": List[Dict],  # 包含: date, work_order, process_id, line_id, output_qty
+                "error": Optional[str]
+            }
+        """
+        if end_date is None:
+            end_date = start_date
+        
+        # 创建同步日志
+        sync_log = IMSSyncLog(
+            sync_type=SyncType.PRODUCTION_OUTPUT,
+            sync_date=start_date,
+            status=SyncStatus.IN_PROGRESS,
+            records_count=0,
+            started_at=datetime.utcnow()
+        )
+        db.add(sync_log)
+        await db.commit()
+        await db.refresh(sync_log)
+        
+        try:
+            # 调用 IMS API 获取成品入库数据
+            response_data = await self._make_request(
+                method="GET",
+                endpoint="/api/production/finished-goods-input",
+                params={
+                    "start_date": start_date.isoformat(),
+                    "end_date": end_date.isoformat()
+                }
+            )
+            
+            # 解析响应数据
+            # 预期数据格式：
+            # [
+            #   {
+            #     "date": "2026-02-14",
+            #     "work_order": "WO202602140001",
+            #     "process_id": "P001",
+            #     "line_id": "LINE01",
+            #     "output_qty": 1000,
+            #     "product_type": "MCU"
+            #   },
+            #   ...
+            # ]
+            records = response_data.get("data", [])
+            records_count = len(records)
+            
+            # 更新同步日志
+            sync_log.status = SyncStatus.SUCCESS
+            sync_log.records_count = records_count
+            sync_log.completed_at = datetime.utcnow()
+            await db.commit()
+            
+            print(f"✅ 成品入库数据同步成功: {records_count} 条记录")
+            
+            return {
+                "success": True,
+                "records_count": records_count,
+                "data": records,
+                "error": None
+            }
+            
+        except Exception as e:
+            # 记录错误
+            error_message = f"成品入库数据同步失败: {str(e)}"
+            sync_log.status = SyncStatus.FAILED
+            sync_log.error_message = error_message
+            sync_log.completed_at = datetime.utcnow()
+            await db.commit()
+            
+            print(f"❌ {error_message}")
+            
+            return {
+                "success": False,
+                "records_count": 0,
+                "data": [],
+                "error": error_message
+            }
+    
+    async def sync_first_pass_test(
+        self,
+        db: AsyncSession,
+        start_date: date,
+        end_date: Optional[date] = None
+    ) -> Dict[str, Any]:
+        """
+        同步一次测试数据（用于制程质量管理 2.6.1）
+        
+        用途：
+        - 计算制程直通率 (FPY) (2.4.1)
+        - 一次测试通过数、一次测试总数量
+        
+        维度要求：日期、工单号、工序、产线
+        
+        Args:
+            db: 数据库会话
+            start_date: 开始日期
+            end_date: 结束日期（默认为开始日期）
+            
+        Returns:
+            Dict[str, Any]: 包含同步结果的字典
+            {
+                "success": bool,
+                "records_count": int,
+                "data": List[Dict],  # 包含: date, work_order, process_id, line_id, 
+                                     #        first_pass_qty, total_test_qty
+                "error": Optional[str]
+            }
+        """
+        if end_date is None:
+            end_date = start_date
+        
+        # 创建同步日志
+        sync_log = IMSSyncLog(
+            sync_type=SyncType.FIRST_PASS_TEST,
+            sync_date=start_date,
+            status=SyncStatus.IN_PROGRESS,
+            records_count=0,
+            started_at=datetime.utcnow()
+        )
+        db.add(sync_log)
+        await db.commit()
+        await db.refresh(sync_log)
+        
+        try:
+            # 调用 IMS API 获取一次测试数据
+            response_data = await self._make_request(
+                method="GET",
+                endpoint="/api/production/first-pass-test",
+                params={
+                    "start_date": start_date.isoformat(),
+                    "end_date": end_date.isoformat()
+                }
+            )
+            
+            # 解析响应数据
+            # 预期数据格式：
+            # [
+            #   {
+            #     "date": "2026-02-14",
+            #     "work_order": "WO202602140001",
+            #     "process_id": "P001",
+            #     "line_id": "LINE01",
+            #     "first_pass_qty": 950,  # 一次测试通过数
+            #     "total_test_qty": 1000,  # 一次测试总数量
+            #     "product_type": "MCU"
+            #   },
+            #   ...
+            # ]
+            records = response_data.get("data", [])
+            records_count = len(records)
+            
+            # 更新同步日志
+            sync_log.status = SyncStatus.SUCCESS
+            sync_log.records_count = records_count
+            sync_log.completed_at = datetime.utcnow()
+            await db.commit()
+            
+            print(f"✅ 一次测试数据同步成功: {records_count} 条记录")
+            
+            return {
+                "success": True,
+                "records_count": records_count,
+                "data": records,
+                "error": None
+            }
+            
+        except Exception as e:
+            # 记录错误
+            error_message = f"一次测试数据同步失败: {str(e)}"
+            sync_log.status = SyncStatus.FAILED
+            sync_log.error_message = error_message
+            sync_log.completed_at = datetime.utcnow()
+            await db.commit()
+            
+            print(f"❌ {error_message}")
+            
+            return {
+                "success": False,
+                "records_count": 0,
+                "data": [],
+                "error": error_message
+            }
+    
+    async def sync_process_defects(
+        self,
+        db: AsyncSession,
+        start_date: date,
+        end_date: Optional[date] = None
+    ) -> Dict[str, Any]:
+        """
+        同步制程不良记录（用于制程质量管理 2.6.1）
+        
+        用途：
+        - 为 2.6.2 不合格品数据录入提供 IMS 自动同步的数据源
+        - 支持按责任类别进行区分统计
+        
+        维度要求：日期、工单号、工序、产线
+        
+        Args:
+            db: 数据库会话
+            start_date: 开始日期
+            end_date: 结束日期（默认为开始日期）
+            
+        Returns:
+            Dict[str, Any]: 包含同步结果的字典
+            {
+                "success": bool,
+                "records_count": int,
+                "saved_count": int,  # 实际保存到数据库的记录数
+                "data": List[Dict],  # 包含: date, work_order, process_id, line_id, 
+                                     #        defect_type, defect_qty, responsibility_category
+                "error": Optional[str]
+            }
+        """
+        if end_date is None:
+            end_date = start_date
+        
+        # 创建同步日志
+        sync_log = IMSSyncLog(
+            sync_type=SyncType.PROCESS_DEFECTS,
+            sync_date=start_date,
+            status=SyncStatus.IN_PROGRESS,
+            records_count=0,
+            started_at=datetime.utcnow()
+        )
+        db.add(sync_log)
+        await db.commit()
+        await db.refresh(sync_log)
+        
+        try:
+            # 调用 IMS API 获取制程不良记录
+            response_data = await self._make_request(
+                method="GET",
+                endpoint="/api/production/process-defects",
+                params={
+                    "start_date": start_date.isoformat(),
+                    "end_date": end_date.isoformat()
+                }
+            )
+            
+            # 解析响应数据
+            # 预期数据格式：
+            # [
+            #   {
+            #     "date": "2026-02-14",
+            #     "work_order": "WO202602140001",
+            #     "process_id": "P001",
+            #     "line_id": "LINE01",
+            #     "defect_type": "焊接不良",
+            #     "defect_qty": 5,
+            #     "responsibility_category": "operation_defect",  # 可选，IMS可能已分类
+            #     "operator_id": 123,  # 可选
+            #     "material_code": "MAT001",  # 可选，当责任为物料不良时
+            #     "remarks": "备注信息"  # 可选
+            #   },
+            #   ...
+            # ]
+            records = response_data.get("data", [])
+            records_count = len(records)
+            
+            # 将数据保存到 ProcessDefect 表
+            from app.models.process_defect import ProcessDefect, ResponsibilityCategory
+            from app.models.supplier import Supplier
+            from sqlalchemy import select
+            
+            saved_count = 0
+            errors = []
+            
+            for record in records:
+                try:
+                    # 提取字段
+                    defect_date_str = record.get("date")
+                    work_order = record.get("work_order")
+                    process_id = record.get("process_id")
+                    line_id = record.get("line_id")
+                    defect_type = record.get("defect_type")
+                    defect_qty = record.get("defect_qty", 0)
+                    responsibility_category = record.get("responsibility_category", "operation_defect")
+                    operator_id = record.get("operator_id")
+                    material_code = record.get("material_code")
+                    remarks = record.get("remarks")
+                    
+                    # 验证必填字段
+                    if not all([defect_date_str, work_order, process_id, line_id, defect_type]):
+                        errors.append(f"记录缺少必填字段: {record}")
+                        continue
+                    
+                    # 转换日期
+                    defect_date = datetime.strptime(defect_date_str, "%Y-%m-%d").date()
+                    
+                    # 查询供应商ID（如果是物料不良且提供了物料编码）
+                    supplier_id = None
+                    if responsibility_category == "material_defect" and material_code:
+                        # 这里简化处理，实际应该通过物料编码查询供应商
+                        # 可以从 IMS 返回的数据中直接获取 supplier_code
+                        supplier_code = record.get("supplier_code")
+                        if supplier_code:
+                            supplier_query = select(Supplier).where(Supplier.code == supplier_code)
+                            supplier_result = await db.execute(supplier_query)
+                            supplier = supplier_result.scalar_one_or_none()
+                            if supplier:
+                                supplier_id = supplier.id
+                    
+                    # 创建 ProcessDefect 记录
+                    process_defect = ProcessDefect(
+                        defect_date=defect_date,
+                        work_order=work_order,
+                        process_id=process_id,
+                        line_id=line_id,
+                        defect_type=defect_type,
+                        defect_qty=defect_qty,
+                        responsibility_category=responsibility_category,
+                        operator_id=operator_id,
+                        recorded_by=1,  # 系统自动同步，使用系统账号ID
+                        material_code=material_code,
+                        supplier_id=supplier_id,
+                        remarks=remarks
+                    )
+                    
+                    db.add(process_defect)
+                    saved_count += 1
+                    
+                except Exception as e:
+                    errors.append(f"保存记录失败: {str(e)}")
+                    print(f"  ❌ 保存制程不良记录失败: {str(e)}")
+            
+            # 提交所有保存的记录
+            if saved_count > 0:
+                await db.commit()
+            
+            # 更新同步日志
+            sync_log.status = SyncStatus.SUCCESS if saved_count == records_count else SyncStatus.PARTIAL
+            sync_log.records_count = records_count
+            if errors:
+                sync_log.error_message = f"部分记录保存失败: {'; '.join(errors[:5])}"  # 只记录前5个错误
+            sync_log.completed_at = datetime.utcnow()
+            await db.commit()
+            
+            print(f"✅ 制程不良记录同步成功: {records_count} 条记录, 保存 {saved_count} 条")
+            
+            return {
+                "success": True,
+                "records_count": records_count,
+                "saved_count": saved_count,
+                "data": records,
+                "error": None if not errors else f"部分记录保存失败: {len(errors)} 条"
+            }
+            
+        except Exception as e:
+            # 记录错误
+            error_message = f"制程不良记录同步失败: {str(e)}"
+            sync_log.status = SyncStatus.FAILED
+            sync_log.error_message = error_message
+            sync_log.completed_at = datetime.utcnow()
+            await db.commit()
+            
+            print(f"❌ {error_message}")
+            
+            return {
+                "success": False,
+                "records_count": 0,
+                "saved_count": 0,
+                "data": [],
+                "error": error_message
+            }
+    
     async def sync_all_data(
         self,
         db: AsyncSession,
@@ -707,6 +1099,9 @@ class IMSIntegrationService:
             "process_test": None,
             "iqc_results": None,
             "special_approval": None,
+            "sync_production_output": None,
+            "sync_first_pass_test": None,
+            "sync_process_defects": None,
             "overall_success": False
         }
         
@@ -717,7 +1112,7 @@ class IMSIntegrationService:
         )
         results["incoming_inspection"] = incoming_result
         
-        # 2. 同步成品产出数据
+        # 2. 同步成品产出数据（旧方法，保持兼容）
         output_result = await self.fetch_production_output_data(
             db=db,
             start_date=target_date
@@ -745,13 +1140,37 @@ class IMSIntegrationService:
         )
         results["special_approval"] = special_approval_result
         
+        # 6. 同步成品入库数据（新方法，用于制程质量管理）
+        sync_production_result = await self.sync_production_output(
+            db=db,
+            start_date=target_date
+        )
+        results["sync_production_output"] = sync_production_result
+        
+        # 7. 同步一次测试数据（新方法，用于制程质量管理）
+        sync_first_pass_result = await self.sync_first_pass_test(
+            db=db,
+            start_date=target_date
+        )
+        results["sync_first_pass_test"] = sync_first_pass_result
+        
+        # 8. 同步制程不良记录（新方法，用于制程质量管理）
+        sync_defects_result = await self.sync_process_defects(
+            db=db,
+            start_date=target_date
+        )
+        results["sync_process_defects"] = sync_defects_result
+        
         # 判断整体是否成功
         results["overall_success"] = all([
             incoming_result["success"],
             output_result["success"],
             test_result["success"],
             iqc_result["success"],
-            special_approval_result["success"]
+            special_approval_result["success"],
+            sync_production_result["success"],
+            sync_first_pass_result["success"],
+            sync_defects_result["success"]
         ])
         
         results["completed_at"] = datetime.utcnow().isoformat()

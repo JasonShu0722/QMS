@@ -476,7 +476,7 @@
   - 责任类别枚举：material_defect, operation_defect, equipment_defect, process_defect, design_defect
   - _Requirements: 2.6.2, 2.6.3_
 
-- [ ] 11.2 实现生产数据集成
+- [x] 11.2 实现生产数据集成
   - 扩展 IMSIntegrationService 类
   - 实现 sync_production_output() 同步成品入库数据
   - 实现 sync_first_pass_test() 同步一次测试数据
@@ -484,7 +484,7 @@
   - 维度要求：日期、工单号、工序、产线
   - _Requirements: 2.6.1_
 
-- [ ] 11.3 实现不合格品数据录入与分类
+- [x] 11.3 实现不合格品数据录入与分类
   - 实现 POST /api/v1/process-defects 人工补录不良品数据
   - 实现失效类型预设选项
   - 实现责任类别选择（自动关联 2.4.1 指标）

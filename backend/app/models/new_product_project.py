@@ -77,6 +77,7 @@ class NewProductProject(Base):
     lesson_checks = relationship("ProjectLessonCheck", back_populates="project", cascade="all, delete-orphan")
     stage_reviews = relationship("StageReview", back_populates="project", cascade="all, delete-orphan")
     trial_productions = relationship("TrialProduction", back_populates="project", cascade="all, delete-orphan")
+    initial_flow_controls = relationship("InitialFlowControl", back_populates="project", cascade="all, delete-orphan")
     
     def __repr__(self):
         return f"<NewProductProject(id={self.id}, code='{self.project_code}', name='{self.project_name}', stage='{self.current_stage}')>"

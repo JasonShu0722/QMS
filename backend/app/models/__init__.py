@@ -47,6 +47,7 @@ from app.models.project_lesson_check import ProjectLessonCheck
 from app.models.stage_review import StageReview, ReviewResult
 from app.models.trial_production import TrialProduction, TrialStatus
 from app.models.trial_issue import TrialIssue, IssueType, IssueStatus
+from app.models.initial_flow_control import InitialFlowControl, FlowControlStatus, FlowControlType
 
 __all__ = [
     "Base",
@@ -137,4 +138,7 @@ __all__ = [
     "TrialIssue",
     "IssueType",
     "IssueStatus",
+    "InitialFlowControl",
+    "FlowControlStatus",
+    "FlowControlType",
 ]

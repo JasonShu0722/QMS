@@ -501,7 +501,7 @@
   - 实现 POST /api/v1/process-issues/{id}/close 关闭问题单
   - _Requirements: 2.6.3_
 
-- [ ] 11.5 实现过程质量管理前端
+- [x] 11.5 实现过程质量管理前端
   - 创建 ProcessDefectList.vue 不合格品数据清单页面
   - 创建 ProcessDefectForm.vue 不良品录入表单
   - 创建 ProcessIssueList.vue 制程问题清单页面

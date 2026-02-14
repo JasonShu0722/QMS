@@ -588,7 +588,7 @@
   - 创建 TrialIssue 模型：id, trial_id, issue_description, issue_type, assigned_to, solution, status, is_escalated_to_8d
   - _Requirements: 2.8.1, 2.8.2, 2.8.3, 2.8.4_
 
-- [ ] 13.2 实现经验教训反向注入
+- [x] 13.2 实现经验教训反向注入
   - 实现经验教训库管理（调用 2.5/2.6/2.7 模块的 8D 结案记录）
   - 实现 POST /api/v1/lesson-learned 手工新增/完善/删减经验教训
   - 实现 GET /api/v1/lesson-learned 获取经验教训库

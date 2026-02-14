@@ -7,7 +7,7 @@ from sqlalchemy.orm import relationship
 from datetime import datetime
 import enum
 
-from app.core.database import Base
+from .base import Base
 
 
 class SourceType(str, enum.Enum):

@@ -6,7 +6,7 @@ from sqlalchemy import Column, Integer, String, Numeric, Date, DateTime, Foreign
 from sqlalchemy.orm import relationship
 from datetime import datetime
 
-from app.core.database import Base
+from .base import Base
 
 
 class CustomerClaim(Base):

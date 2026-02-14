@@ -5,7 +5,7 @@ Shipment Data Model
 from sqlalchemy import Column, Integer, String, Date, DateTime, Index
 from datetime import datetime
 
-from app.core.database import Base
+from .base import Base
 
 
 class ShipmentData(Base):

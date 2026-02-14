@@ -3,7 +3,7 @@ API Version 1
 统一管理所有 v1 版本的 API 路由
 """
 from fastapi import APIRouter
-from app.api.v1 import auth, tasks, notifications, profile, announcements, feature_flags, quality_metrics, ai, scar, supplier_lifecycle, supplier_targets, supplier_meetings, ppap, inspection_specs, barcode_validation, process_defects, process_issues
+from app.api.v1 import auth, tasks, notifications, profile, announcements, feature_flags, quality_metrics, ai, scar, supplier_lifecycle, supplier_targets, supplier_meetings, ppap, inspection_specs, barcode_validation, process_defects, process_issues, customer_complaints, eight_d_customer
 from app.api.v1.admin import (
     permissions, 
     users, 
@@ -35,6 +35,8 @@ api_router.include_router(inspection_specs.router)
 api_router.include_router(barcode_validation.router)
 api_router.include_router(process_defects.router)
 api_router.include_router(process_issues.router)
+api_router.include_router(customer_complaints.router)
+api_router.include_router(eight_d_customer.router)
 api_router.include_router(permissions.router)
 api_router.include_router(users.router)
 api_router.include_router(operation_logs.router)

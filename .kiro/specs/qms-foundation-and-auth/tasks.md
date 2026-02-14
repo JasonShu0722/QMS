@@ -470,7 +470,7 @@
 
 ### 11. 过程质量管理（2.6 Process Quality Management）
 
-- [ ] 11.1 设计过程质量数据模型
+- [x] 11.1 设计过程质量数据模型
   - 创建 ProcessDefect 模型：id, defect_date, work_order, process_id, line_id, defect_type, defect_qty, responsibility_category, operator_id, recorded_by
   - 创建 ProcessIssue 模型：id, issue_number, issue_description, responsibility_category, assigned_to, root_cause, containment_action, corrective_action, verification_period, status
   - 责任类别枚举：material_defect, operation_defect, equipment_defect, process_defect, design_defect

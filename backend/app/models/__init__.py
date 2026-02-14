@@ -29,6 +29,10 @@ from app.models.ppap import PPAP, PPAPLevel, PPAPStatus
 from app.models.inspection_spec import InspectionSpec, InspectionSpecStatus
 from app.models.barcode_validation import BarcodeValidation, BarcodeScanRecord
 
+# Process Quality Management Models (过程质量管理模型)
+from app.models.process_defect import ProcessDefect, ResponsibilityCategory
+from app.models.process_issue import ProcessIssue, ProcessIssueStatus
+
 __all__ = [
     "Base",
     "Supplier",
@@ -86,4 +90,9 @@ __all__ = [
     "InspectionSpecStatus",
     "BarcodeValidation",
     "BarcodeScanRecord",
+    # Process Quality Management
+    "ProcessDefect",
+    "ResponsibilityCategory",
+    "ProcessIssue",
+    "ProcessIssueStatus",
 ]

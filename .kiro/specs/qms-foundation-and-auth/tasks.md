@@ -632,7 +632,7 @@
   - 当前阶段仅作为静态记录
   - _Requirements: 2.8.5_
 
-- [ ] 13.7 实现新品质量管理前端
+- [x] 13.7 实现新品质量管理前端
   - 创建 LessonLearnedLibrary.vue 经验教训库页面
   - 创建 NewProductProjects.vue 新品项目列表页面
   - 创建 ProjectLessonCheck.vue 经验教训点检页面

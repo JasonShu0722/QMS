@@ -554,7 +554,7 @@
   - 实现归档检查表核对流程
   - _Requirements: 2.7.3_
 
-- [ ] 12.5 实现索赔管理
+- [x] 12.5 实现索赔管理
   - 实现 POST /api/v1/customer-claims 登记客户索赔
   - 实现客户索赔与客诉单关联（多选关联）
   - 实现 POST /api/v1/supplier-claims 创建供应商索赔

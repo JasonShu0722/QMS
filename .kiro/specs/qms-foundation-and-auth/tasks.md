@@ -597,7 +597,7 @@
   - 实现阶段评审时上传规避证据
   - _Requirements: 2.8.1_
 
-- [ ] 13.3 实现阶段评审与交付物管理
+- [x] 13.3 实现阶段评审与交付物管理
   - 实现 POST /api/v1/projects 创建新品项目
   - 实现 POST /api/v1/projects/{id}/stage-reviews 配置阶段评审节点
   - 实现项目质量交付物清单配置

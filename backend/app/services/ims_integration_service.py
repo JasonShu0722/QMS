@@ -1070,6 +1070,215 @@ class IMSIntegrationService:
                 "error": error_message
             }
     
+    async def sync_shipment_data(
+        self,
+        db: AsyncSession,
+        start_date: date,
+        end_date: Optional[date] = None
+    ) -> Dict[str, Any]:
+        """
+        同步发货数据（用于客户质量管理 2.7.1）
+        
+        用途：
+        - 计算 0KM 不良 PPM (2.4.1)
+        - 计算 3MIS 售后不良 PPM（滚动3个月）(2.4.1)
+        - 计算 12MIS 售后不良 PPM（滚动12个月）(2.4.1)
+        
+        维护策略：
+        - 保留过去 24 个月的分月出货数据
+        - 每日从 IMS/ERP/SAP 同步发货记录
+        
+        核心字段：客户代码、产品类型、出货日期、出货数量
+        
+        Args:
+            db: 数据库会话
+            start_date: 开始日期
+            end_date: 结束日期（默认为开始日期）
+            
+        Returns:
+            Dict[str, Any]: 包含同步结果的字典
+            {
+                "success": bool,
+                "records_count": int,
+                "saved_count": int,  # 实际保存到数据库的记录数
+                "data": List[Dict],  # 包含: customer_code, product_type, shipment_date, shipment_qty
+                "error": Optional[str]
+            }
+        """
+        if end_date is None:
+            end_date = start_date
+        
+        # 创建同步日志
+        sync_log = IMSSyncLog(
+            sync_type=SyncType.SHIPMENT_DATA,
+            sync_date=start_date,
+            status=SyncStatus.IN_PROGRESS,
+            records_count=0,
+            started_at=datetime.utcnow()
+        )
+        db.add(sync_log)
+        await db.commit()
+        await db.refresh(sync_log)
+        
+        try:
+            # 调用 IMS/ERP/SAP API 获取发货记录
+            response_data = await self._make_request(
+                method="GET",
+                endpoint="/api/shipment/records",
+                params={
+                    "start_date": start_date.isoformat(),
+                    "end_date": end_date.isoformat()
+                }
+            )
+            
+            # 解析响应数据
+            # 预期数据格式：
+            # [
+            #   {
+            #     "customer_code": "CUST001",
+            #     "product_type": "MCU",
+            #     "shipment_date": "2026-02-14",
+            #     "shipment_qty": 5000,
+            #     "work_order": "WO202602140001",  # 可选
+            #     "batch_number": "BATCH001",  # 可选
+            #     "destination": "上海工厂"  # 可选
+            #   },
+            #   ...
+            # ]
+            records = response_data.get("data", [])
+            records_count = len(records)
+            
+            # 将数据保存到 ShipmentData 表
+            from app.models.shipment_data import ShipmentData
+            from sqlalchemy import select
+            
+            saved_count = 0
+            errors = []
+            
+            for record in records:
+                try:
+                    # 提取字段
+                    customer_code = record.get("customer_code")
+                    product_type = record.get("product_type")
+                    shipment_date_str = record.get("shipment_date")
+                    shipment_qty = record.get("shipment_qty", 0)
+                    work_order = record.get("work_order")
+                    batch_number = record.get("batch_number")
+                    destination = record.get("destination")
+                    
+                    # 验证必填字段
+                    if not all([customer_code, product_type, shipment_date_str]):
+                        errors.append(f"记录缺少必填字段: {record}")
+                        continue
+                    
+                    # 转换日期
+                    shipment_date = datetime.strptime(shipment_date_str, "%Y-%m-%d").date()
+                    
+                    # 检查是否已存在相同记录（避免重复插入）
+                    existing_query = select(ShipmentData).where(
+                        ShipmentData.customer_code == customer_code,
+                        ShipmentData.product_type == product_type,
+                        ShipmentData.shipment_date == shipment_date,
+                        ShipmentData.work_order == work_order
+                    )
+                    existing_result = await db.execute(existing_query)
+                    existing_record = existing_result.scalar_one_or_none()
+                    
+                    if existing_record:
+                        # 更新现有记录
+                        existing_record.shipment_qty = shipment_qty
+                        existing_record.batch_number = batch_number
+                        existing_record.destination = destination
+                        existing_record.updated_at = datetime.utcnow()
+                    else:
+                        # 创建新记录
+                        shipment_data = ShipmentData(
+                            customer_code=customer_code,
+                            product_type=product_type,
+                            shipment_date=shipment_date,
+                            shipment_qty=shipment_qty,
+                            work_order=work_order,
+                            batch_number=batch_number,
+                            destination=destination
+                        )
+                        db.add(shipment_data)
+                    
+                    saved_count += 1
+                    
+                except Exception as e:
+                    errors.append(f"保存记录失败: {str(e)}")
+                    print(f"  ❌ 保存发货记录失败: {str(e)}")
+            
+            # 提交所有保存的记录
+            if saved_count > 0:
+                await db.commit()
+            
+            # 清理超过24个月的旧数据
+            await self._cleanup_old_shipment_data(db)
+            
+            # 更新同步日志
+            sync_log.status = SyncStatus.SUCCESS if saved_count == records_count else SyncStatus.PARTIAL
+            sync_log.records_count = records_count
+            if errors:
+                sync_log.error_message = f"部分记录保存失败: {'; '.join(errors[:5])}"  # 只记录前5个错误
+            sync_log.completed_at = datetime.utcnow()
+            await db.commit()
+            
+            print(f"✅ 发货数据同步成功: {records_count} 条记录, 保存 {saved_count} 条")
+            
+            return {
+                "success": True,
+                "records_count": records_count,
+                "saved_count": saved_count,
+                "data": records,
+                "error": None if not errors else f"部分记录保存失败: {len(errors)} 条"
+            }
+            
+        except Exception as e:
+            # 记录错误
+            error_message = f"发货数据同步失败: {str(e)}"
+            sync_log.status = SyncStatus.FAILED
+            sync_log.error_message = error_message
+            sync_log.completed_at = datetime.utcnow()
+            await db.commit()
+            
+            print(f"❌ {error_message}")
+            
+            return {
+                "success": False,
+                "records_count": 0,
+                "saved_count": 0,
+                "data": [],
+                "error": error_message
+            }
+    
+    async def _cleanup_old_shipment_data(self, db: AsyncSession) -> int:
+        """
+        清理超过24个月的旧发货数据
+        
+        Args:
+            db: 数据库会话
+            
+        Returns:
+            int: 删除的记录数量
+        """
+        from app.models.shipment_data import ShipmentData
+        from sqlalchemy import delete
+        
+        # 计算24个月前的日期
+        cutoff_date = date.today() - timedelta(days=24 * 30)  # 约24个月
+        
+        # 删除旧数据
+        delete_stmt = delete(ShipmentData).where(ShipmentData.shipment_date < cutoff_date)
+        result = await db.execute(delete_stmt)
+        await db.commit()
+        
+        deleted_count = result.rowcount
+        if deleted_count > 0:
+            print(f"🗑️ 清理旧发货数据: 删除 {deleted_count} 条记录（{cutoff_date} 之前）")
+        
+        return deleted_count
+    
     async def sync_all_data(
         self,
         db: AsyncSession,
@@ -1102,6 +1311,7 @@ class IMSIntegrationService:
             "sync_production_output": None,
             "sync_first_pass_test": None,
             "sync_process_defects": None,
+            "sync_shipment_data": None,
             "overall_success": False
         }
         
@@ -1161,6 +1371,13 @@ class IMSIntegrationService:
         )
         results["sync_process_defects"] = sync_defects_result
         
+        # 9. 同步发货数据（新方法，用于客户质量管理）
+        sync_shipment_result = await self.sync_shipment_data(
+            db=db,
+            start_date=target_date
+        )
+        results["sync_shipment_data"] = sync_shipment_result
+        
         # 判断整体是否成功
         results["overall_success"] = all([
             incoming_result["success"],
@@ -1170,7 +1387,8 @@ class IMSIntegrationService:
             special_approval_result["success"],
             sync_production_result["success"],
             sync_first_pass_result["success"],
-            sync_defects_result["success"]
+            sync_defects_result["success"],
+            sync_shipment_result["success"]
         ])
         
         results["completed_at"] = datetime.utcnow().isoformat()

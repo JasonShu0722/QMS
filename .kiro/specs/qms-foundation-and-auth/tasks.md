@@ -527,7 +527,7 @@
   - 严重度等级枚举：TBD（待产品定义）
   - _Requirements: 2.7.2, 2.7.3, 2.7.4_
 
-- [ ] 12.2 实现出货数据集成
+- [x] 12.2 实现出货数据集成
   - 扩展 IMSIntegrationService 类
   - 实现 sync_shipment_data() 同步发货记录
   - 维护过去 24 个月的分月出货数据表

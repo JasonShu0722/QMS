@@ -517,7 +517,7 @@
 
 ### 12. 客户质量管理（2.7 Customer Quality Management）
 
-- [ ] 12.1 设计客户质量数据模型
+- [x] 12.1 设计客户质量数据模型
   - 创建 CustomerComplaint 模型：id, complaint_number, complaint_type, customer_code, product_type, defect_description, severity_level, vin_code, mileage, purchase_date, status, cqe_id, responsible_dept
   - 创建 EightDCustomer 模型：id, complaint_id, d0_d3_cqe (JSON), d4_d7_responsible (JSON), d8_horizontal (JSON), status, approval_level
   - 创建 CustomerClaim 模型：id, complaint_id, claim_amount, claim_currency, claim_date, customer_name

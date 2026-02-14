@@ -33,6 +33,13 @@ from app.models.barcode_validation import BarcodeValidation, BarcodeScanRecord
 from app.models.process_defect import ProcessDefect, ResponsibilityCategory
 from app.models.process_issue import ProcessIssue, ProcessIssueStatus
 
+# Customer Quality Management Models (客户质量管理模型)
+from app.models.customer_complaint import CustomerComplaint, ComplaintType, ComplaintStatus, SeverityLevel
+from app.models.eight_d_customer import EightDCustomer, EightDStatus as CustomerEightDStatus, ApprovalLevel
+from app.models.customer_claim import CustomerClaim
+from app.models.supplier_claim import SupplierClaim, SupplierClaimStatus
+from app.models.lesson_learned import LessonLearned, SourceType
+
 __all__ = [
     "Base",
     "Supplier",
@@ -95,4 +102,17 @@ __all__ = [
     "ResponsibilityCategory",
     "ProcessIssue",
     "ProcessIssueStatus",
+    # Customer Quality Management
+    "CustomerComplaint",
+    "ComplaintType",
+    "ComplaintStatus",
+    "SeverityLevel",
+    "EightDCustomer",
+    "CustomerEightDStatus",
+    "ApprovalLevel",
+    "CustomerClaim",
+    "SupplierClaim",
+    "SupplierClaimStatus",
+    "LessonLearned",
+    "SourceType",
 ]

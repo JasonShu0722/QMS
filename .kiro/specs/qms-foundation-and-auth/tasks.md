@@ -659,7 +659,7 @@
   - 审核类型枚举：system_audit (IATF16949), process_audit (VDA6.3), product_audit (VDA6.5), customer_audit
   - _Requirements: 2.9.1, 2.9.2, 2.9.3, 2.9.4_
 
-- [ ] 14.2 实现审核计划与排程
+- [x] 14.2 实现审核计划与排程
   - 实现 POST /api/v1/audit-plans 创建年度审核计划
   - 实现 GET /api/v1/audit-plans 获取审核计划（年度视图）
   - 实现智能提醒（提前 N 天邮件通知）

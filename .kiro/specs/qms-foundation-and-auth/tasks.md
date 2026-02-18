@@ -697,7 +697,7 @@
   - 实现 GET /api/v1/customer-audits 获取客户审核台账
   - _Requirements: 2.9.4_
 
-- [ ] 14.7 实现审核管理前端
+- [x] 14.7 实现审核管理前端
   - 创建 AuditPlanCalendar.vue 审核计划日历视图
   - 创建 AuditTemplates.vue 审核模板库页面
   - 创建 AuditExecution.vue 审核执行页面（支持移动端）

@@ -59,6 +59,19 @@ const routes: RouteRecordRaw[] = [
             operation: 'read'
           }
         }
+      },
+      {
+        path: 'instruments',
+        name: 'Instruments',
+        component: () => import('@/views/Instruments.vue'),
+        meta: { 
+          title: '仪器量具管理',
+          requiresAuth: true,
+          permission: {
+            modulePath: 'instruments.management',
+            operation: 'read'
+          }
+        }
       }
     ]
   },

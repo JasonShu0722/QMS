@@ -17,6 +17,15 @@
             <el-icon><HomeFilled /></el-icon>
             <template #title>工作台</template>
           </el-menu-item>
+          
+          <!-- 仪器量具管理（预留功能，通过功能开关控制可见性） -->
+          <el-menu-item 
+            v-if="isInstrumentsEnabled" 
+            index="/instruments"
+          >
+            <el-icon><Tools /></el-icon>
+            <template #title>仪器量具管理</template>
+          </el-menu-item>
         </el-menu>
       </el-aside>
 
@@ -67,12 +76,14 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { HomeFilled, User, Fold, Expand } from '@element-plus/icons-vue'
+import { HomeFilled, User, Fold, Expand, Tools } from '@element-plus/icons-vue'
 import MobileLayout from './MobileLayout.vue'
 import { useEnvironment } from '@/composables/useEnvironment'
+import { useFeatureFlagStore } from '@/stores/featureFlag'
 
 const router = useRouter()
 const route = useRoute()
+const featureFlagStore = useFeatureFlagStore()
 
 const isCollapse = ref(false)
 const isMobile = ref(false)
@@ -83,6 +94,11 @@ const { isPreview, switchButtonText, switchEnvironment } = useEnvironment()
 
 // 当前激活的菜单
 const activeMenu = computed(() => route.path)
+
+// 检查功能是否启用
+const isInstrumentsEnabled = computed(() => 
+  featureFlagStore.isFeatureEnabled('instruments.management')
+)
 
 // 切换侧边栏折叠状态
 const toggleCollapse = () => {
@@ -105,7 +121,7 @@ const checkMobile = () => {
   isMobile.value = window.innerWidth < 768
 }
 
-onMounted(() => {
+onMounted(async () => {
   checkMobile()
   window.addEventListener('resize', checkMobile)
   
@@ -114,6 +130,9 @@ onMounted(() => {
   if (userInfoStr) {
     userInfo.value = JSON.parse(userInfoStr)
   }
+
+  // 加载功能开关配置
+  await featureFlagStore.loadFeatureFlags()
 })
 </script>
 

@@ -18,7 +18,7 @@ from app.schemas.audit_nc import (
     AuditNCQuery,
     AuditNCDetail
 )
-from app.core.exceptions import NotFoundException, ValidationException, PermissionException
+from app.core.exceptions import NotFoundException, ValidationException, PermissionDeniedException
 
 
 class AuditNCService:
@@ -117,7 +117,7 @@ class AuditNCService:
         
         # 验证权限：只有被指派人可以提交响应
         if nc.assigned_to != current_user_id:
-            raise PermissionException("您无权提交此NC的响应")
+            raise PermissionDeniedException("您无权提交此NC的响应")
         
         # 验证状态
         if nc.verification_status not in ["assigned", "rejected"]:
@@ -191,7 +191,7 @@ class AuditNCService:
         
         # 验证权限：只有审核员可以验证
         if audit_execution.auditor_id != current_user_id:
-            raise PermissionException("您无权验证此NC")
+            raise PermissionDeniedException("您无权验证此NC")
         
         # 更新验证信息
         nc.verified_by = current_user_id
@@ -264,7 +264,7 @@ class AuditNCService:
         
         # 验证权限：只有审核员可以关闭
         if audit_execution.auditor_id != current_user_id:
-            raise PermissionException("您无权关闭此NC")
+            raise PermissionDeniedException("您无权关闭此NC")
         
         # 更新关闭信息
         nc.verification_status = "closed"

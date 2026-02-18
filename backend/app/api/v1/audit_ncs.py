@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.auth import get_current_user
+from app.core.dependencies import get_current_user
 from app.models.user import User
 from app.services.audit_nc_service import AuditNCService
 from app.schemas.audit_nc import (
@@ -19,7 +19,7 @@ from app.schemas.audit_nc import (
     AuditNCDetail,
     AuditNCListResponse
 )
-from app.core.exceptions import NotFoundException, ValidationException, PermissionException
+from app.core.exceptions import NotFoundException, ValidationException, PermissionDeniedException
 
 router = APIRouter(prefix="/audit-nc", tags=["审核不符合项管理"])
 
@@ -79,7 +79,7 @@ async def submit_nc_response(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     except ValidationException as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-    except PermissionException as e:
+    except PermissionDeniedException as e:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
@@ -111,7 +111,7 @@ async def verify_nc(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     except ValidationException as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-    except PermissionException as e:
+    except PermissionDeniedException as e:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
@@ -143,7 +143,7 @@ async def close_nc(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     except ValidationException as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-    except PermissionException as e:
+    except PermissionDeniedException as e:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))

@@ -4,11 +4,11 @@ Audit Plan Routes - 审核计划管理接口
 """
 from datetime import datetime
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Path, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.auth import get_current_user
+from app.core.dependencies import get_current_user
 from app.models.user import User
 from app.schemas.audit_plan import (
     AuditPlanCreate,
@@ -106,7 +106,7 @@ async def get_audit_plans(
     summary="获取年度审核计划视图"
 )
 async def get_year_view(
-    year: int = Query(..., ge=2020, le=2100, description="年份"),
+    year: int = Path(..., ge=2020, le=2100, description="年份"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):

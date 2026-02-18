@@ -673,7 +673,7 @@
   - 实现 GET /api/v1/audit-templates 获取模板库
   - _Requirements: 2.9.2_
 
-- [ ] 14.4 实现审核实施与数字化检查表
+- [x] 14.4 实现审核实施与数字化检查表
   - 实现 POST /api/v1/audit-executions 创建审核执行记录
   - 实现 POST /api/v1/audit-executions/{id}/checklist 在线打分（支持移动端）
   - 实现现场拍照上传（挂载到对应条款）

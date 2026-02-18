@@ -12,6 +12,8 @@ from app.models.operation_log import OperationLog
 from app.models.notification_rule import NotificationRule, ActionType
 from app.models.smtp_config import SMTPConfig, TestResult
 from app.models.instrument_calibration import InstrumentCalibration, CalibrationStatus
+from app.models.instrument import Instrument, InstrumentType, InstrumentStatus
+from app.models.msa_record import MSARecord, MSAType, MSAResult
 from app.models.quality_cost import QualityCost, CostType
 from app.models.quality_metric import QualityMetric, MetricType
 from app.models.ims_sync_log import IMSSyncLog, SyncStatus, SyncType
@@ -79,6 +81,12 @@ __all__ = [
     "TestResult",
     "InstrumentCalibration",
     "CalibrationStatus",
+    "Instrument",
+    "InstrumentType",
+    "InstrumentStatus",
+    "MSARecord",
+    "MSAType",
+    "MSAResult",
     "QualityCost",
     "CostType",
     "QualityMetric",

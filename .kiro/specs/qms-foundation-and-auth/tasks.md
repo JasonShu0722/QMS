@@ -719,7 +719,7 @@
 
 ### 15. 仪器与量具管理（2.10 Instrument Management - 预留）
 
-- [ ] 15.1 创建仪器量具数据模型（预留表结构）
+- [x] 15.1 创建仪器量具数据模型（预留表结构）
   - 创建 Instrument 模型：id, instrument_code, instrument_name, instrument_type, calibration_date, next_calibration_date, calibration_cert_path, status
   - 创建 MSARecord 模型：id, instrument_id, msa_type, msa_date, msa_result, msa_report_path
   - 所有字段设置为 Nullable（兼容双轨环境）

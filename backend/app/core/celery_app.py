@@ -13,7 +13,10 @@ celery_app = Celery(
     "qms_tasks",
     broker=settings.CELERY_BROKER_URL or settings.REDIS_URL,
     backend=settings.CELERY_RESULT_BACKEND or settings.REDIS_URL,
-    include=["app.tasks.ims_sync_tasks"]  # 导入任务模块
+    include=[
+        "app.tasks.ims_sync_tasks",
+        "app.tasks.audit_nc_tasks"
+    ]  # 导入任务模块
 )
 
 # Celery 配置
@@ -45,6 +48,18 @@ celery_app.conf.update(
             "schedule": crontab(hour=2, minute=0),  # 每天凌晨 02:00
             "args": (),
         },
+        # 每天早上 09:00 检查逾期NC
+        "check-overdue-ncs-morning": {
+            "task": "app.tasks.audit_nc_tasks.check_overdue_ncs",
+            "schedule": crontab(hour=9, minute=0),  # 每天早上 09:00
+            "args": (),
+        },
+        # 每天下午 15:00 检查逾期NC
+        "check-overdue-ncs-afternoon": {
+            "task": "app.tasks.audit_nc_tasks.check_overdue_ncs",
+            "schedule": crontab(hour=15, minute=0),  # 每天下午 15:00
+            "args": (),
+        },
     },
 )
 
@@ -52,6 +67,7 @@ celery_app.conf.update(
 # 任务路由配置（可选）
 celery_app.conf.task_routes = {
     "app.tasks.ims_sync_tasks.*": {"queue": "ims_sync"},
+    "app.tasks.audit_nc_tasks.*": {"queue": "audit_nc"},
 }
 
 

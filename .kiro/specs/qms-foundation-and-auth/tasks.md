@@ -681,7 +681,7 @@
   - 实现 GET /api/v1/audit-executions/{id}/report 生成审核报告（PDF，含雷达图）
   - _Requirements: 2.9.2_
 
-- [ ] 14.5 实现问题整改与闭环
+- [x] 14.5 实现问题整改与闭环
   - 实现审核结束后自动生成 NC 待办任务
   - 实现 POST /api/v1/audit-nc/{id}/assign 指派 NC 给责任板块
   - 实现 POST /api/v1/audit-nc/{id}/response 责任人填写原因和措施

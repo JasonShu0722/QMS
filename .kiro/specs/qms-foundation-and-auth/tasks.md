@@ -666,7 +666,7 @@
   - 实现 POST /api/v1/audit-plans/{id}/postpone 延期申请（需质量部长批准）
   - _Requirements: 2.9.1_
 
-- [ ] 14.3 实现审核模板库管理
+- [x] 14.3 实现审核模板库管理
   - 实现 POST /api/v1/audit-templates 创建审核模板
   - 实现内置标准模板（VDA 6.3 P2-P7, VDA 6.5, IATF16949）
   - 实现自定义模板（专项审核）

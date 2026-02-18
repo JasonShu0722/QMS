@@ -726,7 +726,7 @@
   - 执行数据库迁移（仅创建表结构，不实现业务逻辑）
   - _Requirements: 2.10（预留功能）_
 
-- [ ] 15.2 预留仪器量具管理 API 接口
+- [x] 15.2 预留仪器量具管理 API 接口
   - 创建 backend/app/api/v1/instruments.py 仪器量具路由（空实现）
   - 定义 API 接口签名（不实现业务逻辑）：
     - GET /api/v1/instruments 获取仪器量具列表

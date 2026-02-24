@@ -26,6 +26,15 @@
             <el-icon><Tools /></el-icon>
             <template #title>仪器量具管理</template>
           </el-menu-item>
+
+          <!-- 质量成本管理（预留功能，通过功能开关控制可见性） -->
+          <el-menu-item 
+            v-if="isQualityCostsEnabled" 
+            index="/quality-costs"
+          >
+            <el-icon><Money /></el-icon>
+            <template #title>质量成本管理</template>
+          </el-menu-item>
         </el-menu>
       </el-aside>
 
@@ -76,7 +85,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { HomeFilled, User, Fold, Expand, Tools } from '@element-plus/icons-vue'
+import { HomeFilled, User, Fold, Expand, Tools, Money } from '@element-plus/icons-vue'
 import MobileLayout from './MobileLayout.vue'
 import { useEnvironment } from '@/composables/useEnvironment'
 import { useFeatureFlagStore } from '@/stores/featureFlag'
@@ -98,6 +107,10 @@ const activeMenu = computed(() => route.path)
 // 检查功能是否启用
 const isInstrumentsEnabled = computed(() => 
   featureFlagStore.isFeatureEnabled('instruments.management')
+)
+
+const isQualityCostsEnabled = computed(() => 
+  featureFlagStore.isFeatureEnabled('quality_costs.management')
 )
 
 // 切换侧边栏折叠状态

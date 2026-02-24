@@ -103,8 +103,8 @@ export const useFeatureFlagStore = defineStore('featureFlag', () => {
           is_enabled: false,
           scope: 'global'
         },
-        'quality-cost.management': {
-          key: 'quality-cost.management',
+        'quality_costs.management': {
+          key: 'quality_costs.management',
           name: '质量成本管理',
           description: '质量成本统计与分析功能',
           is_enabled: false,

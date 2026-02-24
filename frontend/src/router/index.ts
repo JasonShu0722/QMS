@@ -72,6 +72,19 @@ const routes: RouteRecordRaw[] = [
             operation: 'read'
           }
         }
+      },
+      {
+        path: 'quality-costs',
+        name: 'QualityCosts',
+        component: () => import('@/views/QualityCosts.vue'),
+        meta: { 
+          title: '质量成本管理',
+          requiresAuth: true,
+          permission: {
+            modulePath: 'quality_costs.management',
+            operation: 'read'
+          }
+        }
       }
     ]
   },

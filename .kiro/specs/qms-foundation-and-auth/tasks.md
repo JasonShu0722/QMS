@@ -746,7 +746,7 @@
 
 ### 16. 质量成本管理（2.11 Quality Cost Management - 预留）
 
-- [ ] 16.1 创建质量成本数据模型（预留表结构）
+- [x] 16.1 创建质量成本数据模型（预留表结构）
   - 创建 QualityCost 模型：id, cost_type, cost_category, amount, currency, related_object_type, related_object_id, cost_date, fiscal_year, fiscal_month
   - 创建 CostAnalysis 模型：id, analysis_type, analysis_period, total_cost, analysis_result (JSON)
   - 所有字段设置为 Nullable（兼容双轨环境）

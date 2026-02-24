@@ -385,3 +385,74 @@ async def get_current_user_info(
     Requirements: 2.1.5
     """
     return UserResponseSchema.model_validate(current_user)
+
+
+@router.post(
+    "/check-permission",
+    summary="检查当前用户权限",
+    description="""
+    检查当前登录用户是否拥有指定的模块操作权限。
+    
+    **请求参数：**
+    - module_path: 功能模块路径（如 "system.users"）
+    - operation: 操作类型（create/read/update/delete/export）
+    
+    **返回值：**
+    - has_permission: 是否拥有权限（布尔值）
+    
+    **应用场景：**
+    - 前端路由守卫：在导航到受保护页面前进行权限验证
+    - 前端 UI 控制：根据权限动态隐藏/禁用按钮
+    """
+)
+async def check_permission(
+    request_data: dict,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    检查当前用户是否拥有指定权限
+
+    Args:
+        request_data: 包含 module_path 和 operation 的字典
+        current_user: 当前登录用户
+        db: 数据库会话
+
+    Returns:
+        dict: { has_permission: bool }
+    """
+    from app.core.permissions import PermissionChecker
+    from app.models.permission import OperationType
+
+    module_path = request_data.get("module_path", "")
+    operation = request_data.get("operation", "")
+
+    if not module_path or not operation:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="module_path 和 operation 为必填参数"
+        )
+
+    # 验证操作类型是否合法
+    try:
+        op_type = OperationType(operation)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"无效的操作类型: {operation}，可选值: create/read/update/delete/export"
+        )
+
+    try:
+        has_permission = await PermissionChecker.check_permission(
+            user_id=current_user.id,
+            module_path=module_path,
+            operation=op_type,
+            db=db
+        )
+        return {"has_permission": has_permission}
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"权限检查失败: {str(e)}"
+        )
+

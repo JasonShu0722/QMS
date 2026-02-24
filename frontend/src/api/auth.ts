@@ -40,7 +40,9 @@ export const authApi = {
     return request.post('/v1/auth/check-permission', {
       module_path: modulePath,
       operation
-    } as PermissionCheckRequest)
+    } as PermissionCheckRequest).then((res: any) => {
+      return res?.has_permission ?? false
+    })
   },
 
   /**

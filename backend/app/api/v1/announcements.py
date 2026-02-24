@@ -28,6 +28,87 @@ router = APIRouter(prefix="/announcements", tags=["announcements"])
 
 
 @router.get(
+    "/unread-important",
+    response_model=list[AnnouncementResponse],
+    summary="获取未读重要公告",
+    description="""
+    获取当前用户未读的重要公告列表。
+    
+    功能：
+    - 仅返回 importance=important 且未过期的激活公告
+    - 排除当前用户已阅读的公告
+    - 用于登录后弹窗强制阅读重要公告
+    
+    注：此接口必须放在 /{announcement_id}/read 路由之前，
+    否则 FastAPI 会将 "unread-important" 当作 announcement_id 匹配。
+    """
+)
+async def get_unread_important_announcements(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    获取当前用户未读的重要公告
+
+    Args:
+        current_user: 当前登录用户
+        db: 数据库会话
+
+    Returns:
+        list[AnnouncementResponse]: 未读重要公告列表
+    """
+    try:
+        # 查询当前用户已读的公告 ID 集合
+        read_ids_query = select(AnnouncementReadLog.announcement_id).where(
+            AnnouncementReadLog.user_id == current_user.id
+        )
+        read_ids_result = await db.execute(read_ids_query)
+        read_announcement_ids = {row[0] for row in read_ids_result.all()}
+
+        # 查询重要且未过期的激活公告
+        query = select(Announcement).where(
+            and_(
+                Announcement.is_active == True,
+                Announcement.importance == "important",
+                or_(
+                    Announcement.expires_at.is_(None),
+                    Announcement.expires_at > datetime.utcnow()
+                )
+            )
+        ).order_by(desc(Announcement.published_at))
+
+        result = await db.execute(query)
+        announcements = result.scalars().all()
+
+        # 过滤掉已读的公告
+        unread_announcements = [
+            AnnouncementResponse(
+                id=a.id,
+                title=a.title,
+                content=a.content,
+                announcement_type=a.announcement_type,
+                importance=a.importance,
+                is_active=a.is_active,
+                published_at=a.published_at,
+                expires_at=a.expires_at,
+                created_at=a.created_at,
+                updated_at=a.updated_at,
+                created_by=a.created_by,
+                is_read=False
+            )
+            for a in announcements
+            if a.id not in read_announcement_ids
+        ]
+
+        return unread_announcements
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"获取未读重要公告失败: {str(e)}"
+        )
+
+@router.get(
     "",
     response_model=AnnouncementListResponse,
     summary="获取公告列表",

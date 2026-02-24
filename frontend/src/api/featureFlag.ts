@@ -12,7 +12,7 @@ import type { FeatureFlag } from '@/stores/featureFlag'
  */
 export function getMyFeatures(): Promise<FeatureFlag[]> {
   return request({
-    url: '/api/v1/feature-flags/my-features',
+    url: '/v1/feature-flags/my-features',
     method: 'get'
   })
 }
@@ -22,7 +22,7 @@ export function getMyFeatures(): Promise<FeatureFlag[]> {
  */
 export function getAllFeatureFlags(): Promise<FeatureFlag[]> {
   return request({
-    url: '/api/v1/admin/feature-flags',
+    url: '/v1/admin/feature-flags',
     method: 'get'
   })
 }
@@ -35,7 +35,7 @@ export function updateFeatureFlag(
   data: Partial<FeatureFlag>
 ): Promise<FeatureFlag> {
   return request({
-    url: `/api/v1/admin/feature-flags/${featureKey}`,
+    url: `/v1/admin/feature-flags/${featureKey}`,
     method: 'put',
     data
   })

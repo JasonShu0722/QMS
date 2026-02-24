@@ -29,62 +29,261 @@ const routes: RouteRecordRaw[] = [
         path: '',
         redirect: '/workbench'
       },
+      // ==================== 工作台 ====================
       {
         path: 'workbench',
         name: 'Workbench',
         component: () => import('@/views/Workbench.vue'),
-        meta: { 
-          title: '工作台',
-          requiresAuth: true
-        }
+        meta: { title: '工作台', requiresAuth: true }
       },
       {
         path: 'announcements',
         name: 'Announcements',
         component: () => import('@/views/Announcements.vue'),
-        meta: { 
-          title: '公告栏',
-          requiresAuth: true
-        }
+        meta: { title: '公告栏', requiresAuth: true }
       },
+      // ==================== 供应商管理 ====================
+      {
+        path: 'supplier/dashboard',
+        name: 'SupplierDashboard',
+        component: () => import('@/views/supplier/SupplierDashboard.vue'),
+        meta: { title: '供应商总览', requiresAuth: true, permission: { modulePath: 'supplier.management', operation: 'read' } }
+      },
+      {
+        path: 'supplier/performance',
+        name: 'SupplierPerformance',
+        component: () => import('@/views/supplier/SupplierPerformance.vue'),
+        meta: { title: '供应商绩效', requiresAuth: true, permission: { modulePath: 'supplier.performance', operation: 'read' } }
+      },
+      {
+        path: 'supplier/targets',
+        name: 'SupplierTargets',
+        component: () => import('@/views/supplier/SupplierTargets.vue'),
+        meta: { title: '目标管理', requiresAuth: true, permission: { modulePath: 'supplier.performance', operation: 'read' } }
+      },
+      {
+        path: 'supplier/audit-plan',
+        name: 'SupplierAuditPlan',
+        component: () => import('@/views/supplier/SupplierAuditPlan.vue'),
+        meta: { title: '供应商审核计划', requiresAuth: true, permission: { modulePath: 'supplier.audit', operation: 'read' } }
+      },
+      {
+        path: 'supplier/ppap',
+        name: 'PPAPManagement',
+        component: () => import('@/views/supplier/PPAPManagement.vue'),
+        meta: { title: 'PPAP管理', requiresAuth: true, permission: { modulePath: 'supplier.ppap', operation: 'read' } }
+      },
+      {
+        path: 'supplier/scar',
+        name: 'SCARList',
+        component: () => import('@/views/supplier/SCARList.vue'),
+        meta: { title: 'SCAR管理', requiresAuth: true, permission: { modulePath: 'supplier.scar', operation: 'read' } }
+      },
+      {
+        path: 'supplier/eight-d',
+        name: 'EightDForm',
+        component: () => import('@/views/supplier/EightDForm.vue'),
+        meta: { title: '8D报告', requiresAuth: true, permission: { modulePath: 'supplier.scar', operation: 'read' } }
+      },
+      {
+        path: 'supplier/inspection-specs',
+        name: 'InspectionSpecs',
+        component: () => import('@/views/supplier/InspectionSpecs.vue'),
+        meta: { title: '检验规范', requiresAuth: true, permission: { modulePath: 'quality.incoming', operation: 'read' } }
+      },
+      {
+        path: 'supplier/barcode',
+        name: 'BarcodeScanner',
+        component: () => import('@/views/supplier/BarcodeScanner.vue'),
+        meta: { title: '条码扫描', requiresAuth: true }
+      },
+      {
+        path: 'supplier/claims',
+        name: 'SupplierClaimList',
+        component: () => import('@/views/SupplierClaimList.vue'),
+        meta: { title: '供应商索赔', requiresAuth: true, permission: { modulePath: 'supplier.scar', operation: 'read' } }
+      },
+      // ==================== 质量管理 - 来料 ====================
+      {
+        path: 'quality/scar',
+        name: 'ScarManagement',
+        component: () => import('@/views/supplier/SCARList.vue'),
+        meta: { title: 'SCAR管理', requiresAuth: true, permission: { modulePath: 'quality.incoming', operation: 'read' } }
+      },
+      // ==================== 质量管理 - 过程 ====================
+      {
+        path: 'quality/process-defects',
+        name: 'ProcessDefectList',
+        component: () => import('@/views/ProcessDefectList.vue'),
+        meta: { title: '过程不良', requiresAuth: true, permission: { modulePath: 'quality.process', operation: 'read' } }
+      },
+      {
+        path: 'quality/process-issues',
+        name: 'ProcessIssueList',
+        component: () => import('@/views/ProcessIssueList.vue'),
+        meta: { title: '过程问题', requiresAuth: true, permission: { modulePath: 'quality.process', operation: 'read' } }
+      },
+      {
+        path: 'quality/process-issues/:id',
+        name: 'ProcessIssueDetail',
+        component: () => import('@/views/ProcessIssueDetail.vue'),
+        meta: { title: '问题详情', requiresAuth: true, permission: { modulePath: 'quality.process', operation: 'read' } }
+      },
+      // ==================== 质量管理 - 客户 ====================
+      {
+        path: 'quality/customer-complaints',
+        name: 'CustomerComplaintList',
+        component: () => import('@/views/CustomerComplaintList.vue'),
+        meta: { title: '客户投诉', requiresAuth: true, permission: { modulePath: 'quality.customer', operation: 'read' } }
+      },
+      {
+        path: 'quality/eight-d-customer',
+        name: 'EightDCustomerForm',
+        component: () => import('@/views/EightDCustomerForm.vue'),
+        meta: { title: '客户8D报告', requiresAuth: true, permission: { modulePath: 'quality.customer', operation: 'read' } }
+      },
+      {
+        path: 'quality/customer-claims',
+        name: 'CustomerClaimList',
+        component: () => import('@/views/CustomerClaimList.vue'),
+        meta: { title: '客户索赔', requiresAuth: true, permission: { modulePath: 'quality.customer', operation: 'read' } }
+      },
+      // ==================== 质量管理 - 数据 ====================
       {
         path: 'quality-dashboard',
         name: 'QualityDashboard',
         component: () => import('@/views/QualityDashboard.vue'),
-        meta: { 
-          title: '质量数据仪表盘',
-          requiresAuth: true,
-          permission: {
-            modulePath: 'quality.dashboard',
-            operation: 'read'
-          }
-        }
+        meta: { title: '质量数据仪表盘', requiresAuth: true, permission: { modulePath: 'quality.data_panel', operation: 'read' } }
       },
+      {
+        path: 'quality/lesson-learned',
+        name: 'LessonLearnedLibrary',
+        component: () => import('@/views/LessonLearnedLibrary.vue'),
+        meta: { title: '经验教训库', requiresAuth: true, permission: { modulePath: 'quality.process', operation: 'read' } }
+      },
+      // ==================== 审核管理 ====================
+      {
+        path: 'audit/plans',
+        name: 'AuditPlanCalendar',
+        component: () => import('@/views/AuditPlanCalendar.vue'),
+        meta: { title: '审核计划', requiresAuth: true, permission: { modulePath: 'audit.system', operation: 'read' } }
+      },
+      {
+        path: 'audit/templates',
+        name: 'AuditTemplates',
+        component: () => import('@/views/AuditTemplates.vue'),
+        meta: { title: '审核模板', requiresAuth: true, permission: { modulePath: 'audit.system', operation: 'read' } }
+      },
+      {
+        path: 'audit/execution',
+        name: 'AuditExecution',
+        component: () => import('@/views/AuditExecution.vue'),
+        meta: { title: '审核执行', requiresAuth: true, permission: { modulePath: 'audit.system', operation: 'read' } }
+      },
+      {
+        path: 'audit/checklist',
+        name: 'AuditChecklistMobile',
+        component: () => import('@/views/AuditChecklistMobile.vue'),
+        meta: { title: '检查清单', requiresAuth: true, permission: { modulePath: 'audit.system', operation: 'read' } }
+      },
+      {
+        path: 'audit/nc-list',
+        name: 'AuditNCList',
+        component: () => import('@/views/AuditNCList.vue'),
+        meta: { title: '不符合项', requiresAuth: true, permission: { modulePath: 'audit.system', operation: 'read' } }
+      },
+      {
+        path: 'audit/report',
+        name: 'AuditReport',
+        component: () => import('@/views/AuditReport.vue'),
+        meta: { title: '审核报告', requiresAuth: true, permission: { modulePath: 'audit.system', operation: 'read' } }
+      },
+      {
+        path: 'audit/customer',
+        name: 'CustomerAuditList',
+        component: () => import('@/views/CustomerAuditList.vue'),
+        meta: { title: '客户审核', requiresAuth: true, permission: { modulePath: 'audit.system', operation: 'read' } }
+      },
+      // ==================== 新产品管理 ====================
+      {
+        path: 'newproduct/projects',
+        name: 'NewProductProjects',
+        component: () => import('@/views/NewProductProjects.vue'),
+        meta: { title: '新产品项目', requiresAuth: true, permission: { modulePath: 'newproduct.management', operation: 'read' } }
+      },
+      {
+        path: 'newproduct/stage-review',
+        name: 'StageReview',
+        component: () => import('@/views/StageReview.vue'),
+        meta: { title: '阶段评审', requiresAuth: true, permission: { modulePath: 'newproduct.management', operation: 'read' } }
+      },
+      {
+        path: 'newproduct/lesson-check',
+        name: 'ProjectLessonCheck',
+        component: () => import('@/views/ProjectLessonCheck.vue'),
+        meta: { title: '经验教训检查', requiresAuth: true, permission: { modulePath: 'newproduct.management', operation: 'read' } }
+      },
+      {
+        path: 'newproduct/trial',
+        name: 'TrialProduction',
+        component: () => import('@/views/TrialProduction.vue'),
+        meta: { title: '试产管理', requiresAuth: true, permission: { modulePath: 'newproduct.trial', operation: 'read' } }
+      },
+      {
+        path: 'newproduct/trial-issues',
+        name: 'TrialIssueList',
+        component: () => import('@/views/TrialIssueList.vue'),
+        meta: { title: '试产问题', requiresAuth: true, permission: { modulePath: 'newproduct.trial', operation: 'read' } }
+      },
+      {
+        path: 'newproduct/trial-summary',
+        name: 'TrialProductionSummary',
+        component: () => import('@/views/TrialProductionSummary.vue'),
+        meta: { title: '试产总结', requiresAuth: true, permission: { modulePath: 'newproduct.trial', operation: 'read' } }
+      },
+      // ==================== 系统管理 ====================
+      {
+        path: 'admin/users',
+        name: 'UserApproval',
+        component: () => import('@/views/admin/UserApproval.vue'),
+        meta: { title: '用户管理', requiresAuth: true, permission: { modulePath: 'system.users', operation: 'read' } }
+      },
+      {
+        path: 'admin/permissions',
+        name: 'PermissionMatrix',
+        component: () => import('@/views/admin/PermissionMatrix.vue'),
+        meta: { title: '权限管理', requiresAuth: true, permission: { modulePath: 'system.users', operation: 'read' } }
+      },
+      {
+        path: 'admin/tasks',
+        name: 'TaskMonitor',
+        component: () => import('@/views/admin/TaskMonitor.vue'),
+        meta: { title: '任务监控', requiresAuth: true, permission: { modulePath: 'system.config', operation: 'read' } }
+      },
+      {
+        path: 'admin/operation-logs',
+        name: 'OperationLogs',
+        component: () => import('@/views/admin/OperationLogs.vue'),
+        meta: { title: '操作日志', requiresAuth: true, permission: { modulePath: 'system.config', operation: 'read' } }
+      },
+      {
+        path: 'admin/feature-flags',
+        name: 'FeatureFlags',
+        component: () => import('@/views/admin/FeatureFlags.vue'),
+        meta: { title: '功能开关', requiresAuth: true, permission: { modulePath: 'system.config', operation: 'read' } }
+      },
+      // ==================== 预留功能 ====================
       {
         path: 'instruments',
         name: 'Instruments',
         component: () => import('@/views/Instruments.vue'),
-        meta: { 
-          title: '仪器量具管理',
-          requiresAuth: true,
-          permission: {
-            modulePath: 'instruments.management',
-            operation: 'read'
-          }
-        }
+        meta: { title: '仪器量具管理', requiresAuth: true, permission: { modulePath: 'instruments.management', operation: 'read' } }
       },
       {
         path: 'quality-costs',
         name: 'QualityCosts',
         component: () => import('@/views/QualityCosts.vue'),
-        meta: { 
-          title: '质量成本管理',
-          requiresAuth: true,
-          permission: {
-            modulePath: 'quality_costs.management',
-            operation: 'read'
-          }
-        }
+        meta: { title: '质量成本管理', requiresAuth: true, permission: { modulePath: 'quality_costs.management', operation: 'read' } }
       }
     ]
   },
@@ -92,25 +291,25 @@ const routes: RouteRecordRaw[] = [
     path: '/login',
     name: 'Login',
     component: () => import('@/views/Login.vue'),
-    meta: { 
-      title: '登录', 
-      requiresAuth: false 
+    meta: {
+      title: '登录',
+      requiresAuth: false
     }
   },
   {
     path: '/register',
     name: 'Register',
     component: () => import('@/views/Register.vue'),
-    meta: { 
-      title: '注册', 
-      requiresAuth: false 
+    meta: {
+      title: '注册',
+      requiresAuth: false
     }
   },
   {
     path: '/scanner',
     name: 'Scanner',
     component: () => import('@/views/Scanner.vue'),
-    meta: { 
+    meta: {
       title: '扫码',
       requiresAuth: true
     }
@@ -119,7 +318,7 @@ const routes: RouteRecordRaw[] = [
     path: '/:pathMatch(.*)*',
     name: 'NotFound',
     component: () => import('@/views/NotFound.vue'),
-    meta: { 
+    meta: {
       title: '页面不存在',
       requiresAuth: false
     }
@@ -169,10 +368,10 @@ router.beforeEach(async (to, from, next) => {
   // 3. 检查路由权限（如果配置了 permission）
   if (requiresAuth && to.meta.permission) {
     const { modulePath, operation } = to.meta.permission
-    
+
     try {
       const hasPermission = await authStore.checkPermission(modulePath, operation)
-      
+
       if (!hasPermission) {
         ElMessage.error('权限不足，无法访问该页面')
         // 返回上一页或跳转到工作台
@@ -222,9 +421,9 @@ export function resetRouter() {
     history: createWebHistory(import.meta.env.BASE_URL),
     routes
   })
-  
-  // 替换 matcher
-  ;(router as any).matcher = (newRouter as any).matcher
+
+    // 替换 matcher
+    ; (router as any).matcher = (newRouter as any).matcher
 }
 
 export default router

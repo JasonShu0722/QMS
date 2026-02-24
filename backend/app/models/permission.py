@@ -112,4 +112,7 @@ class Permission(Base):
     @property
     def permission_key(self) -> str:
         """获取当前权限的权限键"""
-        return self.build_permission_key(self.module_path, self.operation_type)
+        # operation_type 可能是 OperationType 枚举对象或纯字符串
+        # 需要确保提取其 value 值
+        op_value = self.operation_type.value if hasattr(self.operation_type, 'value') else str(self.operation_type)
+        return self.build_permission_key(self.module_path, op_value)

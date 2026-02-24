@@ -32,7 +32,7 @@ export const useFeatureFlagStore = defineStore('featureFlag', () => {
    */
   function isFeatureEnabled(featureKey: string): boolean {
     const feature = features.value[featureKey]
-    
+
     if (!feature) {
       // 功能不存在，默认不启用
       return false
@@ -57,15 +57,15 @@ export const useFeatureFlagStore = defineStore('featureFlag', () => {
 
     try {
       const userInfo = JSON.parse(userInfoStr)
-      
+
       // 检查用户ID白名单
       if (feature.whitelist_user_ids && feature.whitelist_user_ids.includes(userInfo.id)) {
         return true
       }
 
       // 检查供应商ID白名单
-      if (userInfo.supplier_id && feature.whitelist_supplier_ids && 
-          feature.whitelist_supplier_ids.includes(userInfo.supplier_id)) {
+      if (userInfo.supplier_id && feature.whitelist_supplier_ids &&
+        feature.whitelist_supplier_ids.includes(userInfo.supplier_id)) {
         return true
       }
 
@@ -81,17 +81,37 @@ export const useFeatureFlagStore = defineStore('featureFlag', () => {
    */
   async function loadFeatureFlags(): Promise<void> {
     loading.value = true
-    
+
     try {
       // 动态导入避免循环依赖
       const { featureFlagApi } = await import('@/api/featureFlag')
-      const response = await featureFlagApi.getMyFeatures()
-      
-      // 转换为 Map 结构便于查询
-      features.value = response.reduce((acc: Record<string, FeatureFlag>, feature: FeatureFlag) => {
-        acc[feature.key] = feature
-        return acc
-      }, {})
+      const response = await featureFlagApi.getMyFeatures() as any
+
+      // 后端返回格式: { user_id: number, enabled_features: string[] }
+      // 将启用的功能键列表转换为 Map 结构
+      const enabledKeys: string[] = response?.enabled_features || response || []
+
+      if (Array.isArray(enabledKeys)) {
+        // 后端返回的是功能键列表（string[]），构造最小 FeatureFlag 对象
+        const flagMap: Record<string, FeatureFlag> = {}
+        for (const key of enabledKeys) {
+          if (typeof key === 'string') {
+            flagMap[key] = {
+              key,
+              name: key,
+              description: '',
+              is_enabled: true,
+              scope: 'global'
+            }
+          } else if (typeof key === 'object' && key !== null && 'key' in key) {
+            // 兼容返回完整 FeatureFlag 对象数组的情况
+            flagMap[(key as FeatureFlag).key] = key as FeatureFlag
+          }
+        }
+        features.value = flagMap
+      } else {
+        features.value = {}
+      }
     } catch (error) {
       console.error('Failed to load feature flags:', error)
       // 加载失败时使用默认配置（所有预留功能默认禁用）
@@ -125,7 +145,7 @@ export const useFeatureFlagStore = defineStore('featureFlag', () => {
     try {
       const { featureFlagApi } = await import('@/api/featureFlag')
       await featureFlagApi.updateFeatureFlag(featureKey, { is_enabled: enabled })
-      
+
       // 更新本地状态
       if (features.value[featureKey]) {
         features.value[featureKey].is_enabled = enabled
@@ -140,7 +160,7 @@ export const useFeatureFlagStore = defineStore('featureFlag', () => {
     // State
     features,
     loading,
-    
+
     // Actions
     isFeatureEnabled,
     loadFeatureFlags,

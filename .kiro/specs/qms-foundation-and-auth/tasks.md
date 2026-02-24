@@ -753,7 +753,7 @@
   - 执行数据库迁移（仅创建表结构，不实现业务逻辑）
   - _Requirements: 2.11（预留功能）_
 
-- [ ] 16.2 预留质量成本管理 API 接口
+- [x] 16.2 预留质量成本管理 API 接口
   - 创建 backend/app/api/v1/quality_costs.py 质量成本路由（空实现）
   - 定义 API 接口签名（不实现业务逻辑）：
     - GET /api/v1/quality-costs 获取质量成本列表

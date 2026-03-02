@@ -38,7 +38,7 @@
         <el-timeline-item
           v-for="review in stageReviews"
           :key="review.id"
-          :timestamp="formatDate(review.review_date || review.planned_review_date)"
+          :timestamp="formatDate((review.review_date || review.planned_review_date) ?? '')"
           placement="top"
         >
           <el-card>
@@ -105,7 +105,7 @@
             <div v-if="review.conditional_requirements" class="mb-2">
               <span class="font-semibold text-orange-600">整改要求:</span>
               <p class="text-gray-700 mt-1">{{ review.conditional_requirements }}</p>
-              <p class="text-sm text-gray-500">截止日期: {{ formatDate(review.conditional_deadline, 'date') }}</p>
+              <p class="text-sm text-gray-500">截止日期: {{ formatDate(review.conditional_deadline ?? '', 'date') }}</p>
             </div>
 
             <!-- 操作按钮 -->
@@ -153,7 +153,7 @@
 
     <!-- 批准评审对话框 -->
     <el-dialog v-model="approvalDialogVisible" title="批准阶段评审" width="600px">
-      <el-form :model="approvalForm" ref="approvalFormRef" label-width="120px">
+      <el-form :model="approvalForm" label-width="120px">
         <el-form-item label="评审结果" prop="review_result">
           <el-radio-group v-model="approvalForm.review_result">
             <el-radio label="passed">通过</el-radio>
@@ -217,7 +217,6 @@ const currentReview = ref<StageReview | null>(null)
 
 // 表单
 const formRef = ref<FormInstance>()
-const approvalFormRef = ref<FormInstance>()
 const formData = reactive<StageReviewCreate>({
   stage_name: '',
   planned_review_date: ''
@@ -327,7 +326,7 @@ const handleSubmitApproval = async () => {
 }
 
 // 上传交付物
-const handleUploadDeliverable = (review: StageReview, deliverable: any) => {
+const handleUploadDeliverable = (_review: StageReview, _deliverable: any) => {
   ElMessage.info('上传交付物功能开发中')
 }
 

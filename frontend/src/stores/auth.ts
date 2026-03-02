@@ -10,11 +10,14 @@ export const useAuthStore = defineStore('auth', () => {
   // State
   const token = ref<string | null>(localStorage.getItem('access_token'))
   const userInfo = ref<User | null>(null)
+  // 当前登录环境（stable = 正式版，preview = 预览版）
+  const currentEnvironment = ref<string>(localStorage.getItem('current_environment') || 'stable')
 
   // Computed
   const isAuthenticated = computed(() => !!token.value)
   const isSupplier = computed(() => userInfo.value?.user_type === 'supplier')
   const isInternal = computed(() => userInfo.value?.user_type === 'internal')
+  const isPreviewEnv = computed(() => currentEnvironment.value === 'preview')
 
   /**
    * 初始化用户信息（从 localStorage 恢复）
@@ -38,31 +41,36 @@ export const useAuthStore = defineStore('auth', () => {
    * @param userType 用户类型 (internal/supplier)
    * @param captcha 图形验证码（供应商登录必填）
    * @param captchaId 验证码ID（供应商登录必填）
+   * @param environment 登录目标环境（stable/preview，默认 stable）
    */
   async function login(
     username: string,
     password: string,
     userType: 'internal' | 'supplier',
     captcha?: string,
-    captchaId?: string
+    captchaId?: string,
+    environment: string = 'stable'
   ): Promise<void> {
     // 动态导入避免循环依赖
     const { authApi } = await import('@/api/auth')
-    
+
     const response = await authApi.login({
       username,
       password,
       user_type: userType,
       captcha,
-      captcha_id: captchaId
+      captcha_id: captchaId,
+      environment
     })
 
-    // 保存 Token 和用户信息
+    // 保存 Token、用户信息和当前环境
     token.value = response.access_token
     userInfo.value = response.user_info
+    currentEnvironment.value = response.environment || environment
 
     localStorage.setItem('access_token', response.access_token)
     localStorage.setItem('user_info', JSON.stringify(response.user_info))
+    localStorage.setItem('current_environment', currentEnvironment.value)
   }
 
   /**
@@ -71,8 +79,10 @@ export const useAuthStore = defineStore('auth', () => {
   function logout() {
     token.value = null
     userInfo.value = null
+    currentEnvironment.value = 'stable'
     localStorage.removeItem('access_token')
     localStorage.removeItem('user_info')
+    localStorage.removeItem('current_environment')
   }
 
   /**
@@ -134,12 +144,14 @@ export const useAuthStore = defineStore('auth', () => {
     // State
     token,
     userInfo,
-    
+    currentEnvironment,
+
     // Computed
     isAuthenticated,
     isSupplier,
     isInternal,
-    
+    isPreviewEnv,
+
     // Actions
     login,
     logout,

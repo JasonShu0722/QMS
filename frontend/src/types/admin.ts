@@ -2,7 +2,7 @@
  * 管理后台相关类型定义
  */
 
-import type { User, UserStatus } from './user'
+import type { User } from './user'
 
 // Re-export for external use
 export type { User, UserStatus } from './user'

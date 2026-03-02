@@ -360,7 +360,7 @@ const selectedSupplierName = ref('')
 const loading = ref(false)
 
 // 密码复杂度验证
-const validatePassword = (rule: any, value: any, callback: any) => {
+const validatePassword = (_rule: any, value: any, callback: any) => {
   if (!value) {
     callback(new Error('请输入密码'))
     return
@@ -387,7 +387,7 @@ const validatePassword = (rule: any, value: any, callback: any) => {
 }
 
 // 确认密码验证
-const validateConfirmPassword = (rule: any, value: any, callback: any) => {
+const validateConfirmPassword = (_rule: any, value: any, callback: any) => {
   if (!value) {
     callback(new Error('请再次输入密码'))
     return

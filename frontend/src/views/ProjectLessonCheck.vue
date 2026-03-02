@@ -173,7 +173,7 @@ const handlePushLessons = async () => {
 }
 
 // 适用性变更
-const handleApplicableChange = (row: ProjectLessonCheck, index: number) => {
+const handleApplicableChange = (row: ProjectLessonCheck, _index: number) => {
   hasChanges.value = true
   if (row.is_applicable === true) {
     row.reason_if_not = ''
@@ -212,7 +212,7 @@ const handleBatchSubmit = async () => {
 }
 
 // 上传成功
-const handleUploadSuccess = (row: ProjectLessonCheck) => {
+const handleUploadSuccess = (_row: ProjectLessonCheck) => {
   ElMessage.success('证据上传成功')
   loadLessonChecks()
 }

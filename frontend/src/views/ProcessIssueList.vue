@@ -125,7 +125,7 @@
               {{ getStatusLabel(row.status) }}
             </el-tag>
           </template>
-        </el-column>
+        </el-table-column>
 
         <el-table-column label="逾期" width="80">
           <template #default="{ row }">

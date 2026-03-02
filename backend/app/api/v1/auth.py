@@ -301,15 +301,34 @@ async def login(
         )
         user = user.scalar_one()
         
+        # 校验环境权限
+        requested_env = login_data.environment or "stable"
+        allowed = (user.allowed_environments or "stable").split(",")
+        if requested_env not in allowed:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"您没有 {requested_env} 环境的访问权限，请联系管理员",
+            )
+            
         access_token = local_auth.create_access_token(user.id)
         
         return LoginResponseSchema(
             access_token=access_token,
             token_type="bearer",
             user_info=UserResponseSchema.model_validate(user),
+            environment=requested_env,
             password_expired=True
         )
     
+    # 校验环境权限
+    requested_env = login_data.environment or "stable"
+    allowed = (user.allowed_environments or "stable").split(",")
+    if requested_env not in allowed:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"您没有 {requested_env} 环境的访问权限，请联系管理员",
+        )
+
     # 3. 生成 Token
     access_token = local_auth.create_access_token(user.id)
     
@@ -318,6 +337,7 @@ async def login(
         access_token=access_token,
         token_type="bearer",
         user_info=UserResponseSchema.model_validate(user),
+        environment=requested_env,
         password_expired=False
     )
 

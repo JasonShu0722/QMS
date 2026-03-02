@@ -17,51 +17,78 @@
             text-color="#bfcbd9"
             active-text-color="#409EFF"
           >
-            <!-- 工作台 -->
+            <!-- ========== 2.2 个人中心 ========== -->
             <el-menu-item index="/workbench">
               <el-icon><HomeFilled /></el-icon>
               <template #title>工作台</template>
             </el-menu-item>
 
-            <!-- 公告栏 -->
-            <el-menu-item index="/announcements">
-              <el-icon><Bell /></el-icon>
-              <template #title>公告栏</template>
-            </el-menu-item>
+            <!-- ========== 2.4 质量数据面板 ========== -->
+            <el-sub-menu index="quality-data">
+              <template #title>
+                <el-icon><DataLine /></el-icon>
+                <span>质量数据面板</span>
+              </template>
+              <el-menu-item index="/quality-dashboard">数据仪表盘</el-menu-item>
+              <el-menu-item index="/quality-dashboard/analysis">专项数据分析</el-menu-item>
+            </el-sub-menu>
 
-            <!-- 供应商管理 -->
+            <!-- ========== 2.5 供应商质量管理 ========== -->
             <el-sub-menu index="supplier">
               <template #title>
                 <el-icon><OfficeBuilding /></el-icon>
-                <span>供应商管理</span>
+                <span>供应商质量管理</span>
               </template>
-              <el-menu-item index="/supplier/dashboard">供应商总览</el-menu-item>
-              <el-menu-item index="/supplier/performance">绩效考核</el-menu-item>
-              <el-menu-item index="/supplier/targets">目标管理</el-menu-item>
-              <el-menu-item index="/supplier/audit-plan">审核计划</el-menu-item>
-              <el-menu-item index="/supplier/ppap">PPAP管理</el-menu-item>
               <el-menu-item index="/supplier/scar">SCAR管理</el-menu-item>
-              <el-menu-item index="/supplier/eight-d">8D报告</el-menu-item>
+              <el-menu-item index="/supplier/eight-d">供应商8D报告</el-menu-item>
+              <el-menu-item index="/supplier/audit-plan">供应商审核</el-menu-item>
+              <el-menu-item index="/supplier/targets">目标管理</el-menu-item>
+              <el-menu-item index="/supplier/performance">绩效评价</el-menu-item>
+              <el-menu-item index="/supplier/meetings">供应商会议</el-menu-item>
+              <el-menu-item index="/supplier/ppap">PPAP管理</el-menu-item>
               <el-menu-item index="/supplier/inspection-specs">检验规范</el-menu-item>
+              <el-menu-item index="/supplier/barcode">防错扫码</el-menu-item>
               <el-menu-item index="/supplier/claims">供应商索赔</el-menu-item>
+              <el-menu-item index="/supplier/change-management">供应商变更</el-menu-item>
             </el-sub-menu>
 
-            <!-- 质量管理 -->
-            <el-sub-menu index="quality">
+            <!-- ========== 2.6 过程质量管理 ========== -->
+            <el-sub-menu index="process-quality">
               <template #title>
-                <el-icon><DataAnalysis /></el-icon>
-                <span>质量管理</span>
+                <el-icon><Monitor /></el-icon>
+                <span>过程质量管理</span>
               </template>
-              <el-menu-item index="/quality/process-defects">过程不良</el-menu-item>
-              <el-menu-item index="/quality/process-issues">过程问题</el-menu-item>
-              <el-menu-item index="/quality/customer-complaints">客户投诉</el-menu-item>
+              <el-menu-item index="/quality/process-defects">不合格品数据</el-menu-item>
+              <el-menu-item index="/quality/process-issues">过程问题管理</el-menu-item>
+            </el-sub-menu>
+
+            <!-- ========== 2.7 客户质量管理 ========== -->
+            <el-sub-menu index="customer-quality">
+              <template #title>
+                <el-icon><UserFilled /></el-icon>
+                <span>客户质量管理</span>
+              </template>
+              <el-menu-item index="/quality/customer-complaints">客诉管理</el-menu-item>
               <el-menu-item index="/quality/eight-d-customer">客户8D报告</el-menu-item>
               <el-menu-item index="/quality/customer-claims">客户索赔</el-menu-item>
-              <el-menu-item index="/quality-dashboard">数据仪表盘</el-menu-item>
-              <el-menu-item index="/quality/lesson-learned">经验教训库</el-menu-item>
             </el-sub-menu>
 
-            <!-- 审核管理 -->
+            <!-- ========== 2.8 新品质量管理 ========== -->
+            <el-sub-menu index="newproduct">
+              <template #title>
+                <el-icon><Opportunity /></el-icon>
+                <span>新品质量管理</span>
+              </template>
+              <el-menu-item index="/quality/lesson-learned">经验教训库</el-menu-item>
+              <el-menu-item index="/newproduct/projects">项目管理</el-menu-item>
+              <el-menu-item index="/newproduct/stage-review">阶段评审</el-menu-item>
+              <el-menu-item index="/newproduct/lesson-check">经验教训检查</el-menu-item>
+              <el-menu-item index="/newproduct/trial">试产管理</el-menu-item>
+              <el-menu-item index="/newproduct/trial-issues">试产问题</el-menu-item>
+              <el-menu-item index="/newproduct/trial-summary">试产总结</el-menu-item>
+            </el-sub-menu>
+
+            <!-- ========== 2.9 审核管理 ========== -->
             <el-sub-menu index="audit">
               <template #title>
                 <el-icon><Document /></el-icon>
@@ -75,21 +102,7 @@
               <el-menu-item index="/audit/customer">客户审核</el-menu-item>
             </el-sub-menu>
 
-            <!-- 新产品管理 -->
-            <el-sub-menu index="newproduct">
-              <template #title>
-                <el-icon><Opportunity /></el-icon>
-                <span>新产品管理</span>
-              </template>
-              <el-menu-item index="/newproduct/projects">项目管理</el-menu-item>
-              <el-menu-item index="/newproduct/stage-review">阶段评审</el-menu-item>
-              <el-menu-item index="/newproduct/lesson-check">经验教训检查</el-menu-item>
-              <el-menu-item index="/newproduct/trial">试产管理</el-menu-item>
-              <el-menu-item index="/newproduct/trial-issues">试产问题</el-menu-item>
-              <el-menu-item index="/newproduct/trial-summary">试产总结</el-menu-item>
-            </el-sub-menu>
-
-            <!-- 系统管理 -->
+            <!-- ========== 2.3 系统管理（仅管理员可见） ========== -->
             <el-sub-menu index="admin">
               <template #title>
                 <el-icon><Setting /></el-icon>
@@ -102,7 +115,7 @@
               <el-menu-item index="/admin/feature-flags">功能开关</el-menu-item>
             </el-sub-menu>
 
-            <!-- 预留功能（通过功能开关控制可见性） -->
+            <!-- ========== 2.10 & 2.11 预留功能 ========== -->
             <el-menu-item 
               v-if="isInstrumentsEnabled" 
               index="/instruments"
@@ -131,12 +144,13 @@
               <Fold v-if="!isCollapse" />
               <Expand v-else />
             </el-icon>
-            <span class="environment-badge" v-if="isPreview">预览版</span>
           </div>
           <div class="header-right">
-            <el-button link @click="switchEnvironment">
-              {{ switchButtonText }}
-            </el-button>
+            <!-- 环境标识徽章 -->
+            <span :class="['env-badge', isPreviewEnv ? 'env-badge--preview' : 'env-badge--stable']">
+              <span v-if="isPreviewEnv" class="env-dot"></span>
+              {{ currentEnvLabel }}
+            </span>
             <el-dropdown @command="handleCommand">
               <span class="user-info">
                 <el-icon><User /></el-icon>
@@ -171,23 +185,28 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { 
   HomeFilled, User, Fold, Expand, Tools, Money,
-  Bell, OfficeBuilding, DataAnalysis, Document, 
-  Opportunity, Setting
+  OfficeBuilding, DataLine, Document, 
+  Opportunity, Setting, Monitor, UserFilled
 } from '@element-plus/icons-vue'
 import MobileLayout from './MobileLayout.vue'
-import { useEnvironment } from '@/composables/useEnvironment'
 import { useFeatureFlagStore } from '@/stores/featureFlag'
+import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
 const route = useRoute()
 const featureFlagStore = useFeatureFlagStore()
+const authStore = useAuthStore()
 
 const isCollapse = ref(false)
 const isMobile = ref(false)
 const userInfo = ref<any>(null)
 
-// 使用环境管理 composable
-const { isPreview, switchButtonText, switchEnvironment } = useEnvironment()
+// 从 auth store 获取环境信息
+const isPreviewEnv = computed(() => authStore.isPreviewEnv)
+const currentEnvLabel = computed(() => isPreviewEnv.value ? '🧪 预览版' : '🏢 正式版')
+
+
+
 
 // 当前激活的菜单
 const activeMenu = computed(() => route.path)
@@ -209,11 +228,10 @@ const toggleCollapse = () => {
 // 处理用户菜单命令
 const handleCommand = (command: string) => {
   if (command === 'logout') {
-    localStorage.removeItem('access_token')
-    localStorage.removeItem('user_info')
+    authStore.logout()
     router.push('/login')
   } else if (command === 'profile') {
-    router.push('/profile')
+    router.push('/workbench')
   }
 }
 
@@ -332,6 +350,45 @@ onMounted(async () => {
   padding: 4px 12px;
   border-radius: 4px;
   font-size: 12px;
+}
+
+/* 环境标识样式 */
+.env-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.env-badge--stable {
+  background-color: #ecf5ff;
+  color: #409eff;
+  border: 1px solid #b3d8ff;
+}
+
+.env-badge--preview {
+  background-color: #fdf6ec;
+  color: #e6a23c;
+  border: 1px solid #f5dab1;
+}
+
+/* 预览版闪烁小圆点 */
+.env-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  background-color: #e6a23c;
+  border-radius: 50%;
+  animation: env-dot-blink 1.2s ease-in-out infinite;
+}
+
+@keyframes env-dot-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.2; }
 }
 
 .header-right {

@@ -65,11 +65,92 @@ async def get_profile(
         department=current_user.department,
         position=current_user.position,
         supplier_id=current_user.supplier_id,
+        avatar_image_path=current_user.avatar_image_path,
         digital_signature=current_user.digital_signature,
         password_changed_at=current_user.password_changed_at.isoformat() if current_user.password_changed_at else None,
         last_login_at=current_user.last_login_at.isoformat() if current_user.last_login_at else None,
         created_at=current_user.created_at.isoformat()
     )
+
+
+@router.post(
+    "/avatar",
+    summary="上传头像",
+    description="上传用户头像图片（已裁剪）"
+)
+async def upload_avatar(
+    file: UploadFile = File(..., description="头像图片文件（PNG/JPG格式）"),
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    上传头像
+
+    接收前端裁剪后的头像图片，保存到 uploads/avatars/ 目录。
+    """
+    # 验证文件类型
+    allowed_extensions = [".png", ".jpg", ".jpeg", ".webp"]
+    file_extension = Path(file.filename).suffix.lower()
+    
+    if file_extension not in allowed_extensions:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"不支持的文件格式。仅支持：{', '.join(allowed_extensions)}"
+        )
+    
+    # 创建上传目录
+    upload_dir = Path(settings.UPLOAD_DIR) / "avatars"
+    upload_dir.mkdir(parents=True, exist_ok=True)
+    
+    # 生成唯一文件名
+    unique_filename = f"user_{current_user.id}_avatar_{uuid.uuid4()}.png"
+    file_path = upload_dir / unique_filename
+    
+    try:
+        # 读取上传的图片
+        contents = await file.read()
+        
+        # 使用 Pillow 处理（统一转为 PNG）
+        from io import BytesIO
+        image = Image.open(BytesIO(contents))
+        
+        if image.mode != 'RGBA':
+            image = image.convert('RGBA')
+        
+        # 限制尺寸为 256x256
+        image.thumbnail((256, 256), Image.Resampling.LANCZOS)
+        
+        # 保存
+        image.save(file_path, "PNG")
+        
+        # 删除旧头像文件
+        if current_user.avatar_image_path:
+            old_file_path = Path(current_user.avatar_image_path.lstrip('/'))
+            if old_file_path.exists():
+                old_file_path.unlink()
+        
+        # 更新数据库
+        avatar_path = f"/uploads/avatars/{unique_filename}"
+        
+        await db.execute(
+            update(User)
+            .where(User.id == current_user.id)
+            .values(
+                avatar_image_path=avatar_path,
+                updated_at=datetime.utcnow()
+            )
+        )
+        await db.commit()
+        
+        return {"message": "头像上传成功", "avatar_path": avatar_path}
+    
+    except Exception as e:
+        if file_path.exists():
+            file_path.unlink()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"头像处理失败: {str(e)}"
+        )
 
 
 @router.put(

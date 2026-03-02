@@ -101,6 +101,7 @@ class ProfileResponseSchema(BaseModel):
     department: Optional[str]
     position: Optional[str]
     supplier_id: Optional[int]
+    avatar_image_path: Optional[str]
     digital_signature: Optional[str]
     password_changed_at: Optional[str]
     last_login_at: Optional[str]

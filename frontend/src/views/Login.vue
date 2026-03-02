@@ -2,13 +2,32 @@
   <div class="login-container">
     <!-- 桌面端布局 (Element Plus) -->
     <div v-if="!isMobile" class="desktop-layout">
-      <el-card class="login-card">
+      <el-card :class="['login-card', isPreviewMode ? 'login-card--preview' : '']">
         <template #header>
           <div class="card-header">
             <h2>质量管理系统</h2>
             <p class="subtitle">Quality Management System</p>
           </div>
         </template>
+
+        <!-- 预览版警示横幅 -->
+        <div v-if="isPreviewMode" class="preview-banner">
+          ⚠️ 预览环境 — 仅限授权用户
+        </div>
+
+        <!-- 环境切换滑块 -->
+        <div class="env-switcher">
+          <span :class="['env-label', !isPreviewMode ? 'env-label--active-stable' : '']">🏢 正式版</span>
+          <el-switch
+            v-model="isPreviewMode"
+            active-color="#e6a23c"
+            inactive-color="#409eff"
+            inline-prompt
+            active-text=""
+            inactive-text=""
+          />
+          <span :class="['env-label', isPreviewMode ? 'env-label--active-preview' : '']">🧪 预览版</span>
+        </div>
 
         <!-- 用户类型选择 -->
         <el-radio-group v-model="userType" class="user-type-selector" size="large">
@@ -127,6 +146,24 @@
 
         <!-- 移动端表单卡片 -->
         <div class="w-full max-w-md bg-white rounded-lg shadow-xl p-6">
+          <!-- 用户类型选择 -->
+          <div class="flex gap-2 mb-4">
+            <!-- 预览版标识 -->
+            <div v-if="isPreviewMode" class="w-full mb-2 py-2 px-3 bg-orange-100 border border-orange-400 rounded-lg text-orange-700 text-sm text-center">
+              ⚠️ 预览环境 — 仅限授权用户
+            </div>
+          </div>
+
+          <!-- 移动端环境切换 -->
+          <div class="flex items-center justify-center gap-3 mb-4">
+            <span :class="['text-sm font-medium', !isPreviewMode ? 'text-blue-600' : 'text-gray-400']">🏢 正式版</span>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" v-model="isPreviewMode" class="sr-only peer">
+              <div class="w-11 h-6 rounded-full peer-focus:outline-none peer bg-blue-500 peer-checked:bg-orange-400 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full"></div>
+            </label>
+            <span :class="['text-sm font-medium', isPreviewMode ? 'text-orange-500' : 'text-gray-400']">🧪 预览版</span>
+          </div>
+
           <!-- 用户类型选择 -->
           <div class="flex gap-2 mb-6">
             <button
@@ -279,6 +316,9 @@ const captchaId = ref<string>('')
 const rememberPassword = ref(false)
 const loading = ref(false)
 
+// 环境选择（false = 正式版Stable，true = 预览版Preview）
+const isPreviewMode = ref(false)
+
 // 表单验证规则
 const loginRules = computed<FormRules>(() => ({
   username: [
@@ -366,7 +406,8 @@ const handleLogin = async () => {
       loginForm.password,
       userType.value,
       userType.value === 'supplier' ? loginForm.captcha : undefined,
-      userType.value === 'supplier' ? captchaId.value : undefined
+      userType.value === 'supplier' ? captchaId.value : undefined,
+      isPreviewMode.value ? 'preview' : 'stable'
     )
 
     // 记住密码
@@ -505,6 +546,55 @@ const handleLogin = async () => {
 
 .register-link:hover {
   color: #66b1ff;
+}
+
+/* 环境切换滑块 */
+.env-switcher {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 10px 0 16px;
+  border-bottom: 1px solid #ebedf0;
+  margin-bottom: 16px;
+}
+
+.env-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #c0c4cc;
+  transition: color 0.3s;
+}
+
+.env-label--active-stable {
+  color: #409eff;
+  font-weight: 600;
+}
+
+.env-label--active-preview {
+  color: #e6a23c;
+  font-weight: 600;
+}
+
+/* 预览版卡片边框样式 */
+.login-card--preview {
+  border: 2px solid #e6a23c !important;
+}
+
+.login-card--preview :deep(.el-card__header) {
+  background: linear-gradient(135deg, #fdf6ec, #faecd8);
+}
+
+/* 预览版警示横幅 */
+.preview-banner {
+  background: #e6a23c;
+  color: #fff;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 6px 12px;
+  margin: -12px -20px 16px;
+  letter-spacing: 0.5px;
 }
 
 /* 移动端样式 */

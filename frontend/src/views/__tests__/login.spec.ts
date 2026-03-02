@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Login 页面 E2E 测试
  * 
@@ -136,7 +137,7 @@ describe('Login.vue E2E', () => {
 
       // 验证验证码相关元素存在
       expect(wrapper.vm.userType).toBe('supplier')
-      
+
       // 验证 getCaptcha 被调用
       expect(authApi.getCaptcha).toHaveBeenCalled()
     })
@@ -245,6 +246,8 @@ describe('Login.vue E2E', () => {
       vi.mocked(authApi.login).mockResolvedValue({
         access_token: 'test-token-123',
         token_type: 'bearer',
+        environment: 'stable',
+        password_expired: false,
         user_info: {
           id: 1,
           username: 'testuser',
@@ -253,7 +256,9 @@ describe('Login.vue E2E', () => {
           user_type: 'internal',
           department: '质量部',
           position: 'SQE',
-          status: 'active'
+          status: 'active',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
         }
       })
 
@@ -272,7 +277,8 @@ describe('Login.vue E2E', () => {
         password: 'Test@123456',
         user_type: 'internal',
         captcha: undefined,
-        captcha_id: undefined
+        captcha_id: undefined,
+        environment: 'stable'
       })
 
       // 验证 Token 被保存
@@ -287,7 +293,7 @@ describe('Login.vue E2E', () => {
 
     it('登录失败应该显示错误消息', async () => {
       const { ElMessage } = await import('element-plus')
-      
+
       const wrapper = mount(Login, {
         global: {
           plugins: [router, pinia]
@@ -321,10 +327,12 @@ describe('Login.vue E2E', () => {
       })
 
       // Mock 延迟的登录响应
-      vi.mocked(authApi.login).mockImplementation(() => 
+      vi.mocked(authApi.login).mockImplementation(() =>
         new Promise(resolve => setTimeout(() => resolve({
           access_token: 'test-token',
           token_type: 'bearer',
+          environment: 'stable',
+          password_expired: false,
           user_info: {
             id: 1,
             username: 'testuser',
@@ -333,7 +341,9 @@ describe('Login.vue E2E', () => {
             user_type: 'internal',
             department: '质量部',
             position: 'SQE',
-            status: 'active'
+            status: 'active',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
           }
         }), 100))
       )
@@ -375,6 +385,8 @@ describe('Login.vue E2E', () => {
       vi.mocked(authApi.login).mockResolvedValue({
         access_token: 'supplier-token',
         token_type: 'bearer',
+        environment: 'stable',
+        password_expired: false,
         user_info: {
           id: 2,
           username: 'supplier1',
@@ -382,7 +394,9 @@ describe('Login.vue E2E', () => {
           email: 'supplier@example.com',
           user_type: 'supplier',
           supplier_id: 1,
-          status: 'active'
+          status: 'active',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
         }
       })
 
@@ -406,7 +420,8 @@ describe('Login.vue E2E', () => {
         password: 'Supplier@123',
         user_type: 'supplier',
         captcha: '1234',
-        captcha_id: 'captcha-123'
+        captcha_id: 'captcha-123',
+        environment: 'stable'
       })
     })
 
@@ -503,6 +518,8 @@ describe('Login.vue E2E', () => {
       vi.mocked(authApi.login).mockResolvedValue({
         access_token: 'test-token',
         token_type: 'bearer',
+        environment: 'stable',
+        password_expired: false,
         user_info: {
           id: 1,
           username: 'testuser',
@@ -511,7 +528,9 @@ describe('Login.vue E2E', () => {
           user_type: 'internal',
           department: '质量部',
           position: 'SQE',
-          status: 'active'
+          status: 'active',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
         }
       })
 
@@ -586,7 +605,7 @@ describe('Login.vue E2E', () => {
 
     it('获取验证码失败应该显示错误消息', async () => {
       const { ElMessage } = await import('element-plus')
-      
+
       const wrapper = mount(Login, {
         global: {
           plugins: [router, pinia]
@@ -647,7 +666,7 @@ describe('Login.vue E2E', () => {
   describe('边界情况', () => {
     it('应该处理网络错误', async () => {
       const { ElMessage } = await import('element-plus')
-      
+
       const wrapper = mount(Login, {
         global: {
           plugins: [router, pinia]
@@ -668,7 +687,7 @@ describe('Login.vue E2E', () => {
 
     it('应该处理没有 detail 的错误响应', async () => {
       const { ElMessage } = await import('element-plus')
-      
+
       const wrapper = mount(Login, {
         global: {
           plugins: [router, pinia]
@@ -700,6 +719,8 @@ describe('Login.vue E2E', () => {
       vi.mocked(authApi.login).mockResolvedValue({
         access_token: 'test-token',
         token_type: 'bearer',
+        environment: 'stable',
+        password_expired: false,
         user_info: {
           id: 1,
           username: 'testuser',
@@ -708,7 +729,9 @@ describe('Login.vue E2E', () => {
           user_type: 'internal',
           department: '质量部',
           position: 'SQE',
-          status: 'active'
+          status: 'active',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
         }
       })
 

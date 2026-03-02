@@ -50,3 +50,11 @@ async def health_check():
 # 导入并注册 API 路由
 from app.api.v1 import api_router
 app.include_router(api_router, prefix="/api")
+
+# 挂载上传文件的静态目录
+from fastapi.staticfiles import StaticFiles
+from pathlib import Path
+
+uploads_dir = Path(settings.UPLOAD_DIR)
+uploads_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/api/uploads", StaticFiles(directory=str(uploads_dir)), name="uploads")

@@ -269,7 +269,7 @@ const resetForm = () => {
 }
 
 // 查看详情
-const handleViewDetail = (row: NewProductProject) => {
+const handleViewDetail = (_row: NewProductProject) => {
   // 跳转到项目详情页（待实现）
   ElMessage.info('项目详情页面开发中')
 }

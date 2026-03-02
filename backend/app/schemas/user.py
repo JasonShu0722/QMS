@@ -117,7 +117,9 @@ class UserResponseSchema(BaseModel):
     department: Optional[str]
     position: Optional[str]
     supplier_id: Optional[int]
+    avatar_image_path: Optional[str]
     digital_signature: Optional[str]
+    allowed_environments: Optional[str]
     last_login_at: Optional[datetime]
     created_at: datetime
     updated_at: datetime
@@ -184,6 +186,7 @@ class LoginRequestSchema(BaseModel):
     user_type: str = Field(..., description="用户类型: internal 或 supplier")
     captcha: Optional[str] = Field(None, description="图形验证码（供应商登录必填）")
     captcha_id: Optional[str] = Field(None, description="验证码ID（供应商登录必填）")
+    environment: Optional[str] = Field("stable", description="登录目标环境：stable（正式版）或 preview（预览版）")
     
     @field_validator('user_type')
     @classmethod
@@ -218,8 +221,9 @@ class LoginResponseSchema(BaseModel):
     登录成功响应模型
     """
     access_token: str
-    token_type: str
+    token_type: str = "bearer"
     user_info: UserResponseSchema
+    environment: str = "stable"
     password_expired: bool = Field(default=False, description="密码是否过期（需要强制修改）")
     
     model_config = {

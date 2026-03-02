@@ -4,7 +4,7 @@
  * 此文件在所有测试运行前执行，用于配置全局测试环境
  */
 
-import { vi } from 'vitest'
+import { vi, afterEach } from 'vitest'
 
 // Mock window.matchMedia (用于响应式测试)
 Object.defineProperty(window, 'matchMedia', {

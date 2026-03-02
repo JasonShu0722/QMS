@@ -162,7 +162,6 @@ import { ElMessage } from 'element-plus';
 import { Plus } from '@element-plus/icons-vue';
 import {
   getAuditExecutions,
-  getAuditExecution,
   getAuditTemplate,
   submitChecklist,
   generateAuditReport
@@ -275,7 +274,7 @@ const handleGenerateReport = async (id: number) => {
   }
 };
 
-const handleView = (execution: AuditExecution) => {
+const handleView = (_execution: AuditExecution) => {
   ElMessage.info('查看详情功能');
 };
 

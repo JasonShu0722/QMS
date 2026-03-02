@@ -1,0 +1,56 @@
+﻿
+> qms-frontend@0.0.0 build
+> vue-tsc && vite build
+
+[36mvite v5.4.21 [32mbuilding for production...[36m[39m
+transforming...
+[32m鉁?[39m 309 modules transformed.
+node.exe : [31mx[39m Build failed in 3.17s
+所在位置 C:\Program Files\nodejs\npm.ps1:29 字符: 3
++   & $NODE_EXE $NPM_CLI_JS $args
++   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified:  
+   ([31mx[39m Build failed in 3.17s:Strin  
+  g) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandE 
+   rror
+ 
+[31merror during build:
+[31m[vite:vue] [plugin vite:vue] src/views/P
+rocessIssueList.vue (128:9): Invalid end tag.
+[31m
+file: [36mE:/WorkSpace/QMS/frontend/src/view
+s/ProcessIssueList.vue:128:9[31m
+SyntaxError: [plugin vite:vue] src/views/Proc
+essIssueList.vue (128:9): Invalid end tag.
+    at createCompilerError (E:\WorkSpace\QMS\
+frontend\node_modules\@vue\compiler-core\dist
+\compiler-core.cjs.prod.js:1374:17)
+    at emitError (E:\WorkSpace\QMS\frontend\n
+ode_modules\@vue\compiler-core\dist\compiler-
+core.cjs.prod.js:2980:5)
+    at Object.onclosetag (E:\WorkSpace\QMS\fr
+ontend\node_modules\@vue\compiler-core\dist\c
+ompiler-core.cjs.prod.js:2387:9)
+    at Tokenizer.stateInClosingTagName (E:\Wo
+rkSpace\QMS\frontend\node_modules\@vue\compil
+er-core\dist\compiler-core.cjs.prod.js:799:16
+)
+    at Tokenizer.parse (E:\WorkSpace\QMS\fron
+tend\node_modules\@vue\compiler-core\dist\com
+piler-core.cjs.prod.js:1157:16)
+    at Object.baseParse (E:\WorkSpace\QMS\fro
+ntend\node_modules\@vue\compiler-core\dist\co
+mpiler-core.cjs.prod.js:3012:13)
+    at Object.parse (E:\WorkSpace\QMS\fronten
+d\node_modules\@vue\compiler-dom\dist\compile
+r-dom.cjs.prod.js:665:23)
+    at Object.parse$1 [as parse] (E:\WorkSpac
+e\QMS\frontend\node_modules\@vue\compiler-sfc
+\dist\compiler-sfc.cjs.js:1824:24)
+    at createDescriptor (file:///E:/WorkSpace
+/QMS/frontend/node_modules/@vitejs/plugin-vue
+/dist/index.mjs:71:43)
+    at transformMain (file:///E:/WorkSpace/QM
+S/frontend/node_modules/@vitejs/plugin-vue/di
+st/index.mjs:2421:34)[39m

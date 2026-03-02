@@ -75,7 +75,7 @@
 import { ref, reactive } from 'vue';
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus';
 import { createCustomerComplaint } from '@/api/customer-quality';
-import type { CustomerComplaintCreate } from '@/types/customer-quality';
+import type { CustomerComplaintCreate, ComplaintType } from '@/types/customer-quality';
 
 // 定义事件
 const emit = defineEmits<{
@@ -89,7 +89,7 @@ const submitting = ref(false);
 
 // 表单数据
 const formData = reactive<CustomerComplaintCreate>({
-  complaint_type: '0km',
+  complaint_type: '0km' as ComplaintType,
   customer_code: '',
   product_type: '',
   defect_description: '',

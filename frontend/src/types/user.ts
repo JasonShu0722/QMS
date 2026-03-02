@@ -19,19 +19,25 @@ export interface User {
   phone?: string
   user_type: UserType
   status: UserStatus
-  
+
   // 内部员工字段
   department?: string
   position?: string
   role_id?: number
-  
+
   // 供应商字段
   supplier_id?: number
   supplier_name?: string
-  
+
+  // 头像
+  avatar_image_path?: string
+
   // 电子签名
   signature_image_path?: string
-  
+
+  // 环境权限（逗号分隔："stable", "preview", "stable,preview"）
+  allowed_environments?: string
+
   // 审计字段
   created_at: string
   updated_at: string
@@ -47,6 +53,7 @@ export interface LoginRequest {
   user_type: UserType
   captcha?: string
   captcha_id?: string
+  environment?: string
 }
 
 /**
@@ -56,6 +63,8 @@ export interface LoginResponse {
   access_token: string
   token_type: string
   user_info: User
+  environment: string
+  password_expired: boolean
 }
 
 /**

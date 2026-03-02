@@ -36,12 +36,6 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/Workbench.vue'),
         meta: { title: '工作台', requiresAuth: true }
       },
-      {
-        path: 'announcements',
-        name: 'Announcements',
-        component: () => import('@/views/Announcements.vue'),
-        meta: { title: '公告栏', requiresAuth: true }
-      },
       // ==================== 供应商管理 ====================
       {
         path: 'supplier/dashboard',
@@ -103,6 +97,18 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/SupplierClaimList.vue'),
         meta: { title: '供应商索赔', requiresAuth: true, permission: { modulePath: 'supplier.scar', operation: 'read' } }
       },
+      {
+        path: 'supplier/change-management',
+        name: 'SupplierChangeManagement',
+        component: () => import('@/views/supplier/SupplierChangeManagement.vue'),
+        meta: { title: '供应商变更', requiresAuth: true, permission: { modulePath: 'supplier.management', operation: 'read' } }
+      },
+      {
+        path: 'supplier/meetings',
+        name: 'SupplierMeetings',
+        component: () => import('@/views/supplier/SupplierMeetings.vue'),
+        meta: { title: '供应商会议', requiresAuth: true, permission: { modulePath: 'supplier.performance', operation: 'read' } }
+      },
       // ==================== 质量管理 - 来料 ====================
       {
         path: 'quality/scar',
@@ -154,6 +160,12 @@ const routes: RouteRecordRaw[] = [
         name: 'QualityDashboard',
         component: () => import('@/views/QualityDashboard.vue'),
         meta: { title: '质量数据仪表盘', requiresAuth: true, permission: { modulePath: 'quality.data_panel', operation: 'read' } }
+      },
+      {
+        path: 'quality-dashboard/analysis',
+        name: 'QualityDataAnalysis',
+        component: () => import('@/views/QualityDataAnalysis.vue'),
+        meta: { title: '专项数据分析', requiresAuth: true, permission: { modulePath: 'quality.data_panel', operation: 'read' } }
       },
       {
         path: 'quality/lesson-learned',

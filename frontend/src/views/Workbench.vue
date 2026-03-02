@@ -17,9 +17,21 @@
       <!-- 个人信息卡片 -->
       <el-card class="profile-card" shadow="hover">
         <div class="profile-header">
-          <el-avatar :size="64" :src="avatarUrl">
-            <el-icon><User /></el-icon>
-          </el-avatar>
+          <div class="avatar-wrapper" @click="triggerAvatarUpload">
+            <el-avatar :size="64" :src="avatarUrl">
+              <el-icon><User /></el-icon>
+            </el-avatar>
+            <div class="avatar-overlay">
+              <el-icon><Camera /></el-icon>
+            </div>
+          </div>
+          <input
+            ref="avatarInputRef"
+            type="file"
+            accept="image/png,image/jpeg,image/jpg,image/webp"
+            style="display: none"
+            @change="handleAvatarFileChange"
+          />
           <div class="profile-info">
             <h2>{{ authStore.userInfo?.full_name }}</h2>
             <p class="profile-meta">
@@ -75,28 +87,47 @@
         />
       </div>
 
-      <!-- 待办任务聚合 -->
-      <div class="todo-section">
-        <h3 class="section-title">
-          待办任务 
-          <el-badge :value="dashboardData?.todos?.length || 0" class="item" />
-        </h3>
-        
-        <div v-if="dashboardData?.todos && dashboardData.todos.length > 0" class="todo-grid">
-          <TaskCard 
-            v-for="(task, index) in dashboardData.todos" 
-            :key="index"
-            :task="task"
-            @click="handleTaskClick"
-          />
-        </div>
-        
-        <el-empty 
-          v-else
-          description="暂无待办任务"
-          :image-size="100"
-        />
-      </div>
+      <!-- 待办任务 + 公告栏 并列布局 -->
+      <el-row :gutter="20" class="dashboard-row">
+        <!-- 待办任务 -->
+        <el-col :xs="24" :sm="24" :md="12" :lg="12">
+          <el-card class="dashboard-card" shadow="hover">
+            <template #header>
+              <div class="card-header">
+                <span class="card-header-title">待办任务</span>
+                <el-badge :value="dashboardData?.todos?.length || 0" class="item" />
+              </div>
+            </template>
+            <div v-if="dashboardData?.todos && dashboardData.todos.length > 0" class="todo-grid">
+              <TaskCard 
+                v-for="(task, index) in dashboardData.todos" 
+                :key="index"
+                :task="task"
+                @click="handleTaskClick"
+              />
+            </div>
+            <el-empty 
+              v-else
+              description="暂无待办任务"
+              :image-size="80"
+            />
+          </el-card>
+        </el-col>
+        <!-- 公告栏 -->
+        <el-col :xs="24" :sm="24" :md="12" :lg="12">
+          <el-card class="dashboard-card" shadow="hover">
+            <template #header>
+              <div class="card-header">
+                <span class="card-header-title">
+                  <el-icon><Bell /></el-icon>
+                  公告栏
+                </span>
+              </div>
+            </template>
+            <AnnouncementList />
+          </el-card>
+        </el-col>
+      </el-row>
     </div>
 
     <!-- 供应商视图 -->
@@ -104,9 +135,14 @@
       <!-- 个人信息卡片 -->
       <el-card class="profile-card" shadow="hover">
         <div class="profile-header">
-          <el-avatar :size="64" :src="avatarUrl">
-            <el-icon><User /></el-icon>
-          </el-avatar>
+          <div class="avatar-wrapper" @click="triggerAvatarUpload">
+            <el-avatar :size="64" :src="avatarUrl">
+              <el-icon><User /></el-icon>
+            </el-avatar>
+            <div class="avatar-overlay">
+              <el-icon><Camera /></el-icon>
+            </div>
+          </div>
           <div class="profile-info">
             <h2>{{ authStore.userInfo?.full_name }}</h2>
             <p class="profile-meta">
@@ -155,28 +191,45 @@
         />
       </el-card>
 
-      <!-- 需要行动的任务 -->
-      <div class="action-required-section">
-        <h3 class="section-title">
-          待处理任务
-          <el-badge :value="supplierDashboard?.action_required_tasks?.length || 0" class="item" />
-        </h3>
-        
-        <div v-if="supplierDashboard?.action_required_tasks && supplierDashboard.action_required_tasks.length > 0" class="todo-grid">
-          <TaskCard 
-            v-for="(task, index) in supplierDashboard.action_required_tasks" 
-            :key="index"
-            :task="task"
-            @click="handleTaskClick"
-          />
-        </div>
-        
-        <el-empty 
-          v-else
-          description="暂无待处理任务"
-          :image-size="100"
-        />
-      </div>
+      <!-- 待处理任务 + 公告栏 并列 -->
+      <el-row :gutter="20" class="dashboard-row">
+        <el-col :xs="24" :sm="24" :md="12" :lg="12">
+          <el-card class="dashboard-card" shadow="hover">
+            <template #header>
+              <div class="card-header">
+                <span class="card-header-title">待处理任务</span>
+                <el-badge :value="supplierDashboard?.action_required_tasks?.length || 0" class="item" />
+              </div>
+            </template>
+            <div v-if="supplierDashboard?.action_required_tasks && supplierDashboard.action_required_tasks.length > 0" class="todo-grid">
+              <TaskCard 
+                v-for="(task, index) in supplierDashboard.action_required_tasks" 
+                :key="index"
+                :task="task"
+                @click="handleTaskClick"
+              />
+            </div>
+            <el-empty 
+              v-else
+              description="暂无待处理任务"
+              :image-size="80"
+            />
+          </el-card>
+        </el-col>
+        <el-col :xs="24" :sm="24" :md="12" :lg="12">
+          <el-card class="dashboard-card" shadow="hover">
+            <template #header>
+              <div class="card-header">
+                <span class="card-header-title">
+                  <el-icon><Bell /></el-icon>
+                  公告栏
+                </span>
+              </div>
+            </template>
+            <AnnouncementList />
+          </el-card>
+        </el-col>
+      </el-row>
     </div>
 
     <!-- 修改密码对话框 -->
@@ -271,19 +324,61 @@
         </el-button>
       </template>
     </el-dialog>
+
+    <!-- 头像裁剪对话框 -->
+    <el-dialog
+      v-model="showCropperDialog"
+      title="裁剪头像"
+      width="500px"
+      :close-on-click-modal="false"
+      destroy-on-close
+    >
+      <div class="cropper-container">
+        <VueCropper
+          ref="cropperRef"
+          :img="cropperOption.img"
+          :output-size="cropperOption.outputSize"
+          :output-type="cropperOption.outputType"
+          :info="false"
+          :can-scale="true"
+          :auto-crop="true"
+          :auto-crop-width="200"
+          :auto-crop-height="200"
+          :fixed="true"
+          :fixed-number="[1, 1]"
+          :full="false"
+          :fixed-box="false"
+          :can-move="true"
+          :can-move-box="true"
+          :original="false"
+          :center-box="true"
+          :high="true"
+          mode="contain"
+        />
+      </div>
+      <template #footer>
+        <el-button @click="showCropperDialog = false">取消</el-button>
+        <el-button type="primary" @click="handleCropAndUpload" :loading="avatarLoading">
+          确认上传
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, type FormInstance, type FormRules, type UploadInstance, type UploadFile } from 'element-plus'
-import { User, Lock, Edit, UploadFilled } from '@element-plus/icons-vue'
+import { User, Lock, Edit, UploadFilled, Bell, Camera } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
 import { workbenchApi } from '@/api/workbench'
 import { announcementApi } from '@/api/announcement'
 import TaskCard from '@/components/TaskCard.vue'
 import AnnouncementDialog from '@/components/AnnouncementDialog.vue'
+import AnnouncementList from '@/components/AnnouncementList.vue'
+import { VueCropper } from 'vue-cropper'
+import 'vue-cropper/dist/index.css'
 import type { InternalDashboard, SupplierDashboard, TodoTask, ChangePasswordRequest } from '@/types/workbench'
 import type { Announcement } from '@/types/announcement'
 
@@ -298,6 +393,17 @@ const supplierDashboard = ref<SupplierDashboard | null>(null)
 // 公告相关
 const showAnnouncementDialog = ref(false)
 const unreadImportantAnnouncements = ref<Announcement[]>([])
+
+// 头像裁剪相关
+const avatarInputRef = ref<HTMLInputElement>()
+const cropperRef = ref<any>()
+const showCropperDialog = ref(false)
+const avatarLoading = ref(false)
+const cropperOption = reactive({
+  img: '' as string,
+  outputSize: 1,
+  outputType: 'png'
+})
 
 // 修改密码相关
 const showPasswordDialog = ref(false)
@@ -362,11 +468,78 @@ const currentSignature = computed(() => {
   return null
 })
 
-// 头像URL（使用默认头像或用户头像）
+// 头像URL
 const avatarUrl = computed(() => {
-  // 可以根据实际情况返回用户头像URL
+  if (authStore.userInfo?.avatar_image_path) {
+    return `/api${authStore.userInfo.avatar_image_path}`
+  }
   return ''
 })
+
+/**
+ * 触发头像文件选择
+ */
+function triggerAvatarUpload() {
+  avatarInputRef.value?.click()
+}
+
+/**
+ * 处理头像文件选择，打开裁剪弹窗
+ */
+function handleAvatarFileChange(event: Event) {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0]
+  if (!file) return
+  
+  // 读取为 data URL 给 cropper 使用
+  const reader = new FileReader()
+  reader.onload = (e) => {
+    cropperOption.img = e.target?.result as string
+    showCropperDialog.value = true
+  }
+  reader.readAsDataURL(file)
+  
+  // 清空 input 以便重复选择同一文件
+  target.value = ''
+}
+
+/**
+ * 裁剪并上传头像
+ */
+async function handleCropAndUpload() {
+  if (!cropperRef.value) return
+  
+  avatarLoading.value = true
+  try {
+    // 从 cropper 获取裁剪后的 Blob
+    cropperRef.value.getCropBlob((blob: Blob) => {
+      uploadAvatarBlob(blob)
+    })
+  } catch (error: any) {
+    avatarLoading.value = false
+    ElMessage.error('裁剪失败，请重试')
+  }
+}
+
+/**
+ * 上传裁剪后的头像 Blob
+ */
+async function uploadAvatarBlob(blob: Blob) {
+  try {
+    await workbenchApi.uploadAvatar(blob)
+    ElMessage.success('头像更新成功')
+    
+    // 刷新用户信息以更新头像
+    await authStore.refreshUserInfo()
+    
+    showCropperDialog.value = false
+  } catch (error: any) {
+    console.error('Failed to upload avatar:', error)
+    ElMessage.error(error.message || '头像上传失败')
+  } finally {
+    avatarLoading.value = false
+  }
+}
 
 /**
  * 加载工作台数据
@@ -520,12 +693,69 @@ onMounted(() => {
 <style scoped>
 .workbench-container {
   padding: 20px;
-  max-width: 1400px;
-  margin: 0 auto;
 }
 
 .loading-container {
   padding: 40px;
+}
+
+/* 头像上传 */
+.avatar-wrapper {
+  position: relative;
+  cursor: pointer;
+  border-radius: 50%;
+  overflow: hidden;
+}
+
+.avatar-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 20px;
+  opacity: 0;
+  transition: opacity 0.3s;
+  border-radius: 50%;
+}
+
+.avatar-wrapper:hover .avatar-overlay {
+  opacity: 1;
+}
+
+/* 裁剪弹窗 */
+.cropper-container {
+  width: 100%;
+  height: 360px;
+}
+
+/* 仪表盘并列卡片 */
+.dashboard-row {
+  margin-top: 0;
+}
+
+.dashboard-card {
+  min-height: 300px;
+  margin-bottom: 20px;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.card-header-title {
+  font-size: 16px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 /* 个人信息卡片 */

@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * TaskCard 组件单元测试
  * 

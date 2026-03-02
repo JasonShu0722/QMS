@@ -33,10 +33,103 @@
         router
         @select="handleMenuSelect"
       >
+        <!-- 2.2 个人中心 -->
         <el-menu-item index="/workbench">
           <el-icon><HomeFilled /></el-icon>
           <template #title>工作台</template>
         </el-menu-item>
+
+        <!-- 2.4 质量数据面板 -->
+        <el-sub-menu index="quality-data">
+          <template #title>
+            <el-icon><DataLine /></el-icon>
+            <span>质量数据面板</span>
+          </template>
+          <el-menu-item index="/quality-dashboard">数据仪表盘</el-menu-item>
+          <el-menu-item index="/quality-dashboard/analysis">专项数据分析</el-menu-item>
+        </el-sub-menu>
+
+        <!-- 2.5 供应商质量管理 -->
+        <el-sub-menu index="supplier">
+          <template #title>
+            <el-icon><OfficeBuilding /></el-icon>
+            <span>供应商质量管理</span>
+          </template>
+          <el-menu-item index="/supplier/scar">SCAR管理</el-menu-item>
+          <el-menu-item index="/supplier/eight-d">供应商8D报告</el-menu-item>
+          <el-menu-item index="/supplier/audit-plan">供应商审核</el-menu-item>
+          <el-menu-item index="/supplier/targets">目标管理</el-menu-item>
+          <el-menu-item index="/supplier/performance">绩效评价</el-menu-item>
+          <el-menu-item index="/supplier/meetings">供应商会议</el-menu-item>
+          <el-menu-item index="/supplier/ppap">PPAP管理</el-menu-item>
+          <el-menu-item index="/supplier/inspection-specs">检验规范</el-menu-item>
+          <el-menu-item index="/supplier/barcode">防错扫码</el-menu-item>
+          <el-menu-item index="/supplier/claims">供应商索赔</el-menu-item>
+          <el-menu-item index="/supplier/change-management">供应商变更</el-menu-item>
+        </el-sub-menu>
+
+        <!-- 2.6 过程质量管理 -->
+        <el-sub-menu index="process-quality">
+          <template #title>
+            <el-icon><Monitor /></el-icon>
+            <span>过程质量管理</span>
+          </template>
+          <el-menu-item index="/quality/process-defects">不合格品数据</el-menu-item>
+          <el-menu-item index="/quality/process-issues">过程问题管理</el-menu-item>
+        </el-sub-menu>
+
+        <!-- 2.7 客户质量管理 -->
+        <el-sub-menu index="customer-quality">
+          <template #title>
+            <el-icon><UserFilled /></el-icon>
+            <span>客户质量管理</span>
+          </template>
+          <el-menu-item index="/quality/customer-complaints">客诉管理</el-menu-item>
+          <el-menu-item index="/quality/eight-d-customer">客户8D报告</el-menu-item>
+          <el-menu-item index="/quality/customer-claims">客户索赔</el-menu-item>
+        </el-sub-menu>
+
+        <!-- 2.8 新品质量管理 -->
+        <el-sub-menu index="newproduct">
+          <template #title>
+            <el-icon><Opportunity /></el-icon>
+            <span>新品质量管理</span>
+          </template>
+          <el-menu-item index="/quality/lesson-learned">经验教训库</el-menu-item>
+          <el-menu-item index="/newproduct/projects">项目管理</el-menu-item>
+          <el-menu-item index="/newproduct/stage-review">阶段评审</el-menu-item>
+          <el-menu-item index="/newproduct/lesson-check">经验教训检查</el-menu-item>
+          <el-menu-item index="/newproduct/trial">试产管理</el-menu-item>
+          <el-menu-item index="/newproduct/trial-issues">试产问题</el-menu-item>
+          <el-menu-item index="/newproduct/trial-summary">试产总结</el-menu-item>
+        </el-sub-menu>
+
+        <!-- 2.9 审核管理 -->
+        <el-sub-menu index="audit">
+          <template #title>
+            <el-icon><Document /></el-icon>
+            <span>审核管理</span>
+          </template>
+          <el-menu-item index="/audit/plans">审核计划</el-menu-item>
+          <el-menu-item index="/audit/templates">审核模板</el-menu-item>
+          <el-menu-item index="/audit/execution">审核执行</el-menu-item>
+          <el-menu-item index="/audit/nc-list">不符合项</el-menu-item>
+          <el-menu-item index="/audit/report">审核报告</el-menu-item>
+          <el-menu-item index="/audit/customer">客户审核</el-menu-item>
+        </el-sub-menu>
+
+        <!-- 2.3 系统管理 -->
+        <el-sub-menu index="admin">
+          <template #title>
+            <el-icon><Setting /></el-icon>
+            <span>系统管理</span>
+          </template>
+          <el-menu-item index="/admin/users">用户管理</el-menu-item>
+          <el-menu-item index="/admin/permissions">权限管理</el-menu-item>
+          <el-menu-item index="/admin/tasks">任务监控</el-menu-item>
+          <el-menu-item index="/admin/operation-logs">操作日志</el-menu-item>
+          <el-menu-item index="/admin/feature-flags">功能开关</el-menu-item>
+        </el-sub-menu>
       </el-menu>
     </el-drawer>
 
@@ -66,7 +159,10 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { Menu, User, HomeFilled } from '@element-plus/icons-vue'
+import { 
+  Menu, User, HomeFilled, OfficeBuilding, DataLine, 
+  Document, Opportunity, Setting, Monitor, UserFilled
+} from '@element-plus/icons-vue'
 import { useEnvironment } from '@/composables/useEnvironment'
 
 const router = useRouter()

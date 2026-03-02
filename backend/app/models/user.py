@@ -73,6 +73,12 @@ class User(Base):
         comment="关联供应商ID"
     )
     
+    # 头像
+    avatar_image_path: Mapped[Optional[str]] = mapped_column(String(255), comment="头像图片路径")
+    
+    # 环境权限：可选值 "stable"、"preview"、"stable,preview"
+    allowed_environments: Mapped[str] = mapped_column(String(50), nullable=False, default="stable", comment="允许访问的环境，逗号分隔")
+    
     # 电子签名
     digital_signature: Mapped[Optional[str]] = mapped_column(String(255), comment="电子签名图片路径")
     
@@ -110,6 +116,7 @@ class User(Base):
             "department": self.department,
             "position": self.position,
             "supplier_id": self.supplier_id,
+            "avatar_image_path": self.avatar_image_path,
             "digital_signature": self.digital_signature,
             "last_login_at": self.last_login_at.isoformat() if self.last_login_at else None,
             "created_at": self.created_at.isoformat(),

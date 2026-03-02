@@ -44,16 +44,14 @@
 /* 平板适配 */
 @media (min-width: 768px) and (max-width: 1023px) {
   .tablet-layout {
-    max-width: 768px;
-    margin: 0 auto;
+    margin: 0;
   }
 }
 
-/* 桌面端 */
+/* 桌面端 - 自适应全宽 */
 @media (min-width: 1024px) {
   .desktop-layout {
-    max-width: 1200px;
-    margin: 0 auto;
+    margin: 0;
   }
 }
 

@@ -1,8 +1,8 @@
 import request from '@/utils/request'
-import type { 
-  DashboardData, 
-  ChangePasswordRequest, 
-  SignatureUploadResponse 
+import type {
+  DashboardData,
+  ChangePasswordRequest,
+  SignatureUploadResponse
 } from '@/types/workbench'
 
 /**
@@ -36,8 +36,22 @@ export const workbenchApi = {
   uploadSignature(file: File): Promise<SignatureUploadResponse> {
     const formData = new FormData()
     formData.append('file', file)
-    
+
     return request.post('/v1/profile/signature', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    })
+  },
+
+  /**
+   * 上传头像（裁剪后的图片 Blob）
+   */
+  uploadAvatar(file: Blob): Promise<{ message: string; avatar_path: string }> {
+    const formData = new FormData()
+    formData.append('file', file, 'avatar.png')
+
+    return request.post('/v1/profile/avatar', formData, {
       headers: {
         'Content-Type': 'multipart/form-data'
       }

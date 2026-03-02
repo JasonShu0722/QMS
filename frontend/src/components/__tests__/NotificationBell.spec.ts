@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * NotificationBell 组件单元测试
  * 
@@ -32,13 +33,13 @@ describe('NotificationBell.vue', () => {
   beforeEach(() => {
     // 创建新的 Pinia 实例
     setActivePinia(createPinia())
-    
+
     // 重置所有 mock
     vi.clearAllMocks()
-    
+
     // 清除定时器
     vi.clearAllTimers()
-    
+
     // 使用假定时器
     vi.useFakeTimers()
   })
@@ -60,7 +61,7 @@ describe('NotificationBell.vue', () => {
 
       // 验证 API 被调用
       expect(notificationApi.getUnreadCount).toHaveBeenCalledTimes(1)
-      
+
       // 验证徽章显示数字
       const badge = wrapper.find('.el-badge')
       expect(badge.exists()).toBe(true)
@@ -94,8 +95,8 @@ describe('NotificationBell.vue', () => {
 
     it('API 调用失败时应该优雅处理', async () => {
       // Mock console.error 以避免测试输出错误
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-      
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => { })
+
       vi.mocked(notificationApi.getUnreadCount).mockRejectedValue(
         new Error('Network error')
       )
@@ -105,10 +106,10 @@ describe('NotificationBell.vue', () => {
 
       // 组件应该不会崩溃
       expect(wrapper.find('.notification-bell').exists()).toBe(true)
-      
+
       // 验证错误被记录
       expect(consoleErrorSpy).toHaveBeenCalled()
-      
+
       consoleErrorSpy.mockRestore()
     })
   })
@@ -143,7 +144,7 @@ describe('NotificationBell.vue', () => {
       await flushPromises()
 
       const button = wrapper.find('.el-button')
-      
+
       // 第一次点击 - 打开
       await button.trigger('click')
       let drawer = wrapper.findComponent({ name: 'ElDrawer' })
@@ -328,8 +329,8 @@ describe('NotificationBell.vue', () => {
     })
 
     it('轮询期间 API 失败不应该影响后续轮询', async () => {
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-      
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => { })
+
       vi.mocked(notificationApi.getUnreadCount)
         .mockResolvedValueOnce({ unread_count: 3 })
         .mockRejectedValueOnce(new Error('Network error'))

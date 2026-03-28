@@ -1,121 +1,158 @@
-# QMS Backend - 质量管理系统后端
+# Backend README
 
-## 项目结构
+`backend` 是 QMS 的 FastAPI 后端服务，负责：
 
-```
-backend/
-├── app/
-│   ├── api/              # API 路由层
-│   │   └── v1/           # API 版本 1
-│   ├── core/             # 核心配置
-│   │   └── config.py     # 环境变量配置
-│   ├── models/           # SQLAlchemy 数据库模型
-│   ├── schemas/          # Pydantic 数据校验模型
-│   ├── services/         # 业务逻辑层
-│   └── main.py           # FastAPI 应用入口
-├── alembic/              # 数据库迁移脚本
-├── requirements.txt      # Python 依赖包
-├── Dockerfile            # 容器构建文件
-└── .env.example          # 环境变量模板
-```
+- 用户认证与权限控制
+- 业务 API
+- 数据库访问
+- 异步任务和集成能力
 
 ## 技术栈
 
-- **Web 框架**: FastAPI + Uvicorn (ASGI)
-- **数据库**: PostgreSQL 15+ (通过 SQLAlchemy 2.0 Async ORM)
-- **数据迁移**: Alembic
-- **数据校验**: Pydantic V2
-- **认证**: Python-Jose (JWT) + Passlib (密码哈希)
-- **任务队列**: Celery + Redis
-- **HTTP 客户端**: HTTPX (用于 IMS 集成)
-- **邮件**: aiosmtplib
+- Python 3.10+
+- FastAPI
+- SQLAlchemy Async
+- PostgreSQL
+- Redis
+- Alembic
+- Celery
 
-## 快速开始
+## 目录结构
 
-### 1. 安装依赖
-
-```bash
-pip install -r requirements.txt
+```text
+backend/
+├─ app/
+│  ├─ api/
+│  ├─ core/
+│  ├─ models/
+│  ├─ schemas/
+│  ├─ services/
+│  └─ main.py
+├─ alembic/
+├─ scripts/
+├─ test/
+├─ doc/
+├─ requirements.txt
+├─ pytest.ini
+└─ .env
 ```
 
-### 2. 配置环境变量
+## 推荐启动方式
 
-复制 `.env.example` 为 `.env` 并修改配置：
+推荐使用：
+
+1. Docker 仅启动 `PostgreSQL + Redis`
+2. 后端本地进程启动
+
+这样日志更清晰，代码改动即时生效，适合调试。
+
+## 本地启动
+
+### 1. 准备基础设施
+
+在项目根目录执行：
 
 ```bash
-cp .env.example .env
+docker compose up -d postgres redis
 ```
 
-### 3. 初始化数据库迁移
+### 2. 安装依赖
+
+如果虚拟环境还没装依赖：
 
 ```bash
-alembic upgrade head
+cd backend
+python -m venv .venv
+.venv\Scripts\pip install -r requirements.txt
 ```
 
-### 4. 启动开发服务器
+### 3. 配置环境变量
 
-```bash
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+本地开发默认读取：
+
+```text
+backend/.env
 ```
 
-访问 API 文档：http://localhost:8000/api/docs
+当前本地开发关键配置示例：
 
-## Docker 部署
-
-### 构建镜像
-
-```bash
-docker build -t qms-backend:latest .
+```env
+DATABASE_URL=postgresql+asyncpg://qms_user:qms_dev_password@localhost:5432/qms_db
+REDIS_URL=redis://localhost:6379/0
+DEBUG=True
 ```
 
-### 运行容器
+### 4. 执行迁移
 
 ```bash
-docker run -d \
-  --name qms-backend \
-  -p 8000:8000 \
-  --env-file .env \
-  qms-backend:latest
+cd backend
+.venv\Scripts\python.exe -m alembic upgrade head
+```
+
+### 5. 启动服务
+
+```bash
+cd backend
+.venv\Scripts\python.exe -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+启动后可访问：
+
+- 健康检查：`http://localhost:8000/health`
+- Swagger：`http://localhost:8000/api/docs`
+- ReDoc：`http://localhost:8000/api/redoc`
+
+## 测试
+
+### 运行全部后端测试
+
+```bash
+cd backend
+.venv\Scripts\python.exe -m pytest
+```
+
+### 运行单个测试文件
+
+```bash
+cd backend
+.venv\Scripts\python.exe -m pytest test/test_login.py
 ```
 
 ## 数据库迁移
 
-### 创建新迁移
+### 生成迁移
 
 ```bash
-alembic revision --autogenerate -m "描述变更内容"
+cd backend
+.venv\Scripts\python.exe -m alembic revision --autogenerate -m "your message"
 ```
 
-### 执行迁移
+### 应用迁移
 
 ```bash
-alembic upgrade head
+cd backend
+.venv\Scripts\python.exe -m alembic upgrade head
 ```
 
-### 回滚迁移
+### 回滚一版
 
 ```bash
-alembic downgrade -1
+cd backend
+.venv\Scripts\python.exe -m alembic downgrade -1
 ```
 
-## 双轨发布注意事项
+## 管理员账号
 
-本系统采用 Preview 和 Stable 双轨发布架构，共享同一数据库。
+当前本地库里已确认存在管理员账号：
 
-**数据库迁移规范**：
-- ✅ 允许：新增表、新增字段（必须 nullable=True 或有 server_default）
-- ❌ 禁止：删除字段、重命名字段、修改字段类型
+- 用户名：`Admin`
+- 用户类型：`internal`
 
-## 开发规范
+密码如果不确定，不要只依赖历史文档，应以数据库当前状态或重置脚本为准。
 
-- 遵循 **Clean Architecture** 分层原则
-- 所有数据库操作使用 **async/await**
-- 业务逻辑放在 `services/` 层，不要写在路由中
-- 使用 `snake_case` 命名文件和函数
-- 使用 `PascalCase` 命名类
+## 开发建议
 
-## API 文档
-
-启动服务后访问：
-- Swagger UI: http://localhost:8000/api/docs
-- ReDoc: http://localhost:8000/api/redoc
+- 调试接口时优先看 `app/api` 和 `app/services`
+- 配置问题优先看 `app/core/config.py` 和 `backend/.env`
+- 登录、权限问题优先看 `app/core/auth_strategy.py`、`app/core/dependencies.py`
+- 测试目录已统一为 `backend/test`

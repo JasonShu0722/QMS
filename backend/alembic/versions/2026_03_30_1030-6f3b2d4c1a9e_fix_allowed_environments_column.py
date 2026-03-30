@@ -28,17 +28,15 @@ def upgrade() -> None:
             sa.Column(
                 "allowed_environments",
                 sa.String(length=50),
-                nullable=False,
+                nullable=True,
                 server_default="stable",
-                comment="允许访问的环境，逗号分隔",
+                comment="??????????????????",
             ),
         )
 
 
 def downgrade() -> None:
-    bind = op.get_bind()
-    inspector = inspect(bind)
-    columns = {column["name"] for column in inspector.get_columns("users")}
-
-    if "allowed_environments" in columns:
-        op.drop_column("users", "allowed_environments")
+    raise NotImplementedError(
+        "This migration is intentionally forward-only. "
+        "Destructive downgrade operations are disabled by repository policy."
+    )

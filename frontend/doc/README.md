@@ -69,10 +69,12 @@ frontend/.env.development
 
 ```env
 VITE_API_BASE_URL=/api
-VITE_ENVIRONMENT=development
+VITE_ENVIRONMENT=stable
 ```
 
 这里必须使用 `/api`，让浏览器通过 Vite 代理访问后端，避免本地开发时直接跨域请求 `http://localhost:8000`。
+
+这里的 `stable` 表示“本地前端默认按正式版语义运行”，不是说本地不能调预览版。项目里的预览版 / 正式版仍然由登录请求中的 `environment` 和双环境服务来控制。
 
 ### 3. 启动前端
 

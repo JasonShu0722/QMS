@@ -1,12 +1,6 @@
-version: '3.8'
-
-# QMS 质量管理系统 - 双轨发布架构
-# Preview (预览环境) 与 Stable (正式环境) 共享数据底座
+# QMS dual-environment compose stack.
 
 services:
-  # ==================== 共享数据底座 ====================
-  
-  # PostgreSQL 15+ 数据库（共享数据底座）
   postgres:
     image: postgres:15-alpine
     container_name: qms_postgres
@@ -28,7 +22,6 @@ services:
       retries: 5
     restart: unless-stopped
 
-  # Redis 7+ 缓存/队列
   redis:
     image: redis:7-alpine
     container_name: qms_redis
@@ -46,39 +39,40 @@ services:
       retries: 5
     restart: unless-stopped
 
-  # ==================== 正式环境 (Stable) ====================
-  
-  # 正式环境后端容器
   backend-stable:
     build:
       context: ./backend
       dockerfile: Dockerfile
     container_name: qms_backend_stable
     environment:
-      # 数据库配置
       DATABASE_URL: postgresql+asyncpg://qms_user:${DB_PASSWORD}@postgres:5432/qms_db
-      # Redis 配置
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
-      # 环境标识
+      CELERY_BROKER_URL: redis://:${REDIS_PASSWORD}@redis:6379/1
+      CELERY_RESULT_BACKEND: redis://:${REDIS_PASSWORD}@redis:6379/2
       ENVIRONMENT: stable
-      # JWT 配置
+      DEBUG: ${DEBUG:-false}
       SECRET_KEY: ${SECRET_KEY}
-      ALGORITHM: HS256
-      ACCESS_TOKEN_EXPIRE_HOURS: 24
-      # IMS 集成配置
-      IMS_BASE_URL: ${IMS_BASE_URL}
-      # SMTP 配置
-      SMTP_SERVER: ${SMTP_SERVER}
+      ALGORITHM: ${ALGORITHM:-HS256}
+      ACCESS_TOKEN_EXPIRE_HOURS: ${ACCESS_TOKEN_EXPIRE_HOURS:-24}
+      CORS_ORIGINS: ${CORS_ORIGINS:-["http://localhost:3000","http://localhost:5173"]}
+      IMS_BASE_URL: ${IMS_BASE_URL:-}
+      IMS_API_KEY: ${IMS_API_KEY:-}
+      IMS_TIMEOUT: ${IMS_TIMEOUT:-30}
+      SMTP_SERVER: ${SMTP_SERVER:-}
       SMTP_PORT: ${SMTP_PORT:-587}
-      SMTP_USERNAME: ${SMTP_USERNAME}
-      SMTP_PASSWORD: ${SMTP_PASSWORD}
-      # OpenAI API 配置
-      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM_EMAIL: ${SMTP_FROM_EMAIL:-}
+      SMTP_USE_TLS: ${SMTP_USE_TLS:-true}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-}
+      UPLOAD_DIR: /app/uploads
+      MAX_UPLOAD_SIZE: ${MAX_UPLOAD_SIZE:-52428800}
     volumes:
       - ./backend:/app
       - backend_stable_uploads:/app/uploads
     ports:
-      - "8000:8000"
+      - "${QMS_BIND_IP:-127.0.0.1}:${BACKEND_STABLE_PORT:-8000}:8000"
     networks:
       - qms_network
     depends_on:
@@ -89,7 +83,6 @@ services:
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     restart: unless-stopped
 
-  # 正式环境前端容器
   frontend-stable:
     build:
       context: ./frontend
@@ -101,47 +94,46 @@ services:
     volumes:
       - ./frontend:/app
       - /app/node_modules
-    ports:
-      - "3000:80"
     networks:
       - qms_network
     depends_on:
       - backend-stable
     restart: unless-stopped
 
-  # ==================== 预览环境 (Preview) ====================
-  
-  # 预览环境后端容器
   backend-preview:
     build:
       context: ./backend
       dockerfile: Dockerfile
     container_name: qms_backend_preview
     environment:
-      # 数据库配置（共享同一数据库）
       DATABASE_URL: postgresql+asyncpg://qms_user:${DB_PASSWORD}@postgres:5432/qms_db
-      # Redis 配置
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/1
-      # 环境标识
+      CELERY_BROKER_URL: redis://:${REDIS_PASSWORD}@redis:6379/1
+      CELERY_RESULT_BACKEND: redis://:${REDIS_PASSWORD}@redis:6379/2
       ENVIRONMENT: preview
-      # JWT 配置
+      DEBUG: ${DEBUG:-false}
       SECRET_KEY: ${SECRET_KEY}
-      ALGORITHM: HS256
-      ACCESS_TOKEN_EXPIRE_HOURS: 24
-      # IMS 集成配置
-      IMS_BASE_URL: ${IMS_BASE_URL}
-      # SMTP 配置
-      SMTP_SERVER: ${SMTP_SERVER}
+      ALGORITHM: ${ALGORITHM:-HS256}
+      ACCESS_TOKEN_EXPIRE_HOURS: ${ACCESS_TOKEN_EXPIRE_HOURS:-24}
+      CORS_ORIGINS: ${CORS_ORIGINS:-["http://localhost:3000","http://localhost:5173"]}
+      IMS_BASE_URL: ${IMS_BASE_URL:-}
+      IMS_API_KEY: ${IMS_API_KEY:-}
+      IMS_TIMEOUT: ${IMS_TIMEOUT:-30}
+      SMTP_SERVER: ${SMTP_SERVER:-}
       SMTP_PORT: ${SMTP_PORT:-587}
-      SMTP_USERNAME: ${SMTP_USERNAME}
-      SMTP_PASSWORD: ${SMTP_PASSWORD}
-      # OpenAI API 配置
-      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM_EMAIL: ${SMTP_FROM_EMAIL:-}
+      SMTP_USE_TLS: ${SMTP_USE_TLS:-true}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-}
+      UPLOAD_DIR: /app/uploads
+      MAX_UPLOAD_SIZE: ${MAX_UPLOAD_SIZE:-52428800}
     volumes:
       - ./backend:/app
       - backend_preview_uploads:/app/uploads
     ports:
-      - "8001:8000"
+      - "${QMS_BIND_IP:-127.0.0.1}:${BACKEND_PREVIEW_PORT:-8001}:8000"
     networks:
       - qms_network
     depends_on:
@@ -152,7 +144,6 @@ services:
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     restart: unless-stopped
 
-  # 预览环境前端容器
   frontend-preview:
     build:
       context: ./frontend
@@ -164,26 +155,26 @@ services:
     volumes:
       - ./frontend:/app
       - /app/node_modules
-    ports:
-      - "3001:80"
     networks:
       - qms_network
     depends_on:
       - backend-preview
     restart: unless-stopped
 
-  # ==================== 网关与任务队列 ====================
-  
-  # Nginx 反向代理网关
   nginx:
     image: nginx:alpine
     container_name: qms_nginx
+    environment:
+      PRIMARY_DOMAIN: ${PRIMARY_DOMAIN:-qms.bigshuaibee.cn}
+      PREVIEW_DOMAIN: ${PREVIEW_DOMAIN:-preview.qms.bigshuaibee.cn}
+      NGINX_ENVSUBST_TEMPLATE_DIR: /etc/nginx/templates
+      NGINX_ENVSUBST_TEMPLATE_SUFFIX: .template
+      NGINX_ENVSUBST_OUTPUT_DIR: /etc/nginx
     volumes:
-      - ./deployment/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./deployment/nginx/nginx.conf.template:/etc/nginx/templates/nginx.conf.template:ro
       - ./deployment/nginx/ssl:/etc/nginx/ssl:ro
     ports:
-      - "80:80"
-      - "443:443"
+      - "${QMS_BIND_IP:-127.0.0.1}:${QMS_NGINX_PORT:-8081}:80"
     networks:
       - qms_network
     depends_on:
@@ -193,7 +184,6 @@ services:
       - frontend-preview
     restart: unless-stopped
 
-  # Celery Worker - 异步任务处理
   celery-worker:
     build:
       context: ./backend
@@ -202,14 +192,19 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://qms_user:${DB_PASSWORD}@postgres:5432/qms_db
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      CELERY_BROKER_URL: redis://:${REDIS_PASSWORD}@redis:6379/1
+      CELERY_RESULT_BACKEND: redis://:${REDIS_PASSWORD}@redis:6379/2
       ENVIRONMENT: stable
       SECRET_KEY: ${SECRET_KEY}
-      IMS_BASE_URL: ${IMS_BASE_URL}
-      SMTP_SERVER: ${SMTP_SERVER}
+      IMS_BASE_URL: ${IMS_BASE_URL:-}
+      IMS_API_KEY: ${IMS_API_KEY:-}
+      SMTP_SERVER: ${SMTP_SERVER:-}
       SMTP_PORT: ${SMTP_PORT:-587}
-      SMTP_USERNAME: ${SMTP_USERNAME}
-      SMTP_PASSWORD: ${SMTP_PASSWORD}
-      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM_EMAIL: ${SMTP_FROM_EMAIL:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-}
     volumes:
       - ./backend:/app
     networks:
@@ -222,7 +217,6 @@ services:
     command: celery -A app.core.celery_app worker --loglevel=info --concurrency=4
     restart: unless-stopped
 
-  # Celery Beat - 定时任务调度
   celery-beat:
     build:
       context: ./backend
@@ -231,9 +225,12 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://qms_user:${DB_PASSWORD}@postgres:5432/qms_db
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      CELERY_BROKER_URL: redis://:${REDIS_PASSWORD}@redis:6379/1
+      CELERY_RESULT_BACKEND: redis://:${REDIS_PASSWORD}@redis:6379/2
       ENVIRONMENT: stable
       SECRET_KEY: ${SECRET_KEY}
-      IMS_BASE_URL: ${IMS_BASE_URL}
+      IMS_BASE_URL: ${IMS_BASE_URL:-}
+      IMS_API_KEY: ${IMS_API_KEY:-}
     volumes:
       - ./backend:/app
     networks:
@@ -246,30 +243,24 @@ services:
     command: celery -A app.core.celery_app beat --loglevel=info
     restart: unless-stopped
 
-# ==================== 网络配置 ====================
 networks:
   qms_network:
     driver: bridge
     name: qms_network
 
-# ==================== 数据卷持久化 ====================
 volumes:
-  # PostgreSQL 数据持久化
   postgres_data:
     driver: local
     name: qms_postgres_data
-  
-  # Redis 数据持久化
+
   redis_data:
     driver: local
     name: qms_redis_data
-  
-  # 后端上传文件持久化（正式环境）
+
   backend_stable_uploads:
     driver: local
     name: qms_backend_stable_uploads
-  
-  # 后端上传文件持久化（预览环境）
+
   backend_preview_uploads:
     driver: local
     name: qms_backend_preview_uploads

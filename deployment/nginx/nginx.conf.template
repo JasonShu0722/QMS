@@ -1,0 +1,181 @@
+user nginx;
+worker_processes auto;
+worker_rlimit_nofile 65535;
+error_log /var/log/nginx/error.log warn;
+pid /var/run/nginx.pid;
+
+events {
+    worker_connections 4096;
+    use epoll;
+    multi_accept on;
+}
+
+http {
+    include /etc/nginx/mime.types;
+    default_type application/octet-stream;
+
+    log_format main '$remote_addr - $remote_user [$time_local] "$request" '
+                    '$status $body_bytes_sent "$http_referer" '
+                    '"$http_user_agent" "$http_x_forwarded_for"';
+
+    access_log /var/log/nginx/access.log main;
+
+    sendfile on;
+    tcp_nopush on;
+    tcp_nodelay on;
+    keepalive_timeout 65;
+    keepalive_requests 1000;
+    types_hash_max_size 2048;
+    server_tokens off;
+
+    reset_timedout_connection on;
+    send_timeout 30;
+
+    client_body_timeout 12;
+    client_header_timeout 12;
+    client_body_buffer_size 128k;
+    client_header_buffer_size 1k;
+    large_client_header_buffers 4 16k;
+    output_buffers 1 32k;
+    postpone_output 1460;
+
+    gzip on;
+    gzip_vary on;
+    gzip_proxied any;
+    gzip_comp_level 6;
+    gzip_min_length 1000;
+    gzip_buffers 16 8k;
+    gzip_http_version 1.1;
+    gzip_types text/plain text/css text/xml text/javascript
+               application/json application/javascript application/xml+rss
+               application/rss+xml font/truetype font/opentype
+               application/vnd.ms-fontobject image/svg+xml;
+    gzip_disable "msie6";
+
+    proxy_cache_path /var/cache/nginx/qms levels=1:2 keys_zone=qms_cache:100m
+                     max_size=1g inactive=60m use_temp_path=off;
+    proxy_cache_key "$scheme$request_method$host$request_uri";
+    proxy_cache_valid 200 302 10m;
+    proxy_cache_valid 404 1m;
+    proxy_cache_use_stale error timeout updating http_500 http_502 http_503 http_504;
+    proxy_cache_background_update on;
+    proxy_cache_lock on;
+
+    client_max_body_size 50M;
+    client_body_buffer_size 128k;
+
+    upstream backend-stable {
+        server backend-stable:8000 max_fails=3 fail_timeout=30s;
+        keepalive 32;
+    }
+
+    upstream backend-preview {
+        server backend-preview:8000 max_fails=3 fail_timeout=30s;
+        keepalive 32;
+    }
+
+    upstream frontend-stable {
+        server frontend-stable:80 max_fails=3 fail_timeout=30s;
+        keepalive 32;
+    }
+
+    upstream frontend-preview {
+        server frontend-preview:80 max_fails=3 fail_timeout=30s;
+        keepalive 32;
+    }
+
+    server {
+        listen 80;
+        server_name ${PRIMARY_DOMAIN};
+
+        add_header X-Frame-Options "SAMEORIGIN" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-XSS-Protection "1; mode=block" always;
+
+        location /api {
+            proxy_pass http://backend-stable;
+            proxy_http_version 1.1;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_connect_timeout 300s;
+            proxy_send_timeout 300s;
+            proxy_read_timeout 300s;
+        }
+
+        location / {
+            proxy_pass http://frontend-stable;
+            proxy_http_version 1.1;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+    }
+
+    server {
+        listen 80;
+        server_name ${PREVIEW_DOMAIN};
+
+        add_header X-Frame-Options "SAMEORIGIN" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-XSS-Protection "1; mode=block" always;
+        add_header X-Environment "preview" always;
+
+        location /api {
+            proxy_pass http://backend-preview;
+            proxy_http_version 1.1;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_connect_timeout 300s;
+            proxy_send_timeout 300s;
+            proxy_read_timeout 300s;
+        }
+
+        location / {
+            proxy_pass http://frontend-preview;
+            proxy_http_version 1.1;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+    }
+
+    server {
+        listen 80;
+        server_name localhost 127.0.0.1;
+
+        client_max_body_size 50M;
+
+        location /api {
+            proxy_pass http://backend-stable;
+            proxy_http_version 1.1;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_connect_timeout 300s;
+            proxy_send_timeout 300s;
+            proxy_read_timeout 300s;
+        }
+
+        location / {
+            proxy_pass http://frontend-stable;
+            proxy_http_version 1.1;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+
+        location /health {
+            access_log off;
+            return 200 "healthy\n";
+            add_header Content-Type text/plain;
+        }
+    }
+}

@@ -147,6 +147,12 @@ VITE_API_BASE_URL=/api
 docker compose up -d --build
 ```
 
+服务器部署时请显式使用生产环境文件：
+
+```bash
+docker compose --env-file .env.production up -d --build
+```
+
 查看状态：
 
 ```bash

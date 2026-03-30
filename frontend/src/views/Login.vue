@@ -1,6 +1,5 @@
 <template>
   <div class="login-container">
-    <!-- 桌面端布局 (Element Plus) -->
     <div v-if="!isMobile" class="desktop-layout">
       <el-card :class="['login-card', isPreviewMode ? 'login-card--preview' : '']">
         <template #header>
@@ -10,32 +9,29 @@
           </div>
         </template>
 
-        <!-- 预览版警示横幅 -->
         <div v-if="isPreviewMode" class="preview-banner">
-          ⚠️ 预览环境 — 仅限授权用户
+          ⚠️ 预览环境，仅限授权用户
         </div>
 
-        <!-- 环境切换滑块 -->
         <div class="env-switcher">
           <span :class="['env-label', !isPreviewMode ? 'env-label--active-stable' : '']">🏢 正式版</span>
           <el-switch
-            v-model="isPreviewMode"
+            :model-value="isPreviewMode"
             active-color="#e6a23c"
             inactive-color="#409eff"
             inline-prompt
             active-text=""
             inactive-text=""
+            @change="handleEnvironmentToggle"
           />
           <span :class="['env-label', isPreviewMode ? 'env-label--active-preview' : '']">🧪 预览版</span>
         </div>
 
-        <!-- 用户类型选择 -->
         <el-radio-group v-model="userType" class="user-type-selector" size="large">
           <el-radio-button value="internal">员工登录</el-radio-button>
           <el-radio-button value="supplier">供应商登录</el-radio-button>
         </el-radio-group>
 
-        <!-- 登录表单 -->
         <el-form
           ref="loginFormRef"
           :model="loginForm"
@@ -65,7 +61,6 @@
             />
           </el-form-item>
 
-          <!-- 供应商登录需要验证码 -->
           <el-form-item v-if="userType === 'supplier'" prop="captcha">
             <div class="captcha-row">
               <el-input
@@ -81,8 +76,8 @@
                 :src="captchaImage"
                 alt="验证码"
                 class="captcha-img"
-                @click="refreshCaptcha"
                 title="点击刷新验证码"
+                @click="refreshCaptcha"
               />
               <el-button
                 v-else
@@ -95,12 +90,10 @@
             </div>
           </el-form-item>
 
-          <!-- 记住密码 -->
           <el-form-item>
             <el-checkbox v-model="rememberPassword">记住密码</el-checkbox>
           </el-form-item>
 
-          <!-- 登录按钮 -->
           <el-form-item>
             <el-button
               type="primary"
@@ -113,19 +106,13 @@
             </el-button>
           </el-form-item>
 
-          <!-- SSO 登录按钮（预留，仅内部员工可见） -->
           <el-form-item v-if="userType === 'internal'">
-            <el-button
-              size="large"
-              disabled
-              class="sso-button"
-            >
+            <el-button size="large" disabled class="sso-button">
               <el-icon><Connection /></el-icon>
               SSO 单点登录（即将上线）
             </el-button>
           </el-form-item>
 
-          <!-- 注册链接 -->
           <div class="footer-links">
             <router-link to="/register" class="register-link">
               还没有账号？立即注册
@@ -135,43 +122,42 @@
       </el-card>
     </div>
 
-    <!-- 移动端布局 (Tailwind CSS) -->
     <div v-else class="mobile-layout">
       <div class="flex flex-col items-center justify-center min-h-screen p-4">
-        <!-- Logo 和标题 -->
         <div class="text-center mb-8">
           <h2 class="text-3xl font-bold text-white mb-2">质量管理系统</h2>
           <p class="text-white text-opacity-80">Quality Management System</p>
         </div>
 
-        <!-- 移动端表单卡片 -->
         <div class="w-full max-w-md bg-white rounded-lg shadow-xl p-6">
-          <!-- 用户类型选择 -->
           <div class="flex gap-2 mb-4">
-            <!-- 预览版标识 -->
-            <div v-if="isPreviewMode" class="w-full mb-2 py-2 px-3 bg-orange-100 border border-orange-400 rounded-lg text-orange-700 text-sm text-center">
-              ⚠️ 预览环境 — 仅限授权用户
+            <div
+              v-if="isPreviewMode"
+              class="w-full mb-2 py-2 px-3 bg-orange-100 border border-orange-400 rounded-lg text-orange-700 text-sm text-center"
+            >
+              ⚠️ 预览环境，仅限授权用户
             </div>
           </div>
 
-          <!-- 移动端环境切换 -->
           <div class="flex items-center justify-center gap-3 mb-4">
             <span :class="['text-sm font-medium', !isPreviewMode ? 'text-blue-600' : 'text-gray-400']">🏢 正式版</span>
             <label class="relative inline-flex items-center cursor-pointer">
-              <input type="checkbox" v-model="isPreviewMode" class="sr-only peer">
+              <input
+                type="checkbox"
+                :checked="isPreviewMode"
+                class="sr-only peer"
+                @change="handleEnvironmentToggle"
+              >
               <div class="w-11 h-6 rounded-full peer-focus:outline-none peer bg-blue-500 peer-checked:bg-orange-400 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full"></div>
             </label>
             <span :class="['text-sm font-medium', isPreviewMode ? 'text-orange-500' : 'text-gray-400']">🧪 预览版</span>
           </div>
 
-          <!-- 用户类型选择 -->
           <div class="flex gap-2 mb-6">
             <button
               :class="[
                 'flex-1 py-3 rounded-lg font-medium transition-all',
-                userType === 'internal'
-                  ? 'bg-blue-500 text-white'
-                  : 'bg-gray-100 text-gray-600'
+                userType === 'internal' ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-600'
               ]"
               @click="userType = 'internal'"
             >
@@ -180,9 +166,7 @@
             <button
               :class="[
                 'flex-1 py-3 rounded-lg font-medium transition-all',
-                userType === 'supplier'
-                  ? 'bg-blue-500 text-white'
-                  : 'bg-gray-100 text-gray-600'
+                userType === 'supplier' ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-600'
               ]"
               @click="userType = 'supplier'"
             >
@@ -190,9 +174,7 @@
             </button>
           </div>
 
-          <!-- 表单 -->
           <form @submit.prevent="handleLogin">
-            <!-- 用户名 -->
             <div class="mb-4">
               <input
                 v-model="loginForm.username"
@@ -202,7 +184,6 @@
               />
             </div>
 
-            <!-- 密码 -->
             <div class="mb-4">
               <input
                 v-model="loginForm.password"
@@ -212,7 +193,6 @@
               />
             </div>
 
-            <!-- 验证码（供应商） -->
             <div v-if="userType === 'supplier'" class="mb-4">
               <div class="flex gap-2">
                 <input
@@ -239,7 +219,6 @@
               </div>
             </div>
 
-            <!-- 记住密码 -->
             <div class="mb-6">
               <label class="flex items-center">
                 <input
@@ -251,7 +230,6 @@
               </label>
             </div>
 
-            <!-- 登录按钮 -->
             <button
               type="submit"
               :disabled="loading"
@@ -260,7 +238,6 @@
               {{ loading ? '登录中...' : '登录' }}
             </button>
 
-            <!-- SSO 按钮（预留） -->
             <button
               v-if="userType === 'internal'"
               type="button"
@@ -270,7 +247,6 @@
               SSO 单点登录（即将上线）
             </button>
 
-            <!-- 注册链接 -->
             <div class="mt-6 text-center">
               <router-link to="/register" class="text-blue-500 hover:text-blue-600">
                 还没有账号？立即注册
@@ -289,37 +265,28 @@ import { useRouter } from 'vue-router'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
 import { authApi } from '@/api/auth'
+import { useEnvironment } from '@/composables/useEnvironment'
 
-// 响应式状态
 const router = useRouter()
 const authStore = useAuthStore()
 const loginFormRef = ref<FormInstance>()
+const { currentEnvironment, isPreview, switchEnvironment, syncEnvironmentState } = useEnvironment()
 
-// 检测是否为移动端
 const isMobile = ref(window.innerWidth < 768)
-
-// 用户类型
 const userType = ref<'internal' | 'supplier'>('internal')
 
-// 登录表单
 const loginForm = reactive({
   username: '',
   password: '',
   captcha: ''
 })
 
-// 验证码相关
 const captchaImage = ref<string>('')
 const captchaId = ref<string>('')
-
-// 其他状态
 const rememberPassword = ref(false)
 const loading = ref(false)
+const isPreviewMode = computed(() => isPreview.value)
 
-// 环境选择（false = 正式版Stable，true = 预览版Preview）
-const isPreviewMode = ref(false)
-
-// 表单验证规则
 const loginRules = computed<FormRules>(() => ({
   username: [
     { required: true, message: '请输入用户名', trigger: 'blur' },
@@ -334,19 +301,18 @@ const loginRules = computed<FormRules>(() => ({
     : []
 }))
 
-// 监听窗口大小变化
 const handleResize = () => {
   isMobile.value = window.innerWidth < 768
 }
 
 onMounted(() => {
   window.addEventListener('resize', handleResize)
-  
-  // 从 localStorage 恢复记住的密码
+  syncEnvironmentState()
+
   const savedUsername = localStorage.getItem('remembered_username')
   const savedPassword = localStorage.getItem('remembered_password')
   const savedUserType = localStorage.getItem('remembered_user_type')
-  
+
   if (savedUsername && savedPassword) {
     loginForm.username = savedUsername
     loginForm.password = savedPassword
@@ -357,16 +323,17 @@ onMounted(() => {
   }
 })
 
-// 监听用户类型变化，供应商登录时自动获取验证码
 watch(userType, (newType) => {
   if (newType === 'supplier' && !captchaImage.value) {
     refreshCaptcha()
   }
-  // 清空验证码输入
   loginForm.captcha = ''
 })
 
-// 刷新验证码
+const handleEnvironmentToggle = () => {
+  switchEnvironment()
+}
+
 const refreshCaptcha = async () => {
   try {
     const response = await authApi.getCaptcha()
@@ -377,11 +344,8 @@ const refreshCaptcha = async () => {
   }
 }
 
-// 处理登录
 const handleLogin = async () => {
-  // 移动端不使用 Element Plus 表单验证
   if (isMobile.value) {
-    // 简单验证
     if (!loginForm.username || !loginForm.password) {
       ElMessage.error('请填写用户名和密码')
       return
@@ -391,9 +355,8 @@ const handleLogin = async () => {
       return
     }
   } else {
-    // 桌面端使用 Element Plus 表单验证
     if (!loginFormRef.value) return
-    
+
     const valid = await loginFormRef.value.validate().catch(() => false)
     if (!valid) return
   }
@@ -407,10 +370,9 @@ const handleLogin = async () => {
       userType.value,
       userType.value === 'supplier' ? loginForm.captcha : undefined,
       userType.value === 'supplier' ? captchaId.value : undefined,
-      isPreviewMode.value ? 'preview' : 'stable'
+      currentEnvironment.value
     )
 
-    // 记住密码
     if (rememberPassword.value) {
       localStorage.setItem('remembered_username', loginForm.username)
       localStorage.setItem('remembered_password', loginForm.password)
@@ -422,13 +384,10 @@ const handleLogin = async () => {
     }
 
     ElMessage.success('登录成功')
-    
-    // 跳转到工作台
     router.push('/workbench')
   } catch (error: any) {
     ElMessage.error(error.response?.data?.detail || '登录失败，请检查用户名和密码')
-    
-    // 供应商登录失败后刷新验证码
+
     if (userType.value === 'supplier') {
       refreshCaptcha()
       loginForm.captcha = ''
@@ -440,7 +399,6 @@ const handleLogin = async () => {
 </script>
 
 <style scoped>
-/* 桌面端样式 */
 .login-container {
   min-height: 100vh;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -548,7 +506,6 @@ const handleLogin = async () => {
   color: #66b1ff;
 }
 
-/* 环境切换滑块 */
 .env-switcher {
   display: flex;
   align-items: center;
@@ -576,7 +533,6 @@ const handleLogin = async () => {
   font-weight: 600;
 }
 
-/* 预览版卡片边框样式 */
 .login-card--preview {
   border: 2px solid #e6a23c !important;
 }
@@ -585,7 +541,6 @@ const handleLogin = async () => {
   background: linear-gradient(135deg, #fdf6ec, #faecd8);
 }
 
-/* 预览版警示横幅 */
 .preview-banner {
   background: #e6a23c;
   color: #fff;
@@ -597,12 +552,10 @@ const handleLogin = async () => {
   letter-spacing: 0.5px;
 }
 
-/* 移动端样式 */
 .mobile-layout {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 }
 
-/* 响应式调整 */
 @media (max-width: 768px) {
   .desktop-layout {
     display: none;

@@ -158,6 +158,7 @@
               </span>
               <template #dropdown>
                 <el-dropdown-menu>
+                  <el-dropdown-item command="switch-environment">{{ switchButtonText }}</el-dropdown-item>
                   <el-dropdown-item command="profile">个人中心</el-dropdown-item>
                   <el-dropdown-item command="logout" divided>退出登录</el-dropdown-item>
                 </el-dropdown-menu>
@@ -191,18 +192,20 @@ import {
 import MobileLayout from './MobileLayout.vue'
 import { useFeatureFlagStore } from '@/stores/featureFlag'
 import { useAuthStore } from '@/stores/auth'
+import { useEnvironment } from '@/composables/useEnvironment'
 
 const router = useRouter()
 const route = useRoute()
 const featureFlagStore = useFeatureFlagStore()
 const authStore = useAuthStore()
+const { currentEnvironment, switchButtonText, switchEnvironment, syncEnvironmentState } = useEnvironment()
 
 const isCollapse = ref(false)
 const isMobile = ref(false)
 const userInfo = ref<any>(null)
 
-// 从 auth store 获取环境信息
-const isPreviewEnv = computed(() => authStore.isPreviewEnv)
+// Environment status follows the current runtime entry rather than stale local state.
+const isPreviewEnv = computed(() => currentEnvironment.value === 'preview')
 const currentEnvLabel = computed(() => isPreviewEnv.value ? '🧪 预览版' : '🏢 正式版')
 
 
@@ -230,6 +233,8 @@ const handleCommand = (command: string) => {
   if (command === 'logout') {
     authStore.logout()
     router.push('/login')
+  } else if (command === 'switch-environment') {
+    switchEnvironment()
   } else if (command === 'profile') {
     router.push('/workbench')
   }
@@ -243,6 +248,7 @@ const checkMobile = () => {
 onMounted(async () => {
   checkMobile()
   window.addEventListener('resize', checkMobile)
+  syncEnvironmentState()
   
   // 加载用户信息
   const userInfoStr = localStorage.getItem('user_info')

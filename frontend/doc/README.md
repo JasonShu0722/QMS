@@ -25,6 +25,7 @@ frontend/
 ├─ src/
 │  ├─ api/
 │  ├─ components/
+│  ├─ composables/
 │  ├─ layouts/
 │  ├─ router/
 │  ├─ stores/
@@ -35,10 +36,31 @@ frontend/
 │  ├─ App.vue
 │  └─ main.ts
 ├─ doc/
+├─ nginx.conf
 ├─ package.json
 ├─ vite.config.ts
 └─ .env.development
 ```
+
+## 环境切换规则
+
+当前项目的“正式版 / 预览版”遵循两层规则，必须一起理解：
+
+### 1. 入口域名
+
+- 正式版入口：`qms.bigshuaibee.cn`
+- 预览版入口：`preview.qms.bigshuaibee.cn`
+
+线上部署时，当前访问的域名决定默认落到哪一套前后端容器。
+
+### 2. 页面按钮
+
+项目保留显式的“正式版 / 预览版”切换按钮。
+
+- 在线上环境中，点击按钮会在正式版域名和预览版域名之间跳转
+- 在本地开发环境中，没有双域名，按钮会退化为切换本地 `current_environment`
+
+也就是说，按钮不是摆设，但线上切换的真实动作是“跳转到另一套入口域名”。
 
 ## 推荐启动方式
 
@@ -72,9 +94,13 @@ VITE_API_BASE_URL=/api
 VITE_ENVIRONMENT=stable
 ```
 
-这里必须使用 `/api`，让浏览器通过 Vite 代理访问后端，避免本地开发时直接跨域请求 `http://localhost:8000`。
+说明：
 
-这里的 `stable` 表示“本地前端默认按正式版语义运行”，不是说本地不能调预览版。项目里的预览版 / 正式版仍然由登录请求中的 `environment` 和双环境服务来控制。
+- `VITE_API_BASE_URL=/api`
+  让浏览器通过 Vite 代理访问本地后端，避免直接请求 `http://localhost:8000` 造成跨域问题。
+- `VITE_ENVIRONMENT=stable`
+  只是本地前端的默认语义，不代表线上正式版和预览版的入口关系。
+  在本地点击切换按钮时，前端会更新 `localStorage.current_environment` 来模拟环境切换。
 
 ### 3. 启动前端
 
@@ -138,14 +164,16 @@ npm run test
 1. 后端是否启动在 `8000`
 2. `frontend/.env.development` 是否为 `VITE_API_BASE_URL=/api`
 3. Vite 是否已重启并加载最新环境变量
+4. 当前切换按钮对应的环境是否与本地测试目标一致
 
 ## 开发建议
 
 - 页面入口主要在 `src/views`
 - 公共逻辑优先看 `src/components`、`src/composables`
 - 请求封装在 `src/utils/request.ts`
-- 登录态和权限逻辑在 `src/stores/auth.ts` 与 `src/router/index.ts`
-- 测试目录已统一为：
+- 登录态与环境状态在 `src/stores/auth.ts`
+- 路由守卫在 `src/router/index.ts`
+- 测试目录统一在：
   - `src/test`
   - `src/components/test`
   - `src/views/test`

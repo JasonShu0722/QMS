@@ -164,16 +164,18 @@ import {
   Document, Opportunity, Setting, Monitor, UserFilled
 } from '@element-plus/icons-vue'
 import { useEnvironment } from '@/composables/useEnvironment'
+import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
 const route = useRoute()
+const authStore = useAuthStore()
 
 const drawerVisible = ref(false)
 const showUserMenu = ref(false)
 const userInfo = ref<any>(null)
 
 // 使用环境管理 composable
-const { isPreview, switchButtonText, switchEnvironment } = useEnvironment()
+const { isPreview, switchButtonText, switchEnvironment, syncEnvironmentState } = useEnvironment()
 
 // 当前激活的菜单
 const activeMenu = computed(() => route.path)
@@ -196,13 +198,13 @@ const goToProfile = () => {
 
 // 退出登录
 const handleLogout = () => {
-  localStorage.removeItem('access_token')
-  localStorage.removeItem('user_info')
+  authStore.logout()
   showUserMenu.value = false
   router.push('/login')
 }
 
 onMounted(() => {
+  syncEnvironmentState()
   // 加载用户信息
   const userInfoStr = localStorage.getItem('user_info')
   if (userInfoStr) {

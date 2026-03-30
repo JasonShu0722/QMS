@@ -34,6 +34,7 @@ ADMIN_CONFIG = {
     "user_type": UserType.INTERNAL,
     "department": "信息技术部",
     "position": "系统管理员",
+    "allowed_environments": "stable,preview",
 }
 
 # 系统中所有可用的功能模块（与 admin/permissions.py 中 AVAILABLE_MODULES 保持一致）
@@ -92,6 +93,11 @@ async def create_admin():
                 if admin_user.status != UserStatus.ACTIVE:
                     admin_user.status = UserStatus.ACTIVE
                     print(f"   → 已将账号状态更新为 active")
+
+                # 确保管理员默认拥有正式版和预览版访问权限
+                if admin_user.allowed_environments != ADMIN_CONFIG["allowed_environments"]:
+                    admin_user.allowed_environments = ADMIN_CONFIG["allowed_environments"]
+                    print(f"   → 已将环境权限更新为 {ADMIN_CONFIG['allowed_environments']}")
             else:
                 # ====== 第二步：创建管理员用户 ======
                 hashed_password = auth_strategy.hash_password(ADMIN_CONFIG["password"])
@@ -105,6 +111,7 @@ async def create_admin():
                     status=UserStatus.ACTIVE,  # 直接激活，跳过审核
                     department=ADMIN_CONFIG.get("department"),
                     position=ADMIN_CONFIG.get("position"),
+                    allowed_environments=ADMIN_CONFIG["allowed_environments"],
                     password_changed_at=datetime.utcnow(),  # 避免首次登录强制改密
                 )
 

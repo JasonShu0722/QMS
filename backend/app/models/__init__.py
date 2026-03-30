@@ -17,6 +17,8 @@ from app.models.msa_record import MSARecord, MSAType, MSAResult
 from app.models.quality_cost import QualityCost, CostAnalysis
 from app.models.quality_metric import QualityMetric, MetricType
 from app.models.ims_sync_log import IMSSyncLog, SyncStatus, SyncType
+from app.models.requirements_panel_status import RequirementsPanelStatus
+from app.models.requirements_panel_user import RequirementsPanelUser
 
 # Supplier Quality Management Models (供应商质量管理模型)
 from app.models.scar import SCAR, SCARSeverity, SCARStatus
@@ -94,6 +96,8 @@ __all__ = [
     "IMSSyncLog",
     "SyncStatus",
     "SyncType",
+    "RequirementsPanelStatus",
+    "RequirementsPanelUser",
     # Supplier Quality Management
     "SCAR",
     "SCARSeverity",

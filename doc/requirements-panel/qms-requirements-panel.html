@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QMS 功能需求可视化面板</title>
+  <script src="./qms-requirements-data.js"></script>
+  <style>
+    :root {
+      --bg: linear-gradient(135deg, #f4f7fb 0%, #eaf1fb 45%, #dfe7f6 100%);
+      --surface: rgba(255, 255, 255, 0.88);
+      --surface-strong: #fff;
+      --line: rgba(43, 72, 124, 0.14);
+      --text: #172235;
+      --muted: #60708b;
+      --brand: #2a6bcf;
+      --brand-soft: #dbe8ff;
+      --high: #f43f5e;
+      --high-soft: #ffe2e8;
+      --medium: #f97316;
+      --medium-soft: #ffeedf;
+      --low: #60a5fa;
+      --low-soft: #dbeafe;
+      --todo: #94a3b8;
+      --doing: #2563eb;
+      --dev-done: #7c3aed;
+      --verified: #16a34a;
+      --reserved: #64748b;
+      --shadow: 0 24px 60px rgba(39, 67, 108, 0.14);
+      --radius: 24px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", sans-serif;
+      color: var(--text);
+      background: var(--bg);
+    }
+
+    .page {
+      width: min(1440px, calc(100vw - 32px));
+      margin: 20px auto 48px;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(18px);
+    }
+
+    .hero {
+      position: relative;
+      overflow: hidden;
+      padding: 32px;
+      border-radius: 32px;
+    }
+
+    .hero::before,
+    .hero::after {
+      content: "";
+      position: absolute;
+      border-radius: 999px;
+      filter: blur(8px);
+    }
+
+    .hero::before {
+      width: 240px;
+      height: 240px;
+      top: -120px;
+      right: -80px;
+      background: rgba(42, 107, 207, 0.15);
+    }
+
+    .hero::after {
+      width: 220px;
+      height: 220px;
+      bottom: -120px;
+      right: 120px;
+      background: rgba(244, 63, 94, 0.12);
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: var(--brand-soft);
+      color: var(--brand);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    h1 {
+      margin: 18px 0 12px;
+      font-size: clamp(30px, 4vw, 46px);
+      line-height: 1.08;
+    }
+
+    .hero p {
+      max-width: 900px;
+      margin: 0;
+      line-height: 1.8;
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    .meta-row,
+    .legend,
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .meta-row { margin-top: 18px; }
+
+    .pill,
+    .legend-item,
+    .toolbar button,
+    .badge,
+    .status-pill {
+      border-radius: 999px;
+    }
+
+    .pill {
+      padding: 8px 14px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.75);
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .summary-grid,
+    .module-grid,
+    .lane-grid {
+      display: grid;
+      gap: 18px;
+      margin-top: 22px;
+    }
+
+    .summary-grid {
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    }
+
+    .summary-card,
+    .panel,
+    .module-card,
+    .lane-card,
+    .table-shell {
+      border-radius: var(--radius);
+    }
+
+    .summary-card,
+    .panel {
+      padding: 22px;
+    }
+
+    .summary-value {
+      font-size: 34px;
+      font-weight: 800;
+      margin-bottom: 6px;
+    }
+
+    .summary-label {
+      font-size: 14px;
+      color: var(--muted);
+    }
+
+    .section-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: end;
+      gap: 16px;
+      margin: 34px 0 14px;
+    }
+
+    .section-title h2 {
+      margin: 0;
+      font-size: 24px;
+    }
+
+    .section-title p {
+      margin: 0;
+      font-size: 14px;
+      color: var(--muted);
+    }
+
+    .filters {
+      display: grid;
+      grid-template-columns: 1.6fr repeat(4, minmax(120px, 1fr));
+      gap: 14px;
+      margin-top: 18px;
+    }
+
+    .control {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .control label {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    input,
+    select {
+      width: 100%;
+      padding: 12px 14px;
+      font-size: 14px;
+      color: var(--text);
+      background: var(--surface-strong);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      outline: none;
+    }
+
+    .toolbar {
+      margin-top: 16px;
+    }
+
+    .toolbar button {
+      padding: 10px 14px;
+      border: 1px solid var(--line);
+      background: var(--surface-strong);
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .legend { margin-top: 16px; }
+
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.74);
+      font-size: 12px;
+    }
+
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+
+    .module-grid {
+      grid-template-columns: repeat(auto-fit, minmax(310px, 1fr));
+    }
+
+    .module-card,
+    .lane-card {
+      padding: 22px;
+    }
+
+    .module-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: start;
+    }
+
+    .module-head h3,
+    .lane-card h3 {
+      margin: 0 0 10px;
+    }
+
+    .module-head p,
+    .lane-card p,
+    .muted {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.7;
+      font-size: 14px;
+    }
+
+    .badge {
+      flex-shrink: 0;
+      padding: 8px 12px;
+      font-size: 12px;
+      font-weight: 700;
+      border: 1px solid transparent;
+    }
+
+    .priority-high { color: var(--high); background: var(--high-soft); border-color: rgba(244, 63, 94, 0.2); }
+    .priority-medium { color: var(--medium); background: var(--medium-soft); border-color: rgba(249, 115, 22, 0.2); }
+    .priority-low { color: var(--low); background: var(--low-soft); border-color: rgba(96, 165, 250, 0.2); }
+
+    .progress-text {
+      margin: 14px 0 8px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .progress-track {
+      height: 10px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: rgba(148, 163, 184, 0.18);
+    }
+
+    .progress-bar {
+      height: 100%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #2a6bcf 0%, #67a2ff 52%, #22c55e 100%);
+    }
+
+    .module-stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .stat-chip {
+      padding: 12px;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.76);
+      border: 1px solid var(--line);
+    }
+
+    .stat-chip strong {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 22px;
+    }
+
+    .stat-chip span {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .mini-list,
+    .lane-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 16px;
+    }
+
+    .mini-item {
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: rgba(42, 107, 207, 0.08);
+      color: #345288;
+      font-size: 12px;
+    }
+
+    .lane-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .lane-list {
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .lane-item {
+      padding: 14px;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.84);
+      border: 1px solid var(--line);
+    }
+
+    .lane-item strong {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 14px;
+    }
+
+    .lane-item small {
+      display: block;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      margin-top: 8px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .status-pill::before {
+      content: "";
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    .status-todo { color: var(--todo); background: rgba(148, 163, 184, 0.14); }
+    .status-doing { color: var(--doing); background: rgba(37, 99, 235, 0.12); }
+    .status-dev-done { color: var(--dev-done); background: rgba(124, 58, 237, 0.12); }
+    .status-verified { color: var(--verified); background: rgba(22, 163, 74, 0.12); }
+    .status-reserved { color: var(--reserved); background: rgba(100, 116, 139, 0.14); }
+
+    .table-shell {
+      overflow: hidden;
+      margin-top: 18px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th {
+      padding: 16px;
+      text-align: left;
+      background: rgba(42, 107, 207, 0.08);
+      color: #274673;
+      font-size: 13px;
+      letter-spacing: 0.03em;
+    }
+
+    td {
+      padding: 16px;
+      vertical-align: top;
+      border-top: 1px solid var(--line);
+      font-size: 14px;
+      line-height: 1.7;
+    }
+
+    tbody tr:hover {
+      background: rgba(42, 107, 207, 0.04);
+    }
+
+    .status-select {
+      width: 168px;
+      margin-top: 8px;
+    }
+
+    @media (max-width: 1080px) {
+      .filters,
+      .lane-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    @media (max-width: 760px) {
+      .page { width: min(100vw - 16px, 100%); }
+      .hero, .summary-card, .panel, .module-card, .lane-card { padding: 18px; }
+      .filters, .lane-grid, .module-stats { grid-template-columns: 1fr; }
+
+      table, thead, tbody, tr, th, td { display: block; }
+      thead { display: none; }
+      tr { border-top: 1px solid var(--line); padding: 12px 16px; }
+      td { padding: 6px 0; border: 0; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="hero card">
+      <span class="eyebrow">QMS / 功能需求总览</span>
+      <h1>QMS 项目功能需求与开发状态可视化面板</h1>
+      <p id="hero-description"></p>
+      <div class="meta-row" id="hero-meta"></div>
+      <div class="summary-grid" id="summary-grid"></div>
+    </section>
+
+    <section class="panel card">
+      <div class="section-title">
+        <div>
+          <h2>筛选与维护</h2>
+          <p>这里既是汇报面板，也是后续联调验收后的状态维护入口。</p>
+        </div>
+      </div>
+      <div class="filters">
+        <div class="control">
+          <label for="search">关键词</label>
+          <input id="search" type="text" placeholder="搜索模块、功能、阶段或验收口径" />
+        </div>
+        <div class="control">
+          <label for="module-filter">模块</label>
+          <select id="module-filter"></select>
+        </div>
+        <div class="control">
+          <label for="priority-filter">优先级</label>
+          <select id="priority-filter"></select>
+        </div>
+        <div class="control">
+          <label for="scope-filter">范围</label>
+          <select id="scope-filter"></select>
+        </div>
+        <div class="control">
+          <label for="status-filter">状态</label>
+          <select id="status-filter"></select>
+        </div>
+      </div>
+      <div class="toolbar">
+        <button id="reset-status" type="button">清除本地状态覆盖</button>
+        <button id="export-snapshot" type="button">导出状态快照</button>
+      </div>
+      <div class="legend" id="legend"></div>
+    </section>
+
+    <section>
+      <div class="section-title">
+        <div>
+          <h2>按功能模块展示</h2>
+          <p>这里适合看模块完整度、模块优先级和模块内条目分布。</p>
+        </div>
+      </div>
+      <div class="module-grid" id="module-grid"></div>
+    </section>
+
+    <section>
+      <div class="section-title">
+        <div>
+          <h2>按整体优先级展示</h2>
+          <p>这里适合对外汇报时快速回答“高优先级还有哪些未闭环”。</p>
+        </div>
+      </div>
+      <div class="lane-grid" id="lane-grid"></div>
+    </section>
+
+    <section>
+      <div class="section-title">
+        <div>
+          <h2>需求明细台账</h2>
+          <p>后续每次联调验证完成，可以直接在表格里更新状态。</p>
+        </div>
+      </div>
+      <div class="table-shell card">
+        <table>
+          <thead>
+            <tr>
+              <th>模块</th>
+              <th>功能条目</th>
+              <th>优先级</th>
+              <th>范围</th>
+              <th>阶段</th>
+              <th>状态</th>
+              <th>验收口径</th>
+            </tr>
+          </thead>
+          <tbody id="table-body"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const dashboard = window.QMS_REQUIREMENTS_DASHBOARD;
+    const storageKey = "qms-requirement-status-overrides";
+    const statusWeight = { todo: 0, doing: 0.45, "dev-done": 0.8, verified: 1, reserved: 0 };
+    const statusLabel = {
+      todo: "待开发",
+      doing: "开发中",
+      "dev-done": "已开发待验证",
+      verified: "已验证完成",
+      reserved: "预留",
+    };
+    const priorityLabel = { high: "高", medium: "中", low: "低/预留" };
+    const scopeOrder = ["核心需求", "期望增强", "预留功能"];
+
+    const el = {
+      heroDescription: document.getElementById("hero-description"),
+      heroMeta: document.getElementById("hero-meta"),
+      summaryGrid: document.getElementById("summary-grid"),
+      moduleGrid: document.getElementById("module-grid"),
+      laneGrid: document.getElementById("lane-grid"),
+      tableBody: document.getElementById("table-body"),
+      legend: document.getElementById("legend"),
+      search: document.getElementById("search"),
+      moduleFilter: document.getElementById("module-filter"),
+      priorityFilter: document.getElementById("priority-filter"),
+      scopeFilter: document.getElementById("scope-filter"),
+      statusFilter: document.getElementById("status-filter"),
+      resetStatus: document.getElementById("reset-status"),
+      exportSnapshot: document.getElementById("export-snapshot"),
+    };
+
+    function loadOverrides() {
+      try {
+        return JSON.parse(localStorage.getItem(storageKey) || "{}");
+      } catch {
+        return {};
+      }
+    }
+
+    function saveOverrides(overrides) {
+      localStorage.setItem(storageKey, JSON.stringify(overrides));
+    }
+
+    function getAllItems() {
+      const overrides = loadOverrides();
+      return dashboard.modules.flatMap((module) =>
+        module.items.map((item) => ({
+          ...item,
+          status: overrides[item.id] || item.status,
+          moduleId: module.id,
+          moduleName: module.name,
+          moduleSummary: module.summary,
+          modulePriority: module.overallPriority,
+        }))
+      );
+    }
+
+    function progressFor(items) {
+      if (!items.length) return 0;
+      const total = items.reduce((sum, item) => sum + (statusWeight[item.status] || 0), 0);
+      return Math.round((total / items.length) * 100);
+    }
+
+    function optionize(select, options, defaultLabel) {
+      select.innerHTML = [`<option value="">${defaultLabel}</option>`]
+        .concat(options.map((option) => `<option value="${option}">${option}</option>`))
+        .join("");
+    }
+
+    function priorityClass(priority) {
+      return `priority-${priority}`;
+    }
+
+    function statusClass(status) {
+      return `status-${status}`;
+    }
+
+    function renderHero() {
+      const items = getAllItems();
+      const verified = items.filter((item) => item.status === "verified").length;
+      const devDone = items.filter((item) => item.status === "dev-done").length;
+      const doing = items.filter((item) => item.status === "doing").length;
+
+      el.heroDescription.textContent =
+        "本面板基于 .kiro/steering 下的产品构想、结构定义，以及你当前对公司汇报使用的优先级梳理结果，统一整理 QMS 项目的核心需求、期望功能与预留能力。后续状态维护建议优先在本面板里完成，再视需要回写到数据文件。";
+
+      el.heroMeta.innerHTML = [
+        `版本：${dashboard.metadata.version}`,
+        `维护人：${dashboard.metadata.owner}`,
+        `来源：${dashboard.metadata.sources.join(" / ")}`,
+      ]
+        .map((text) => `<span class="pill">${text}</span>`)
+        .join("");
+
+      const cards = [
+        { value: dashboard.modules.length, label: "功能模块" },
+        { value: items.length, label: "功能条目总数" },
+        { value: `${progressFor(items)}%`, label: "整体完成度（估算）" },
+        { value: verified, label: "已验证完成" },
+        { value: devDone, label: "已开发待验证" },
+        { value: doing, label: "开发中" },
+      ];
+
+      el.summaryGrid.innerHTML = cards
+        .map(
+          (card) => `
+            <article class="summary-card card">
+              <div class="summary-value">${card.value}</div>
+              <div class="summary-label">${card.label}</div>
+            </article>
+          `
+        )
+        .join("");
+    }
+
+    function renderLegend() {
+      const items = [
+        { label: "高优先级", color: "var(--high)" },
+        { label: "中优先级", color: "var(--medium)" },
+        { label: "低/预留", color: "var(--low)" },
+        { label: "待开发", color: "var(--todo)" },
+        { label: "开发中", color: "var(--doing)" },
+        { label: "已开发待验证", color: "var(--dev-done)" },
+        { label: "已验证完成", color: "var(--verified)" },
+      ];
+      el.legend.innerHTML = items
+        .map(
+          (item) => `
+            <span class="legend-item">
+              <span class="legend-dot" style="background:${item.color}"></span>
+              ${item.label}
+            </span>
+          `
+        )
+        .join("");
+    }
+
+    function getFilters() {
+      return {
+        search: el.search.value.trim().toLowerCase(),
+        module: el.moduleFilter.value,
+        priority: el.priorityFilter.value,
+        scope: el.scopeFilter.value,
+        status: el.statusFilter.value,
+      };
+    }
+
+    function filterItems(items) {
+      const filters = getFilters();
+      return items.filter((item) => {
+        const text = [
+          item.moduleName,
+          item.title,
+          item.scope,
+          item.phase,
+          item.acceptance,
+          priorityLabel[item.priority],
+          statusLabel[item.status],
+        ]
+          .join(" ")
+          .toLowerCase();
+
+        return (
+          (!filters.search || text.includes(filters.search)) &&
+          (!filters.module || item.moduleName === filters.module) &&
+          (!filters.priority || priorityLabel[item.priority] === filters.priority) &&
+          (!filters.scope || item.scope === filters.scope) &&
+          (!filters.status || statusLabel[item.status] === filters.status)
+        );
+      });
+    }
+
+    function renderModules(items) {
+      const visibleIds = new Set(items.map((item) => item.id));
+      const modules = dashboard.modules
+        .map((module) => {
+          const moduleItems = getAllItems().filter((item) => item.moduleId === module.id && visibleIds.has(item.id));
+          if (!moduleItems.length) return "";
+          const progress = progressFor(moduleItems);
+          const verified = moduleItems.filter((item) => item.status === "verified").length;
+          const highCount = moduleItems.filter((item) => item.priority === "high").length;
+
+          return `
+            <article class="module-card card">
+              <div class="module-head">
+                <div>
+                  <h3>${module.name}</h3>
+                  <p>${module.summary}</p>
+                </div>
+                <span class="badge ${priorityClass(module.overallPriority)}">整体优先级 ${priorityLabel[module.overallPriority]}</span>
+              </div>
+              <div class="progress-text">模块进度 ${progress}%</div>
+              <div class="progress-track"><div class="progress-bar" style="width:${progress}%"></div></div>
+              <div class="module-stats">
+                <div class="stat-chip"><strong>${moduleItems.length}</strong><span>功能条目</span></div>
+                <div class="stat-chip"><strong>${verified}</strong><span>已验证完成</span></div>
+                <div class="stat-chip"><strong>${highCount}</strong><span>高优先级项</span></div>
+              </div>
+              <div class="mini-list">
+                ${moduleItems.map((item) => `<span class="mini-item">${item.title}</span>`).join("")}
+              </div>
+            </article>
+          `;
+        })
+        .join("");
+
+      el.moduleGrid.innerHTML = modules || `<article class="panel card">当前筛选条件下没有匹配条目。</article>`;
+    }
+
+    function renderPriorityBoard(items) {
+      const lanes = [
+        { key: "high", title: "高优先级", desc: "优先保障落地，直接影响项目主线交付。" },
+        { key: "medium", title: "中优先级", desc: "作为一期增强或管理抓手跟进推进。" },
+        { key: "low", title: "低/预留", desc: "面向后续扩展和结构预留持续建设。" },
+      ];
+
+      el.laneGrid.innerHTML = lanes
+        .map((lane) => {
+          const laneItems = items.filter((item) => item.priority === lane.key);
+          return `
+            <article class="lane-card card">
+              <h3><span class="badge ${priorityClass(lane.key)}">${lane.title}</span></h3>
+              <p>${lane.desc}</p>
+              <div class="lane-list">
+                ${
+                  laneItems.length
+                    ? laneItems
+                        .map(
+                          (item) => `
+                            <div class="lane-item">
+                              <strong>${item.title}</strong>
+                              <small>${item.moduleName} / ${item.scope} / ${item.phase}</small>
+                              <span class="status-pill ${statusClass(item.status)}">${statusLabel[item.status]}</span>
+                            </div>
+                          `
+                        )
+                        .join("")
+                    : `<div class="lane-item"><small>当前筛选下暂无条目</small></div>`
+                }
+              </div>
+            </article>
+          `;
+        })
+        .join("");
+    }
+
+    function renderTable(items) {
+      el.tableBody.innerHTML = items
+        .map(
+          (item) => `
+            <tr>
+              <td>${item.moduleName}</td>
+              <td><strong>${item.title}</strong></td>
+              <td><span class="badge ${priorityClass(item.priority)}">${priorityLabel[item.priority]}</span></td>
+              <td>${item.scope}</td>
+              <td>${item.phase}</td>
+              <td>
+                <div><span class="status-pill ${statusClass(item.status)}">${statusLabel[item.status]}</span></div>
+                <select class="status-select" data-item-id="${item.id}">
+                  ${Object.entries(statusLabel)
+                    .map(([key, label]) => `<option value="${key}" ${item.status === key ? "selected" : ""}>${label}</option>`)
+                    .join("")}
+                </select>
+              </td>
+              <td>${item.acceptance}</td>
+            </tr>
+          `
+        )
+        .join("");
+
+      document.querySelectorAll(".status-select").forEach((node) => {
+        node.addEventListener("change", (event) => {
+          const overrides = loadOverrides();
+          overrides[event.target.dataset.itemId] = event.target.value;
+          saveOverrides(overrides);
+          rerender();
+        });
+      });
+    }
+
+    function rerender() {
+      renderHero();
+      const items = filterItems(getAllItems());
+      renderModules(items);
+      renderPriorityBoard(items);
+      renderTable(items);
+    }
+
+    function initFilters() {
+      optionize(el.moduleFilter, dashboard.modules.map((module) => module.name), "全部模块");
+      optionize(el.priorityFilter, ["高", "中", "低/预留"], "全部优先级");
+      optionize(el.scopeFilter, scopeOrder, "全部范围");
+      optionize(el.statusFilter, Object.values(statusLabel), "全部状态");
+
+      [el.search, el.moduleFilter, el.priorityFilter, el.scopeFilter, el.statusFilter].forEach((node) => {
+        node.addEventListener("input", rerender);
+        node.addEventListener("change", rerender);
+      });
+    }
+
+    function exportSnapshot() {
+      const payload = {
+        exportedAt: new Date().toISOString(),
+        dataVersion: dashboard.metadata.version,
+        statusOverrides: loadOverrides(),
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "qms-requirement-status-snapshot.json";
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function initToolbar() {
+      el.resetStatus.addEventListener("click", () => {
+        localStorage.removeItem(storageKey);
+        rerender();
+      });
+      el.exportSnapshot.addEventListener("click", exportSnapshot);
+    }
+
+    renderLegend();
+    initFilters();
+    initToolbar();
+    rerender();
+  </script>
+</body>
+</html>

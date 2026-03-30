@@ -300,6 +300,15 @@ const routes: RouteRecordRaw[] = [
     ]
   },
   {
+    path: '/requirements-panel',
+    name: 'RequirementsPanel',
+    component: () => import('@/features/requirements-panel/RequirementsPanel.vue'),
+    meta: {
+      title: '需求面板',
+      requiresAuth: false
+    }
+  },
+  {
     path: '/login',
     name: 'Login',
     component: () => import('@/views/Login.vue'),

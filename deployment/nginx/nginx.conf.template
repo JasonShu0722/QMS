@@ -61,26 +61,9 @@ http {
     proxy_cache_lock on;
 
     client_max_body_size 50M;
-
-    upstream backend-stable {
-        server backend-stable:8000 max_fails=3 fail_timeout=30s;
-        keepalive 32;
-    }
-
-    upstream backend-preview {
-        server backend-preview:8000 max_fails=3 fail_timeout=30s;
-        keepalive 32;
-    }
-
-    upstream frontend-stable {
-        server frontend-stable:80 max_fails=3 fail_timeout=30s;
-        keepalive 32;
-    }
-
-    upstream frontend-preview {
-        server frontend-preview:80 max_fails=3 fail_timeout=30s;
-        keepalive 32;
-    }
+    # Use Docker embedded DNS so nginx can follow container IP changes
+    # after compose recreates the backend/frontend services.
+    resolver 127.0.0.11 ipv6=off valid=30s;
 
     server {
         listen 80;
@@ -91,7 +74,8 @@ http {
         add_header X-XSS-Protection "1; mode=block" always;
 
         location /api {
-            proxy_pass http://backend-stable;
+            set $backend_upstream http://backend-stable:8000;
+            proxy_pass $backend_upstream;
             proxy_http_version 1.1;
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
@@ -103,7 +87,8 @@ http {
         }
 
         location / {
-            proxy_pass http://frontend-stable;
+            set $frontend_upstream http://frontend-stable:80;
+            proxy_pass $frontend_upstream;
             proxy_http_version 1.1;
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
@@ -122,7 +107,8 @@ http {
         add_header X-Environment "preview" always;
 
         location /api {
-            proxy_pass http://backend-preview;
+            set $backend_upstream http://backend-preview:8000;
+            proxy_pass $backend_upstream;
             proxy_http_version 1.1;
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
@@ -134,7 +120,8 @@ http {
         }
 
         location / {
-            proxy_pass http://frontend-preview;
+            set $frontend_upstream http://frontend-preview:80;
+            proxy_pass $frontend_upstream;
             proxy_http_version 1.1;
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
@@ -150,7 +137,8 @@ http {
         client_max_body_size 50M;
 
         location /api {
-            proxy_pass http://backend-stable;
+            set $backend_upstream http://backend-stable:8000;
+            proxy_pass $backend_upstream;
             proxy_http_version 1.1;
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
@@ -162,7 +150,8 @@ http {
         }
 
         location / {
-            proxy_pass http://frontend-stable;
+            set $frontend_upstream http://frontend-stable:80;
+            proxy_pass $frontend_upstream;
             proxy_http_version 1.1;
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;

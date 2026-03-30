@@ -99,9 +99,9 @@ echo -e "${YELLOW}[7/15] Checking Redis connection...${NC}"
 "${COMPOSE_CMD[@]}" exec -T redis redis-cli -a "$REDIS_PASSWORD" ping > /dev/null 2>&1
 print_test $? "Redis connection successful"
 
-echo -e "${YELLOW}[8/15] Checking API documentation...${NC}"
-retry_http_check "http://${QMS_BIND_IP:-127.0.0.1}:${BACKEND_STABLE_PORT:-8000}/api/docs"
-print_test $? "API documentation is accessible"
+echo -e "${YELLOW}[8/15] Checking proxied API documentation...${NC}"
+retry_http_check "http://${QMS_BIND_IP:-127.0.0.1}:${QMS_NGINX_PORT:-8081}/api/docs"
+print_test $? "API documentation is accessible through nginx"
 
 echo -e "${YELLOW}[9/15] Checking database migrations...${NC}"
 "${COMPOSE_CMD[@]}" exec -T backend-stable alembic current > /dev/null 2>&1
@@ -111,9 +111,9 @@ echo -e "${YELLOW}[10/15] Checking frontend access...${NC}"
 retry_http_check "http://${QMS_BIND_IP:-127.0.0.1}:${QMS_NGINX_PORT:-8081}/"
 print_test $? "Frontend (Stable) is accessible"
 
-echo -e "${YELLOW}[11/15] Checking API endpoints...${NC}"
-retry_http_check "http://${QMS_BIND_IP:-127.0.0.1}:${BACKEND_STABLE_PORT:-8000}/api/v1/auth/captcha"
-print_test $? "Captcha API endpoint is working"
+echo -e "${YELLOW}[11/15] Checking proxied API endpoints...${NC}"
+retry_http_check "http://${QMS_BIND_IP:-127.0.0.1}:${QMS_NGINX_PORT:-8081}/api/v1/auth/captcha"
+print_test $? "Captcha API endpoint is working through nginx"
 
 echo -e "${YELLOW}[12/15] Checking Celery worker...${NC}"
 "${COMPOSE_CMD[@]}" logs celery-worker | grep -q "celery@" > /dev/null 2>&1

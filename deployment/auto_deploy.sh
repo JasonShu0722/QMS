@@ -42,6 +42,9 @@ cp "$ENV_BACKUP" "$ENV_FILE"
 echo "[INFO] Building and updating containers"
 "${COMPOSE_CMD[@]}" up -d --build
 
+echo "[INFO] Refreshing nginx gateway"
+"${COMPOSE_CMD[@]}" restart nginx
+
 echo "[INFO] Running database migrations"
 "${COMPOSE_CMD[@]}" exec -T backend-stable alembic upgrade head
 

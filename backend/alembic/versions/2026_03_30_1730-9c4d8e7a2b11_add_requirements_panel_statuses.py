@@ -99,18 +99,11 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    bind = op.get_bind()
-    inspector = inspect(bind)
-
-    if "requirements_panel_statuses" in inspector.get_table_names():
-        op.drop_index(op.f("ix_requirements_panel_statuses_status"), table_name="requirements_panel_statuses")
-        op.drop_index(op.f("ix_requirements_panel_statuses_item_id"), table_name="requirements_panel_statuses")
-        op.drop_index(op.f("ix_requirements_panel_statuses_id"), table_name="requirements_panel_statuses")
-        op.drop_table("requirements_panel_statuses")
-
-    if "requirements_panel_users" in inspector.get_table_names():
-        op.drop_index(op.f("ix_requirements_panel_users_username"), table_name="requirements_panel_users")
-        op.drop_index(op.f("ix_requirements_panel_users_role"), table_name="requirements_panel_users")
-        op.drop_index(op.f("ix_requirements_panel_users_is_active"), table_name="requirements_panel_users")
-        op.drop_index(op.f("ix_requirements_panel_users_id"), table_name="requirements_panel_users")
-        op.drop_table("requirements_panel_users")
+    # This repository forbids destructive migration operations such as
+    # drop_table/drop_column in order to stay compatible with stable deployments.
+    # Keep this migration forward-only and perform any eventual cleanup in a
+    # later non-destructive migration sequence after all environments converge.
+    raise NotImplementedError(
+        "This migration is intentionally forward-only. "
+        "Destructive downgrade operations are disabled by repository policy."
+    )

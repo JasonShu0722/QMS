@@ -22,6 +22,21 @@ PASSED=0
 FAILED=0
 TOTAL=0
 
+retry_http_check() {
+    local url="$1"
+    local max_attempts="${2:-20}"
+    local sleep_seconds="${3:-3}"
+
+    for ((attempt=1; attempt<=max_attempts; attempt++)); do
+        if curl -fsS "$url" > /dev/null 2>&1; then
+            return 0
+        fi
+        sleep "$sleep_seconds"
+    done
+
+    return 1
+}
+
 print_test() {
     TOTAL=$((TOTAL + 1))
     if [ $1 -eq 0 ]; then
@@ -67,13 +82,13 @@ docker ps | grep -q qms_celery_beat
 print_test $? "Celery Beat container is running"
 
 echo -e "${YELLOW}[4/15] Checking backend health...${NC}"
-curl -f "http://${QMS_BIND_IP:-127.0.0.1}:${BACKEND_STABLE_PORT:-8000}/health" > /dev/null 2>&1
+retry_http_check "http://${QMS_BIND_IP:-127.0.0.1}:${BACKEND_STABLE_PORT:-8000}/health"
 print_test $? "Backend (Stable) health check passed"
-curl -f "http://${QMS_BIND_IP:-127.0.0.1}:${BACKEND_PREVIEW_PORT:-8001}/health" > /dev/null 2>&1
+retry_http_check "http://${QMS_BIND_IP:-127.0.0.1}:${BACKEND_PREVIEW_PORT:-8001}/health"
 print_test $? "Backend (Preview) health check passed"
 
 echo -e "${YELLOW}[5/15] Checking nginx health...${NC}"
-curl -f "http://${QMS_BIND_IP:-127.0.0.1}:${QMS_NGINX_PORT:-8081}/health" > /dev/null 2>&1
+retry_http_check "http://${QMS_BIND_IP:-127.0.0.1}:${QMS_NGINX_PORT:-8081}/health"
 print_test $? "Nginx health check passed"
 
 echo -e "${YELLOW}[6/15] Checking database connection...${NC}"
@@ -85,7 +100,7 @@ echo -e "${YELLOW}[7/15] Checking Redis connection...${NC}"
 print_test $? "Redis connection successful"
 
 echo -e "${YELLOW}[8/15] Checking API documentation...${NC}"
-curl -f "http://${QMS_BIND_IP:-127.0.0.1}:${BACKEND_STABLE_PORT:-8000}/api/docs" > /dev/null 2>&1
+retry_http_check "http://${QMS_BIND_IP:-127.0.0.1}:${BACKEND_STABLE_PORT:-8000}/api/docs"
 print_test $? "API documentation is accessible"
 
 echo -e "${YELLOW}[9/15] Checking database migrations...${NC}"
@@ -93,11 +108,11 @@ echo -e "${YELLOW}[9/15] Checking database migrations...${NC}"
 print_test $? "Database migrations are up to date"
 
 echo -e "${YELLOW}[10/15] Checking frontend access...${NC}"
-curl -f "http://${QMS_BIND_IP:-127.0.0.1}:${QMS_NGINX_PORT:-8081}/" > /dev/null 2>&1
+retry_http_check "http://${QMS_BIND_IP:-127.0.0.1}:${QMS_NGINX_PORT:-8081}/"
 print_test $? "Frontend (Stable) is accessible"
 
 echo -e "${YELLOW}[11/15] Checking API endpoints...${NC}"
-curl -f "http://${QMS_BIND_IP:-127.0.0.1}:${BACKEND_STABLE_PORT:-8000}/api/v1/auth/captcha" > /dev/null 2>&1
+retry_http_check "http://${QMS_BIND_IP:-127.0.0.1}:${BACKEND_STABLE_PORT:-8000}/api/v1/auth/captcha"
 print_test $? "Captcha API endpoint is working"
 
 echo -e "${YELLOW}[12/15] Checking Celery worker...${NC}"

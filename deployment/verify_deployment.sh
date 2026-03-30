@@ -81,7 +81,7 @@ echo -e "${YELLOW}[6/15] Checking database connection...${NC}"
 print_test $? "Database connection successful"
 
 echo -e "${YELLOW}[7/15] Checking Redis connection...${NC}"
-"${COMPOSE_CMD[@]}" exec -T redis redis-cli ping > /dev/null 2>&1
+"${COMPOSE_CMD[@]}" exec -T redis redis-cli -a "$REDIS_PASSWORD" ping > /dev/null 2>&1
 print_test $? "Redis connection successful"
 
 echo -e "${YELLOW}[8/15] Checking API documentation...${NC}"

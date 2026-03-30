@@ -1,0 +1,51 @@
+#!/bin/bash
+# Auto-deploy script for QMS production server.
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+DEPLOY_BRANCH="${1:-main}"
+ENV_FILE="${PROJECT_ROOT}/.env.production"
+ENV_BACKUP="$(mktemp)"
+COMPOSE_CMD=(docker compose --env-file "$ENV_FILE")
+
+cleanup() {
+    rm -f "$ENV_BACKUP"
+}
+
+trap cleanup EXIT
+
+echo "[INFO] Starting auto-deploy for branch: ${DEPLOY_BRANCH}"
+
+if [ ! -f "$ENV_FILE" ]; then
+    echo "[ERROR] Missing environment file: $ENV_FILE"
+    exit 1
+fi
+
+cd "$PROJECT_ROOT"
+
+echo "[INFO] Backing up local .env.production"
+cp "$ENV_FILE" "$ENV_BACKUP"
+
+echo "[INFO] Fetching latest code"
+git fetch origin "$DEPLOY_BRANCH" --prune
+
+echo "[INFO] Updating working tree"
+git checkout -- .env.production
+git checkout "$DEPLOY_BRANCH"
+git pull --ff-only origin "$DEPLOY_BRANCH"
+
+echo "[INFO] Restoring server-specific .env.production"
+cp "$ENV_BACKUP" "$ENV_FILE"
+
+echo "[INFO] Building and updating containers"
+"${COMPOSE_CMD[@]}" up -d --build
+
+echo "[INFO] Running database migrations"
+"${COMPOSE_CMD[@]}" exec -T backend-stable alembic upgrade head
+
+echo "[INFO] Verifying deployment"
+bash "${PROJECT_ROOT}/deployment/verify_deployment.sh"
+
+echo "[SUCCESS] Auto-deploy completed"

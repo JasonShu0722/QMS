@@ -28,16 +28,15 @@
 建议服务器目录：
 
 ```text
-/srv/qms
+/www/qms
 ```
 
 建议内容：
 
 ```text
-/srv/qms
+/www/qms
 ├─ QMS/                 # Git 仓库
-├─ .env.production      # 生产环境配置
-└─ deployment logs
+└─ .env.production.server backup
 ```
 
 ## 三、建议部署模式
@@ -101,10 +100,8 @@ Nginx 模板文件为：
 
 在正式部署前，至少还要处理下面几项：
 
-1. 自动部署工作流还没有创建
-2. 生产环境变量需要在服务器上整理成可用版本
-3. 部署脚本要确认适配你的服务器目录
-4. 如果走 NPM，需要把代理目标配置为 `127.0.0.1:${QMS_NGINX_PORT}`
+1. 生产环境变量需要在服务器上整理成可用版本
+2. 如果走 NPM，需要把代理目标配置为 `qms_nginx:80` 或 `127.0.0.1:${QMS_NGINX_PORT}`
 
 ## 六、推荐自动部署流程
 
@@ -125,8 +122,8 @@ Nginx 模板文件为：
 5. 执行部署脚本，例如：
 
 ```bash
-cd /srv/qms/QMS
-bash deployment/deploy.sh
+cd /www/qms/QMS
+bash deployment/auto_deploy.sh main
 ```
 
 ## 七、GitHub 需要的 Secrets
@@ -143,13 +140,31 @@ bash deployment/deploy.sh
 
 - `SERVER_KNOWN_HOSTS`
 
+你当前服务器建议这样填写：
+
+- `SERVER_HOST`: 你的云服务器公网 IP 或 SSH 域名
+- `SERVER_PORT`: `22`
+- `SERVER_USER`: `root`
+- `SERVER_SSH_KEY`: 用于登录服务器的私钥内容
+- `SERVER_DEPLOY_PATH`: `/www/qms/QMS`
+
+仓库里已经新增自动部署工作流：
+
+- [.github/workflows/deploy-production.yml](/E:/WorkSpace/QMS/.github/workflows/deploy-production.yml)
+
+它会在 `main` 分支收到 push 时自动执行，并在服务器上调用：
+
+- [deployment/auto_deploy.sh](/E:/WorkSpace/QMS/deployment/auto_deploy.sh)
+
+这个脚本会先备份服务器本地的 `.env.production`，再 `git pull`，最后恢复该文件，避免生产配置被仓库模板覆盖。
+
 ## 八、推荐的服务器部署目录初始化
 
 首次部署可按这个思路：
 
 ```bash
-mkdir -p /srv/qms
-cd /srv/qms
+mkdir -p /www/qms
+cd /www/qms
 git clone https://github.com/JasonShu0722/QMS.git
 cd QMS
 cp .env.example .env.production
@@ -190,6 +205,13 @@ BACKEND_PREVIEW_PORT=8001
 
 这样两个子域名都会先进入 QMS 自己的 Nginx，再由它按 `Host` 分流到正式版和预览版前后端服务。
 
+如果你的 `Nginx Proxy Manager` 本身也是 Docker 容器，更推荐让它加入 `qms_network`，然后直接代理到容器名：
+
+1. 转发主机名 / IP：`qms_nginx`
+2. 转发端口：`80`
+
+这样比写 `127.0.0.1:8081` 更稳定。
+
 如果需要先理解几份环境文件的分工，建议先看：
 
 - [ENV_CONFIGURATION.md](/E:/WorkSpace/QMS/doc/ENV_CONFIGURATION.md)
@@ -208,9 +230,9 @@ BACKEND_PREVIEW_PORT=8001
 
 下一轮可以直接开始做这几件实事：
 
-1. 检查并整理 `.env.production`
-2. 新增 GitHub Actions 自动部署工作流
-3. 生成一份服务器初始化命令清单
-4. 如需要 HTTPS，再补证书接入方案
+1. 在 GitHub 仓库里配置 Secrets
+2. 手动触发一次 `Deploy Production` workflow
+3. 确认服务器自动拉取并完成重建
+4. 如需要，再补 `preview` 分支的自动部署
 
 先手动部署跑通，再接自动更新，是最稳的路径。

@@ -88,6 +88,14 @@
                 </button>
                 <button
                   class="view-tab"
+                  :class="{ active: activeView === 'roadmap' }"
+                  type="button"
+                  @click="activeView = 'roadmap'"
+                >
+                  开发顺序
+                </button>
+                <button
+                  class="view-tab"
                   :class="{ active: activeView === 'details' }"
                   type="button"
                   @click="activeView = 'details'"
@@ -271,10 +279,87 @@
             </div>
           </template>
 
+          <section v-else-if="activeView === 'roadmap'" class="roadmap-board">
+            <div v-if="currentPlanStage" class="roadmap-highlight">
+              <div class="stack">
+                <span class="eyebrow roadmap-eyebrow">当前建议批次</span>
+                <h3>{{ currentPlanStage.order }}. {{ currentPlanStage.title }}</h3>
+                <p>{{ currentPlanStage.description }}</p>
+              </div>
+              <div class="roadmap-highlight-meta">
+                <span class="pill">{{ currentPlanStage.stats.pendingCount }} 项待推进</span>
+                <span class="pill subtle-pill">{{ currentPlanStage.stats.verified }} 项已验证</span>
+              </div>
+            </div>
+
+            <div class="roadmap-list">
+              <article v-for="stage in deliveryPlanSections" :key="stage.key" class="content-card roadmap-stage">
+                <div class="roadmap-stage-top">
+                  <div class="roadmap-stage-order">{{ stage.order }}</div>
+                  <div class="stack">
+                    <h3>{{ stage.title }}</h3>
+                    <p>{{ stage.description }}</p>
+                  </div>
+                  <div class="roadmap-stage-meta">
+                    <span class="pill">{{ stage.items.length }} 项</span>
+                    <span class="pill subtle-pill">{{ stage.stats.pendingCount }} 项待推进</span>
+                  </div>
+                </div>
+
+                <div class="roadmap-track">
+                  <div class="roadmap-bar" :style="{ width: `${stage.stats.progress}%` }"></div>
+                </div>
+
+                <div class="roadmap-stage-foot">
+                  <div class="toolbar-group">
+                    <span v-for="moduleName in stage.moduleNames" :key="moduleName" class="module-tag">{{ moduleName }}</span>
+                  </div>
+                  <div class="mini-stats">
+                    <span>待开发 {{ stage.stats.todo }}</span>
+                    <span>开发中 {{ stage.stats.doing }}</span>
+                    <span>待验证 {{ stage.stats.devDone }}</span>
+                    <span>已验证 {{ stage.stats.verified }}</span>
+                  </div>
+                </div>
+
+                <div v-if="stage.items.length > 0" class="roadmap-item-list">
+                  <article v-for="item in stage.items" :key="item.id" class="roadmap-item">
+                    <div class="roadmap-item-main">
+                      <div class="stack">
+                        <strong>{{ item.title }}</strong>
+                        <span>{{ item.moduleName }} · {{ item.phase }} · {{ item.scope }}</span>
+                      </div>
+                      <div class="toolbar-group">
+                        <span class="priority" :class="`priority-${item.priority}`">{{ priorityText[item.priority] }}</span>
+                      </div>
+                    </div>
+
+                    <div class="roadmap-item-side">
+                      <select
+                        v-if="canUpdate"
+                        :value="item.status"
+                        :disabled="savingItemId === item.id"
+                        @change="handleStatusChange(item.id, ($event.target as HTMLSelectElement).value)"
+                      >
+                        <option v-for="legend in catalog.metadata.statusLegend" :key="legend.key" :value="legend.key">
+                          {{ legend.label }}
+                        </option>
+                      </select>
+                      <span v-else class="status-pill" :class="`status-pill-${item.status}`">{{ statusText[item.status] }}</span>
+                      <small v-if="item.updatedByName" class="updated-by">最近更新 {{ item.updatedByName }}</small>
+                    </div>
+                  </article>
+                </div>
+
+                <p v-else class="empty-copy board-empty">当前筛选条件下此批次暂无需求项。</p>
+              </article>
+            </div>
+          </section>
+
           <section v-else class="detail-board">
             <div class="detail-toolbar">
               <span class="pill">共 {{ filteredItems.length }} 条需求</span>
-              <span v-if="canUpdate" class="pill subtle-pill">管理员可直接更新状态</span>
+              <span class="pill subtle-pill">开发状态请在“开发顺序”视图统一维护</span>
             </div>
 
             <div class="table-shell">
@@ -315,17 +400,7 @@
                     <td>{{ item.scope }}</td>
                     <td>{{ item.phase }}</td>
                     <td class="status-cell">
-                      <select
-                        v-if="canUpdate"
-                        :value="item.status"
-                        :disabled="savingItemId === item.id"
-                        @change="handleStatusChange(item.id, ($event.target as HTMLSelectElement).value)"
-                      >
-                        <option v-for="legend in catalog.metadata.statusLegend" :key="legend.key" :value="legend.key">
-                          {{ legend.label }}
-                        </option>
-                      </select>
-                      <span v-else class="status-pill" :class="`status-pill-${item.status}`">{{ statusText[item.status] }}</span>
+                      <span class="status-pill" :class="`status-pill-${item.status}`">{{ statusText[item.status] }}</span>
                       <small v-if="item.updatedByName" class="updated-by">最近更新 {{ item.updatedByName }}</small>
                     </td>
                     <td>{{ item.acceptance }}</td>
@@ -370,13 +445,65 @@ interface DisplayRequirementItem extends RequirementCatalogItem {
   updatedAt?: string | null
 }
 
-type WorkspaceView = 'overview' | 'details'
+type WorkspaceView = 'overview' | 'roadmap' | 'details'
+
+interface DeliveryPlanStage {
+  key: string
+  order: string
+  title: string
+  description: string
+  moduleIds?: string[]
+  onlyCore?: boolean
+  includeNonCore?: boolean
+}
 
 const priorityRank: Record<RequirementPriority, number> = {
   high: 0,
   medium: 1,
   low: 2
 }
+
+const deliveryPlanBlueprint: DeliveryPlanStage[] = [
+  {
+    key: 'platform-foundation',
+    order: '01',
+    title: '平台底座与统一入口',
+    description: '先打通账号、权限、工作台和基础留痕，确保后续各业务模块有统一入口和权限边界。',
+    moduleIds: ['foundation'],
+    onlyCore: true
+  },
+  {
+    key: 'supplier-collaboration',
+    order: '02',
+    title: '来料与供应商协同主线',
+    description: '优先落地来料检验、供应商闭环和绩效链路，先把外部协同主线跑通。',
+    moduleIds: ['incoming-quality'],
+    onlyCore: true
+  },
+  {
+    key: 'execution-loop',
+    order: '03',
+    title: '制程与客户闭环',
+    description: '在供应协同稳定后推进制程问题闭环和客户质量主线，形成端到端异常闭环。',
+    moduleIds: ['process-quality', 'customer-quality'],
+    onlyCore: true
+  },
+  {
+    key: 'governance-rollout',
+    order: '04',
+    title: '经营分析与治理扩展',
+    description: '补齐管理看板、新品质量和审核治理，支撑管理汇报和跨阶段管控。',
+    moduleIds: ['dashboard', 'npd-quality', 'audit'],
+    onlyCore: true
+  },
+  {
+    key: 'enhancement-backlog',
+    order: '05',
+    title: '增强项与预留规划',
+    description: '将移动端、AI、增强能力和预留模块放在基础主线稳定后逐步推进。',
+    includeNonCore: true
+  }
+]
 
 const statusRank: Record<RequirementStatus, number> = {
   doing: 0,
@@ -600,6 +727,46 @@ const activeFiltersCount = computed(
 )
 
 const hasActiveFilters = computed(() => activeFiltersCount.value > 0)
+
+const deliveryPlanSections = computed(() =>
+  deliveryPlanBlueprint.map((stage) => {
+    const items = filteredItems.value
+      .filter((item) => {
+        if (stage.includeNonCore) {
+          return item.scope !== '核心需求' || item.moduleId === 'reserved'
+        }
+
+        const moduleMatch = stage.moduleIds?.includes(item.moduleId) ?? false
+        if (!moduleMatch) return false
+        if (stage.onlyCore) return item.scope === '核心需求'
+        return true
+      })
+      .sort(compareItems)
+
+    const todo = items.filter((item) => item.status === 'todo').length
+    const doing = items.filter((item) => item.status === 'doing').length
+    const devDone = items.filter((item) => item.status === 'dev-done').length
+    const verified = items.filter((item) => item.status === 'verified').length
+    const pendingCount = items.filter((item) => item.status !== 'verified' && item.status !== 'reserved').length
+    const moduleNames = [...new Set(items.map((item) => item.moduleName))]
+
+    return {
+      ...stage,
+      items,
+      moduleNames,
+      stats: {
+        todo,
+        doing,
+        devDone,
+        verified,
+        pendingCount,
+        progress: items.length === 0 ? 0 : Math.round((verified / items.length) * 100)
+      }
+    }
+  })
+)
+
+const currentPlanStage = computed(() => deliveryPlanSections.value.find((stage) => stage.stats.pendingCount > 0) ?? null)
 
 async function refreshStatuses() {
   if (!panelUser.value) return
@@ -1110,7 +1277,8 @@ button:disabled {
 }
 
 .content-card,
-.detail-board {
+.detail-board,
+.roadmap-board {
   padding: 22px;
 }
 
@@ -1265,6 +1433,142 @@ button:disabled {
   flex: 0 0 auto;
 }
 
+.roadmap-board {
+  margin-top: 22px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+.roadmap-highlight {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  padding: 22px;
+  border: 1px solid #d6e1ef;
+  border-radius: 22px;
+  background: linear-gradient(135deg, #f8fbff 0%, #eef4ff 100%);
+}
+
+.roadmap-eyebrow {
+  margin-bottom: 10px;
+}
+
+.roadmap-highlight-meta {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.roadmap-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 18px;
+}
+
+.roadmap-stage {
+  padding: 20px;
+}
+
+.roadmap-stage-top {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.roadmap-stage-order {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 18px;
+  background: #edf3ff;
+  color: var(--accent);
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.roadmap-stage-meta {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.roadmap-track {
+  width: 100%;
+  height: 10px;
+  margin-top: 18px;
+  border-radius: 999px;
+  background: #e4ebf5;
+  overflow: hidden;
+}
+
+.roadmap-bar {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #2257d7 0%, #2f8f6a 100%);
+}
+
+.roadmap-stage-foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: center;
+  margin-top: 14px;
+}
+
+.module-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 7px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: #f8fbff;
+  color: #51627f;
+  font-size: 13px;
+}
+
+.roadmap-item-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.roadmap-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: center;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: #fff;
+}
+
+.roadmap-item-main,
+.roadmap-item-side {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.roadmap-item-main {
+  justify-content: space-between;
+  flex: 1 1 auto;
+}
+
+.roadmap-item-side {
+  flex: 0 0 auto;
+}
+
 .priority,
 .status-pill {
   display: inline-flex;
@@ -1396,7 +1700,10 @@ button:disabled {
   }
 
   .hero-head,
-  .workspace-top {
+  .workspace-top,
+  .roadmap-highlight,
+  .roadmap-stage-foot,
+  .roadmap-item {
     flex-direction: column;
   }
 
@@ -1407,6 +1714,16 @@ button:disabled {
   .hero-actions,
   .workspace-tools {
     width: 100%;
+    justify-content: flex-start;
+  }
+
+  .roadmap-stage-top {
+    grid-template-columns: 56px minmax(0, 1fr);
+  }
+
+  .roadmap-stage-meta,
+  .roadmap-item-main,
+  .roadmap-item-side {
     justify-content: flex-start;
   }
 
@@ -1446,9 +1763,15 @@ button:disabled {
   .toolbar,
   .module-header,
   .module-bottom,
-  .panel-item {
+  .panel-item,
+  .roadmap-item-main,
+  .roadmap-item-side {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .roadmap-stage-top {
+    grid-template-columns: 1fr;
   }
 
   .view-switch {

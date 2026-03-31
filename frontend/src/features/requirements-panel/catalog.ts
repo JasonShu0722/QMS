@@ -31,7 +31,7 @@ export const requirementsPanelCatalog: RequirementPanelCatalog = {
           priority: 'high',
           scope: '核心需求',
           phase: '一期核心',
-          status: 'dev-done',
+          status: 'todo',
           acceptance: '支持按一级/二级/三级模块与录入/查阅/修改/删除/导出维度实时配置权限。'
         },
         {
@@ -40,7 +40,7 @@ export const requirementsPanelCatalog: RequirementPanelCatalog = {
           priority: 'high',
           scope: '核心需求',
           phase: '一期核心',
-          status: 'dev-done',
+          status: 'todo',
           acceptance: '内部员工与供应商在统一入口登录，支持正式版/预览版切换与双环境访问。'
         },
         {
@@ -49,7 +49,7 @@ export const requirementsPanelCatalog: RequirementPanelCatalog = {
           priority: 'high',
           scope: '核心需求',
           phase: '一期核心',
-          status: 'dev-done',
+          status: 'todo',
           acceptance: '聚合跨模块待办、按角色展示卡片、支持点击直达与紧急程度提示。'
         },
         {
@@ -67,7 +67,7 @@ export const requirementsPanelCatalog: RequirementPanelCatalog = {
           priority: 'medium',
           scope: '核心需求',
           phase: '一期核心',
-          status: 'dev-done',
+          status: 'todo',
           acceptance: '关键提交、删除、修改操作可按人员、时间、动作筛选追踪。'
         },
         {
@@ -76,7 +76,7 @@ export const requirementsPanelCatalog: RequirementPanelCatalog = {
           priority: 'medium',
           scope: '核心需求',
           phase: '一期核心',
-          status: 'dev-done',
+          status: 'todo',
           acceptance: '支持内部/供应商注册审核、密码重置、冻结/解冻与用户状态维护。'
         },
         {
@@ -103,7 +103,7 @@ export const requirementsPanelCatalog: RequirementPanelCatalog = {
           priority: 'medium',
           scope: '期望增强',
           phase: '二期规划',
-          status: 'doing',
+          status: 'todo',
           acceptance: '关键页面在手机/PDA 上可访问，审核/扫码/待办场景具备可操作性。'
         },
         {
@@ -112,7 +112,7 @@ export const requirementsPanelCatalog: RequirementPanelCatalog = {
           priority: 'medium',
           scope: '期望增强',
           phase: '二期规划',
-          status: 'dev-done',
+          status: 'todo',
           acceptance: '支持按用户、供应商代码或环境对白名单功能做灰度启用。'
         }
       ]
@@ -129,7 +129,7 @@ export const requirementsPanelCatalog: RequirementPanelCatalog = {
           priority: 'medium',
           scope: '核心需求',
           phase: '一期核心',
-          status: 'doing',
+          status: 'todo',
           acceptance: '可汇总来料、制程、客户、供应商绩效相关指标并形成统一口径。'
         },
         {
@@ -138,7 +138,7 @@ export const requirementsPanelCatalog: RequirementPanelCatalog = {
           priority: 'medium',
           scope: '核心需求',
           phase: '一期核心',
-          status: 'dev-done',
+          status: 'todo',
           acceptance: '支持图表展示、待办分布图与分模块数据总览。'
         },
         {
@@ -165,7 +165,7 @@ export const requirementsPanelCatalog: RequirementPanelCatalog = {
           priority: 'medium',
           scope: '核心需求',
           phase: '一期增强',
-          status: 'dev-done',
+          status: 'todo',
           acceptance: '支持供应商、制程、客户指标按月形成 Top 清单与趋势分类分析。'
         }
       ]
@@ -182,7 +182,7 @@ export const requirementsPanelCatalog: RequirementPanelCatalog = {
           priority: 'medium',
           scope: '核心需求',
           phase: '一期核心',
-          status: 'dev-done',
+          status: 'todo',
           acceptance: '支持 SIP 关键项目、版本管理、审核生效与同步给 IQC 使用。'
         },
         {
@@ -191,7 +191,7 @@ export const requirementsPanelCatalog: RequirementPanelCatalog = {
           priority: 'medium',
           scope: '核心需求',
           phase: '一期核心',
-          status: 'doing',
+          status: 'todo',
           acceptance: '支持 IQC 检验记录留存、供应商批次提交对账与归档追溯。'
         },
         {
@@ -200,7 +200,7 @@ export const requirementsPanelCatalog: RequirementPanelCatalog = {
           priority: 'high',
           scope: '核心需求',
           phase: '一期核心',
-          status: 'dev-done',
+          status: 'todo',
           acceptance: '支持 SCAR 发起、供应商在线 8D 回复、审核驳回与关闭验证。'
         },
         {
@@ -209,7 +209,7 @@ export const requirementsPanelCatalog: RequirementPanelCatalog = {
           priority: 'high',
           scope: '核心需求',
           phase: '一期核心',
-          status: 'dev-done',
+          status: 'todo',
           acceptance: '支持目标值管理、月度绩效评分、等级评价与扣分联动。'
         },
         {
@@ -218,7 +218,7 @@ export const requirementsPanelCatalog: RequirementPanelCatalog = {
           priority: 'medium',
           scope: '核心需求',
           phase: '一期增强',
-          status: 'dev-done',
+          status: 'todo',
           acceptance: '支持准入审核、年度计划、问题点追踪与供应商状态更新。'
         },
         {
@@ -227,7 +227,7 @@ export const requirementsPanelCatalog: RequirementPanelCatalog = {
           priority: 'medium',
           scope: '核心需求',
           phase: '一期增强',
-          status: 'dev-done',
+          status: 'todo',
           acceptance: '支持 18 项资料清单上传、单项驳回、整体批准与年度回顾提醒。'
         },
         {
@@ -236,7 +236,7 @@ export const requirementsPanelCatalog: RequirementPanelCatalog = {
           priority: 'medium',
           scope: '期望增强',
           phase: '二期规划',
-          status: 'dev-done',
+          status: 'todo',
           acceptance: '支持 PCN 提交、内部评估、切换确认与断点信息回传。'
         },
         {
@@ -245,7 +245,7 @@ export const requirementsPanelCatalog: RequirementPanelCatalog = {
           priority: 'medium',
           scope: '期望增强',
           phase: '二期规划',
-          status: 'dev-done',
+          status: 'todo',
           acceptance: '支持供应商发货扫码校验、结果记录、批次归档与 IQC 校核联动。'
         }
       ]
@@ -262,7 +262,7 @@ export const requirementsPanelCatalog: RequirementPanelCatalog = {
           priority: 'medium',
           scope: '核心需求',
           phase: '一期核心',
-          status: 'doing',
+          status: 'todo',
           acceptance: '可从 IMS 等系统获取投入、产出、一次合格、不良等过程数据。'
         },
         {
@@ -271,7 +271,7 @@ export const requirementsPanelCatalog: RequirementPanelCatalog = {
           priority: 'medium',
           scope: '核心需求',
           phase: '一期核心',
-          status: 'dev-done',
+          status: 'todo',
           acceptance: '支持制程不良分类记录、责任归属、批次关联与历史查询。'
         },
         {
@@ -280,7 +280,7 @@ export const requirementsPanelCatalog: RequirementPanelCatalog = {
           priority: 'high',
           scope: '核心需求',
           phase: '一期核心',
-          status: 'dev-done',
+          status: 'todo',
           acceptance: '支持问题单发起、责任分配、整改跟踪、验证关闭与升级流转。'
         },
         {
@@ -307,7 +307,7 @@ export const requirementsPanelCatalog: RequirementPanelCatalog = {
           priority: 'medium',
           scope: '核心需求',
           phase: '一期增强',
-          status: 'doing',
+          status: 'todo',
           acceptance: '可按工单、产品、时间维度跟踪一次通过率、返工返修与不良趋势。'
         }
       ]
@@ -324,7 +324,7 @@ export const requirementsPanelCatalog: RequirementPanelCatalog = {
           priority: 'medium',
           scope: '核心需求',
           phase: '一期核心',
-          status: 'doing',
+          status: 'todo',
           acceptance: '出货数据带客户代码、产品类型、出货日期标签并形成质量计算底座。'
         },
         {
@@ -333,7 +333,7 @@ export const requirementsPanelCatalog: RequirementPanelCatalog = {
           priority: 'high',
           scope: '核心需求',
           phase: '一期核心',
-          status: 'dev-done',
+          status: 'todo',
           acceptance: '支持客诉等级、时效 SLA、8D 执行步骤、审批及归档检查表。'
         },
         {
@@ -342,7 +342,7 @@ export const requirementsPanelCatalog: RequirementPanelCatalog = {
           priority: 'medium',
           scope: '核心需求',
           phase: '一期核心',
-          status: 'dev-done',
+          status: 'todo',
           acceptance: '支持客户索赔录入、问题关联、供应商转嫁与统计分析。'
         },
         {
@@ -351,7 +351,7 @@ export const requirementsPanelCatalog: RequirementPanelCatalog = {
           priority: 'high',
           scope: '核心需求',
           phase: '一期核心',
-          status: 'doing',
+          status: 'todo',
           acceptance: '支持问题单到归档全过程的资料校验、状态控制与查询追溯。'
         },
         {
@@ -369,7 +369,7 @@ export const requirementsPanelCatalog: RequirementPanelCatalog = {
           priority: 'medium',
           scope: '核心需求',
           phase: '一期增强',
-          status: 'doing',
+          status: 'todo',
           acceptance: '按客户维度自动计算并推移 0KM、3MIS、12MIS 指标。'
         }
       ]
@@ -386,7 +386,7 @@ export const requirementsPanelCatalog: RequirementPanelCatalog = {
           priority: 'high',
           scope: '核心需求',
           phase: '一期核心',
-          status: 'dev-done',
+          status: 'todo',
           acceptance: '新品立项后自动拉取相关历史 8D/经验教训作为前置检查项。'
         },
         {
@@ -395,7 +395,7 @@ export const requirementsPanelCatalog: RequirementPanelCatalog = {
           priority: 'medium',
           scope: '核心需求',
           phase: '一期核心',
-          status: 'dev-done',
+          status: 'todo',
           acceptance: '支持里程碑评审、交付物清单、评审结论和整改跟踪。'
         },
         {
@@ -404,7 +404,7 @@ export const requirementsPanelCatalog: RequirementPanelCatalog = {
           priority: 'medium',
           scope: '核心需求',
           phase: '一期核心',
-          status: 'dev-done',
+          status: 'todo',
           acceptance: '通过 IMS 工单自动拉取试产投入、产出、合格率、直通率等指标。'
         },
         {
@@ -413,7 +413,7 @@ export const requirementsPanelCatalog: RequirementPanelCatalog = {
           priority: 'high',
           scope: '核心需求',
           phase: '一期核心',
-          status: 'doing',
+          status: 'todo',
           acceptance: '支持试产问题清单、责任跟踪、复杂问题升级为 8D 与带病量产审批。'
         },
         {
@@ -431,7 +431,7 @@ export const requirementsPanelCatalog: RequirementPanelCatalog = {
           priority: 'medium',
           scope: '期望增强',
           phase: '二期规划',
-          status: 'doing',
+          status: 'todo',
           acceptance: '一键输出试产质量总结报告并对目标达成偏差做归因分析。'
         },
         {
@@ -457,7 +457,7 @@ export const requirementsPanelCatalog: RequirementPanelCatalog = {
           priority: 'medium',
           scope: '核心需求',
           phase: '一期核心',
-          status: 'dev-done',
+          status: 'todo',
           acceptance: '支持年度审核计划导入/创建、排程、提醒与人员安排。'
         },
         {
@@ -466,7 +466,7 @@ export const requirementsPanelCatalog: RequirementPanelCatalog = {
           priority: 'high',
           scope: '核心需求',
           phase: '一期核心',
-          status: 'dev-done',
+          status: 'todo',
           acceptance: '审核 NG 条款自动转化 NC，支持责任分派、证据上传、审核验证关闭。'
         },
         {
@@ -475,7 +475,7 @@ export const requirementsPanelCatalog: RequirementPanelCatalog = {
           priority: 'medium',
           scope: '核心需求',
           phase: '一期增强',
-          status: 'doing',
+          status: 'todo',
           acceptance: '支持对审核整改项按部门/责任人做进度公开与超期提醒。'
         },
         {
@@ -484,7 +484,7 @@ export const requirementsPanelCatalog: RequirementPanelCatalog = {
           priority: 'medium',
           scope: '核心需求',
           phase: '一期核心',
-          status: 'dev-done',
+          status: 'todo',
           acceptance: '支持 VDA/IATF 审核模板、移动录入、自动计算得分与报告输出。'
         },
         {
@@ -493,7 +493,7 @@ export const requirementsPanelCatalog: RequirementPanelCatalog = {
           priority: 'medium',
           scope: '核心需求',
           phase: '一期核心',
-          status: 'dev-done',
+          status: 'todo',
           acceptance: '审核资料、报告、附件与整改证据可归档留存并支持后续复盘。'
         },
         {
@@ -502,7 +502,7 @@ export const requirementsPanelCatalog: RequirementPanelCatalog = {
           priority: 'medium',
           scope: '期望增强',
           phase: '二期规划',
-          status: 'dev-done',
+          status: 'todo',
           acceptance: '支持专项审核模板自定义与复用。'
         },
         {
@@ -511,7 +511,7 @@ export const requirementsPanelCatalog: RequirementPanelCatalog = {
           priority: 'medium',
           scope: '期望增强',
           phase: '二期规划',
-          status: 'dev-done',
+          status: 'todo',
           acceptance: '支持客户审核信息登记、问题清单导入及内部闭环联动。'
         }
       ]
@@ -555,7 +555,7 @@ export const requirementsPanelCatalog: RequirementPanelCatalog = {
           priority: 'medium',
           scope: '期望增强',
           phase: '二期规划',
-          status: 'dev-done',
+          status: 'todo',
           acceptance: '支持正式版/预览版双环境切换、验证和发布治理。'
         },
         {
@@ -564,7 +564,7 @@ export const requirementsPanelCatalog: RequirementPanelCatalog = {
           priority: 'medium',
           scope: '期望增强',
           phase: '二期规划',
-          status: 'doing',
+          status: 'todo',
           acceptance: '支持只对指定用户/供应商开放新流程与新页面。'
         }
       ]

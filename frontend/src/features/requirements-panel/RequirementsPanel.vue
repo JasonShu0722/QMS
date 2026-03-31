@@ -3,16 +3,13 @@
     <div class="shell">
       <section v-if="!isAuthenticated" class="card login-layout">
         <div class="intro">
-          <span class="eyebrow">Independent Requirements Panel</span>
+          <span class="eyebrow">需求面板</span>
           <h1>{{ catalog.metadata.title }}</h1>
-          <p>
-            这是部署在 QMS 子路径下的独立需求面板。它使用独立账号，不复用 QMS 主系统用户。
-            管理员账号可以在线调整状态，查阅账号仅用于浏览和汇报。
-          </p>
+          <p>统一查看 QMS 功能需求、开发状态与验证进度，管理员可直接在线维护状态。</p>
           <div class="meta-row">
-            <span class="pill">访问路径：/requirements-panel</span>
-            <span class="pill">账号体系：独立</span>
-            <span class="pill">状态同步：在线维护</span>
+            <span class="pill">访问路径 /requirements-panel</span>
+            <span class="pill">独立账号体系</span>
+            <span class="pill">状态实时同步</span>
           </div>
         </div>
 
@@ -37,17 +34,28 @@
 
       <template v-else>
         <section class="card hero">
-          <div class="hero-copy">
-            <span class="eyebrow">QMS Requirements Dashboard</span>
-            <h1>{{ catalog.metadata.title }}</h1>
-            <p>
-              页面改成“概览 + 明细”双视图后，先用紧凑摘要定位重点模块，再进入明细模式维护状态。
-              这样能保留汇报价值，同时避免把相同需求项在多个区块里重复铺开。
-            </p>
+          <div class="hero-head">
+            <div class="hero-copy">
+              <span class="eyebrow">需求总览</span>
+              <h1>{{ catalog.metadata.title }}</h1>
+              <p>统一查看模块进度、优先级与验证状态，支持管理员在线更新需求条目。</p>
+            </div>
+
+            <div class="hero-actions">
+              <button class="ghost" type="button" @click="refreshStatuses" :disabled="loading">
+                {{ loading ? '同步中...' : '刷新状态' }}
+              </button>
+              <button class="ghost" type="button" @click="exportSnapshot">导出快照</button>
+              <button class="ghost" type="button" @click="goToQmsLogin">返回 QMS</button>
+              <button class="ghost danger" type="button" @click="logoutFromPanel">退出账号</button>
+            </div>
+          </div>
+
+          <div class="hero-foot">
             <div class="meta-row">
-              <span class="pill">当前账号：{{ panelUser?.full_name }}</span>
-              <span class="pill">账号角色：{{ canUpdate ? '管理员' : '查阅账号' }}</span>
-              <span class="pill">版本：{{ catalog.metadata.version }}</span>
+              <span class="pill">当前账号 {{ panelUser?.full_name }}</span>
+              <span class="pill">{{ canUpdate ? '管理员' : '查阅账号' }}</span>
+              <span class="pill">版本 {{ catalog.metadata.version }}</span>
             </div>
 
             <div class="overview-strip">
@@ -58,53 +66,36 @@
               </article>
             </div>
           </div>
-
-          <div class="hero-side">
-            <div class="hero-panel">
-              <div class="panel-head">
-                <div>
-                  <h3>操作区</h3>
-                  <p>刷新状态、导出快照或返回主系统。</p>
-                </div>
-              </div>
-              <div class="hero-actions">
-                <button class="ghost" type="button" @click="refreshStatuses" :disabled="loading">
-                  {{ loading ? '同步中...' : '刷新状态' }}
-                </button>
-                <button class="ghost" type="button" @click="exportSnapshot">导出快照</button>
-                <button class="ghost" type="button" @click="goToQmsLogin">返回 QMS</button>
-                <button class="ghost danger" type="button" @click="logoutFromPanel">退出面板账号</button>
-              </div>
-            </div>
-
-            <div class="hero-panel">
-              <div class="panel-head">
-                <div>
-                  <h3>当前焦点</h3>
-                  <p>{{ attentionItems.length }} 条仍需优先关注的需求。</p>
-                </div>
-              </div>
-              <div v-if="attentionItems.length > 0" class="panel-list">
-                <article v-for="item in attentionItems.slice(0, 4)" :key="item.id" class="panel-item">
-                  <div class="stack">
-                    <strong>{{ item.title }}</strong>
-                    <span>{{ item.moduleName }}</span>
-                  </div>
-                  <span class="status-pill" :class="`status-pill-${item.status}`">{{ statusText[item.status] }}</span>
-                </article>
-              </div>
-              <p v-else class="empty-copy">当前筛选结果已无待推进项。</p>
-            </div>
-          </div>
         </section>
 
-        <section class="card controls">
-          <div class="section-head section-head-tight">
+        <section class="card workspace-card">
+          <div class="workspace-top">
             <div>
-              <h2>筛选与定位</h2>
-              <p>保留统一筛选入口，概览和明细共用同一组条件，避免来回重复查找。</p>
+              <h2>需求工作区</h2>
+              <p>按条件筛选后，可在总览和明细之间快速切换。</p>
             </div>
-            <span class="pill">{{ filteredItems.length }} / {{ allItems.length }} 条需求</span>
+
+            <div class="workspace-tools">
+              <span class="count-badge">{{ filteredItems.length }} / {{ allItems.length }} 条需求</span>
+              <div class="view-switch" role="tablist" aria-label="需求面板视图切换">
+                <button
+                  class="view-tab"
+                  :class="{ active: activeView === 'overview' }"
+                  type="button"
+                  @click="activeView = 'overview'"
+                >
+                  总览
+                </button>
+                <button
+                  class="view-tab"
+                  :class="{ active: activeView === 'details' }"
+                  type="button"
+                  @click="activeView = 'details'"
+                >
+                  明细
+                </button>
+              </div>
+            </div>
           </div>
 
           <div class="filters">
@@ -153,64 +144,32 @@
           <div class="toolbar">
             <div class="toolbar-group">
               <button class="ghost" type="button" @click="resetFilters">重置筛选</button>
-              <span v-if="hasActiveFilters" class="pill subtle-pill">{{ activeFiltersCount }} 个筛选生效</span>
+              <span v-if="hasActiveFilters" class="pill subtle-pill">{{ activeFiltersCount }} 个筛选条件</span>
             </div>
+
             <div class="toolbar-group legend-group">
-              <span v-for="legend in catalog.metadata.statusLegend" :key="legend.key" class="pill legend-pill">
+              <span v-for="legend in catalog.metadata.statusLegend" :key="legend.key" class="legend-pill">
                 <span class="legend-dot" :class="`status-${legend.key}`"></span>
                 {{ legend.label }}
               </span>
             </div>
           </div>
-        </section>
-
-        <section class="workspace">
-          <div class="section-head workspace-head">
-            <div>
-              <h2>{{ activeView === 'overview' ? '总览模式' : '明细模式' }}</h2>
-              <p>
-                {{ activeView === 'overview'
-                  ? '将模块进度、优先级和待推进事项压缩到同一屏内，先看重点再下钻。'
-                  : '聚焦单一列表做核对和状态维护，避免与概览区重复占用页面长度。'
-                }}
-              </p>
-            </div>
-
-            <div class="view-switch" role="tablist" aria-label="需求面板视图切换">
-              <button
-                class="view-tab"
-                :class="{ active: activeView === 'overview' }"
-                type="button"
-                @click="activeView = 'overview'"
-              >
-                总览
-              </button>
-              <button
-                class="view-tab"
-                :class="{ active: activeView === 'details' }"
-                type="button"
-                @click="activeView = 'details'"
-              >
-                明细
-              </button>
-            </div>
-          </div>
 
           <template v-if="activeView === 'overview'">
             <div class="workspace-grid">
-              <section class="card module-board">
+              <section class="content-card">
                 <div class="board-head">
                   <div>
-                    <h3>模块摘要</h3>
-                    <p>每个模块只保留进度、关键计数和少量焦点需求，避免完整列表重复铺陈。</p>
+                    <h3>模块进度</h3>
+                    <p>按模块查看当前完成率与待推进事项。</p>
                   </div>
-                  <span class="pill">{{ moduleSummaries.length }} 个命中模块</span>
+                  <span class="pill">{{ moduleSummaries.length }} 个模块</span>
                 </div>
 
                 <div v-if="moduleSummaries.length > 0" class="module-list">
                   <article v-for="module in moduleSummaries" :key="module.id" class="module-row">
                     <div class="module-header">
-                      <div>
+                      <div class="stack">
                         <div class="title-row">
                           <h3>{{ module.name }}</h3>
                           <span class="priority" :class="`priority-${module.overallPriority}`">
@@ -251,11 +210,11 @@
               </section>
 
               <aside class="sidebar">
-                <article class="card focus-card">
+                <article class="content-card">
                   <div class="board-head">
                     <div>
-                      <h3>优先级摘要</h3>
-                      <p>优先级泳道压缩为计数卡，保留汇报信息但不再单独占满版面。</p>
+                      <h3>优先级分布</h3>
+                      <p>按优先级查看需求规模与未完成数量。</p>
                     </div>
                   </div>
 
@@ -265,17 +224,16 @@
                         <span class="priority" :class="`priority-${lane.key}`">{{ lane.title }}</span>
                         <strong>{{ lane.items.length }}</strong>
                       </div>
-                      <p>{{ lane.description }}</p>
                       <small>未完成 {{ lane.pendingCount }} 项</small>
                     </div>
                   </div>
                 </article>
 
-                <article class="card focus-card">
+                <article class="content-card">
                   <div class="board-head">
                     <div>
-                      <h3>状态分布</h3>
-                      <p>直接看到筛选结果的状态构成，便于快速判断推进压力。</p>
+                      <h3>状态统计</h3>
+                      <p>查看当前筛选结果的状态分布。</p>
                     </div>
                   </div>
 
@@ -290,11 +248,11 @@
                   </div>
                 </article>
 
-                <article class="card focus-card">
+                <article class="content-card">
                   <div class="board-head">
                     <div>
-                      <h3>待推进清单</h3>
-                      <p>从所有筛选结果中只挑最需要动作的条目，替代原来的大块重复列表。</p>
+                      <h3>重点跟进</h3>
+                      <p>优先展示仍需推进的需求条目。</p>
                     </div>
                   </div>
 
@@ -307,16 +265,15 @@
                       <span class="priority" :class="`priority-${item.priority}`">{{ priorityText[item.priority] }}</span>
                     </article>
                   </div>
-                  <p v-else class="empty-copy">当前无需额外推进项。</p>
+                  <p v-else class="empty-copy">当前没有需要额外跟进的条目。</p>
                 </article>
               </aside>
             </div>
           </template>
 
-          <section v-else class="card detail-board">
+          <section v-else class="detail-board">
             <div class="detail-toolbar">
               <span class="pill">共 {{ filteredItems.length }} 条需求</span>
-              <span class="pill subtle-pill">当前视图只保留可操作明细，避免重复展示</span>
               <span v-if="canUpdate" class="pill subtle-pill">管理员可直接更新状态</span>
             </div>
 
@@ -369,7 +326,7 @@
                         </option>
                       </select>
                       <span v-else class="status-pill" :class="`status-pill-${item.status}`">{{ statusText[item.status] }}</span>
-                      <small v-if="item.updatedByName" class="updated-by">最近更新：{{ item.updatedByName }}</small>
+                      <small v-if="item.updatedByName" class="updated-by">最近更新 {{ item.updatedByName }}</small>
                     </td>
                     <td>{{ item.acceptance }}</td>
                   </tr>
@@ -605,22 +562,22 @@ const headlineMetrics = computed(() => [
   {
     label: '功能模块',
     value: catalog.modules.length,
-    note: '用摘要卡片代替原来的独立统计区'
+    note: '已纳入统计'
   },
   {
     label: '需求条目',
     value: allItems.value.length,
-    note: '汇总所有模块需求'
+    note: '当前目录总数'
   },
   {
     label: '已验证完成',
     value: verifiedCount.value,
-    note: '主线进度一眼可见'
+    note: '已完成验证'
   },
   {
     label: '推进中',
     value: inProgressCount.value,
-    note: `${highPriorityCount.value} 条高优先级需求`
+    note: `高优先级 ${highPriorityCount.value} 条`
   }
 ])
 
@@ -792,105 +749,141 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .page {
-  --surface: rgba(255, 255, 255, 0.94);
-  --surface-strong: rgba(247, 250, 255, 0.98);
-  --border: rgba(43, 72, 124, 0.12);
-  --text: #172235;
+  --bg: #f3f6fb;
+  --bg-soft: #eef3f9;
+  --surface: rgba(255, 255, 255, 0.96);
+  --surface-alt: #f8fbff;
+  --line: #d9e1ec;
+  --line-strong: #cbd6e4;
+  --text: #172033;
   --muted: #60708b;
-  --accent: #2a6bcf;
+  --accent: #2257d7;
+  --accent-soft: rgba(34, 87, 215, 0.08);
   min-height: 100vh;
-  padding: 20px 16px 48px;
+  padding: 24px 16px 48px;
   background:
-    radial-gradient(circle at top left, rgba(102, 153, 255, 0.22), transparent 34%),
-    radial-gradient(circle at 90% 10%, rgba(22, 163, 74, 0.14), transparent 28%),
-    linear-gradient(135deg, #f4f7fb 0%, #eaf1fb 45%, #dfe7f6 100%);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.65), rgba(255, 255, 255, 0)) 0 0 / 100% 220px no-repeat,
+    linear-gradient(180deg, var(--bg) 0%, var(--bg-soft) 100%);
+  font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
 }
 
 .shell {
-  width: min(1440px, 100%);
+  width: min(1360px, 100%);
   margin: 0 auto;
 }
 
-.card {
+.card,
+.content-card {
   background: var(--surface);
-  border: 1px solid var(--border);
-  box-shadow: 0 24px 60px rgba(39, 67, 108, 0.12);
-  backdrop-filter: blur(18px);
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.06);
 }
 
-.login-layout,
-.hero {
+.login-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1.45fr) minmax(320px, 0.95fr);
+  grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.75fr);
   gap: 24px;
   padding: 28px;
-  border-radius: 28px;
 }
 
 .intro {
-  max-width: 820px;
+  max-width: 760px;
 }
 
 .eyebrow {
   display: inline-flex;
-  padding: 8px 12px;
+  align-items: center;
+  padding: 7px 12px;
   border-radius: 999px;
-  background: #dbe8ff;
+  background: #edf3ff;
   color: var(--accent);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
+  letter-spacing: 0.04em;
 }
 
-h1 {
-  margin: 18px 0 12px;
-  font-size: clamp(30px, 4vw, 44px);
-  line-height: 1.08;
-  color: var(--text);
-}
-
+h1,
 h2,
 h3,
 p {
   margin: 0;
 }
 
+h1 {
+  margin-top: 16px;
+  font-size: clamp(30px, 4vw, 42px);
+  line-height: 1.1;
+  color: var(--text);
+}
+
+h2 {
+  font-size: 24px;
+  line-height: 1.2;
+  color: var(--text);
+}
+
+h3 {
+  font-size: 22px;
+  line-height: 1.3;
+  color: var(--text);
+}
+
 p {
   color: var(--muted);
-  line-height: 1.8;
+  line-height: 1.75;
 }
 
 .meta-row,
+.hero-actions,
 .toolbar,
-.hero-actions {
+.toolbar-group,
+.workspace-tools,
+.detail-toolbar,
+.mini-stats,
+.focus-badges,
+.panel-list {
   display: flex;
-  gap: 12px;
   flex-wrap: wrap;
+  gap: 12px;
 }
 
 .meta-row {
   margin-top: 18px;
 }
 
-.pill {
+.pill,
+.count-badge,
+.legend-pill {
   display: inline-flex;
   align-items: center;
   gap: 8px;
   padding: 8px 14px;
   border-radius: 999px;
-  border: 1px solid rgba(43, 72, 124, 0.14);
-  background: rgba(255, 255, 255, 0.84);
-  color: var(--muted);
   font-size: 13px;
+  line-height: 1;
+}
+
+.pill,
+.count-badge {
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--muted);
 }
 
 .subtle-pill {
-  background: rgba(235, 241, 252, 0.9);
+  background: #f0f4fb;
+}
+
+.legend-pill {
+  border: 1px solid var(--line);
+  background: var(--surface-alt);
+  color: var(--muted);
 }
 
 .login-card {
   width: min(400px, 100%);
   padding: 24px;
-  border-radius: 24px;
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -903,11 +896,9 @@ p {
 }
 
 .field span {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
-  color: var(--muted);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  color: #51627f;
 }
 
 input,
@@ -924,9 +915,13 @@ select {
   width: 100%;
   box-sizing: border-box;
   padding: 12px 14px;
-  border: 1px solid rgba(43, 72, 124, 0.14);
+  border: 1px solid var(--line-strong);
   background: #fff;
   color: var(--text);
+}
+
+input::placeholder {
+  color: #8b98ad;
 }
 
 .actions {
@@ -942,20 +937,21 @@ select {
   font-weight: 700;
   cursor: pointer;
   transition:
-    transform 0.18s ease,
+    border-color 0.18s ease,
+    background-color 0.18s ease,
     box-shadow 0.18s ease,
-    border-color 0.18s ease;
+    transform 0.18s ease;
 }
 
 .primary {
-  border: none;
-  background: linear-gradient(135deg, #2a6bcf, #2563eb);
+  border: 1px solid transparent;
+  background: linear-gradient(135deg, #2257d7, #1947b8);
   color: #fff;
 }
 
 .ghost,
 .view-tab {
-  border: 1px solid rgba(43, 72, 124, 0.14);
+  border: 1px solid var(--line);
   background: #fff;
   color: var(--text);
 }
@@ -964,12 +960,12 @@ select {
 .ghost:hover,
 .view-tab:hover {
   transform: translateY(-1px);
-  box-shadow: 0 16px 30px rgba(39, 67, 108, 0.12);
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.08);
 }
 
 button:disabled {
   cursor: not-allowed;
-  opacity: 0.72;
+  opacity: 0.7;
   transform: none;
   box-shadow: none;
 }
@@ -978,30 +974,49 @@ button:disabled {
   color: #be123c;
 }
 
-.hero-copy {
+.hero {
+  padding: 28px;
+}
+
+.hero-head {
   display: flex;
-  flex-direction: column;
-  gap: 18px;
+  justify-content: space-between;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+.hero-copy {
+  max-width: 780px;
+}
+
+.hero-copy p {
+  margin-top: 14px;
+  max-width: 620px;
+}
+
+.hero-actions {
+  justify-content: flex-end;
+  width: min(440px, 100%);
+}
+
+.hero-foot {
+  margin-top: 24px;
+  padding-top: 22px;
+  border-top: 1px solid var(--line);
 }
 
 .overview-strip {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 14px;
-}
-
-.metric-card,
-.hero-panel {
-  padding: 18px;
-  border-radius: 22px;
-  background: rgba(247, 250, 255, 0.98);
-  border: 1px solid rgba(43, 72, 124, 0.08);
+  margin-top: 20px;
 }
 
 .metric-card {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+  padding: 18px;
+  border-radius: 20px;
+  background: var(--surface-alt);
+  border: 1px solid rgba(201, 213, 230, 0.72);
 }
 
 .metric-card span,
@@ -1010,141 +1025,51 @@ button:disabled {
 }
 
 .metric-card strong {
+  display: block;
+  margin: 8px 0 6px;
   font-size: 30px;
   color: var(--text);
 }
 
-.hero-side {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+.workspace-card {
+  margin-top: 20px;
+  padding: 24px;
 }
 
-.panel-head,
-.section-head,
-.board-head,
+.workspace-top,
 .module-header,
+.module-bottom,
 .priority-line,
 .panel-item,
+.board-head,
 .title-row {
   display: flex;
   justify-content: space-between;
-  gap: 12px;
+  gap: 14px;
 }
 
-.panel-head {
+.workspace-top {
   align-items: flex-start;
 }
 
-.hero-actions {
-  margin-top: 16px;
+.workspace-top p {
+  margin-top: 8px;
 }
 
-.panel-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin-top: 14px;
-}
-
-.panel-item {
-  align-items: center;
-  padding: 12px 14px;
-  border-radius: 18px;
-  background: rgba(248, 250, 252, 0.94);
-  border: 1px solid rgba(43, 72, 124, 0.08);
-}
-
-.controls {
-  margin-top: 22px;
-  padding: 22px;
-  border-radius: 24px;
-}
-
-.section-head {
-  align-items: flex-end;
-  margin: 34px 0 14px;
-}
-
-.section-head-tight,
-.workspace-head,
-.board-head {
-  margin-top: 0;
-}
-
-.workspace-head {
-  margin-bottom: 18px;
-}
-
-.filters {
-  display: grid;
-  grid-template-columns: 1.5fr repeat(4, minmax(120px, 1fr));
-  gap: 14px;
-  margin-top: 18px;
-}
-
-.field-search {
-  min-width: 0;
-}
-
-.toolbar {
-  margin-top: 16px;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.toolbar-group {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-  align-items: center;
-}
-
-.legend-group {
+.workspace-tools {
   justify-content: flex-end;
-}
-
-.legend-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  flex: 0 0 auto;
-}
-
-.status-todo {
-  background: #94a3b8;
-}
-
-.status-doing {
-  background: #2563eb;
-}
-
-.status-dev-done {
-  background: #7c3aed;
-}
-
-.status-verified {
-  background: #16a34a;
-}
-
-.status-reserved {
-  background: #64748b;
-}
-
-.workspace {
-  margin-top: 30px;
+  align-items: center;
 }
 
 .view-switch {
   display: inline-flex;
-  gap: 8px;
-  padding: 6px;
-  border-radius: 18px;
-  background: rgba(230, 238, 249, 0.9);
+  padding: 5px;
+  border-radius: 16px;
+  background: #edf2fa;
 }
 
 .view-tab {
-  min-width: 92px;
+  min-width: 88px;
   border-color: transparent;
   background: transparent;
   box-shadow: none;
@@ -1153,35 +1078,66 @@ button:disabled {
 .view-tab.active {
   background: #fff;
   color: var(--accent);
-  border-color: rgba(42, 107, 207, 0.14);
-  box-shadow: 0 12px 24px rgba(39, 67, 108, 0.08);
+  border-color: rgba(34, 87, 215, 0.12);
+}
+
+.filters {
+  display: grid;
+  grid-template-columns: 1.55fr repeat(4, minmax(140px, 1fr));
+  gap: 14px;
+  margin-top: 22px;
+}
+
+.field-search {
+  min-width: 0;
+}
+
+.toolbar {
+  margin-top: 18px;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.legend-group {
+  justify-content: flex-end;
 }
 
 .workspace-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.45fr) minmax(320px, 0.9fr);
-  gap: 22px;
+  grid-template-columns: minmax(0, 1.65fr) minmax(300px, 0.9fr);
+  gap: 20px;
+  margin-top: 22px;
 }
 
-.module-board,
-.focus-card,
+.content-card,
 .detail-board {
   padding: 22px;
-  border-radius: 24px;
+}
+
+.board-head {
+  align-items: flex-start;
+}
+
+.board-head p {
+  margin-top: 8px;
+}
+
+.module-list,
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .module-list {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
   margin-top: 18px;
 }
 
 .module-row {
-  padding: 18px;
-  border-radius: 22px;
-  background: linear-gradient(180deg, rgba(249, 251, 255, 0.98), rgba(242, 246, 253, 0.92));
-  border: 1px solid rgba(43, 72, 124, 0.08);
+  padding: 18px 18px 16px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: linear-gradient(180deg, #fbfdff 0%, #f5f8fc 100%);
 }
 
 .title-row {
@@ -1191,17 +1147,20 @@ button:disabled {
 }
 
 .module-progress {
-  min-width: 112px;
+  min-width: 110px;
   text-align: right;
 }
 
 .module-progress strong {
   display: block;
-  font-size: 28px;
+  font-size: 32px;
+  line-height: 1;
   color: var(--text);
 }
 
 .module-progress span {
+  display: block;
+  margin-top: 8px;
   color: var(--muted);
   font-size: 13px;
 }
@@ -1211,52 +1170,41 @@ button:disabled {
   height: 10px;
   margin-top: 16px;
   border-radius: 999px;
-  background: #e8eef8;
+  background: #e4ebf5;
   overflow: hidden;
 }
 
 .bar {
   height: 100%;
   border-radius: 999px;
-  background: linear-gradient(90deg, #2a6bcf, #16a34a);
+  background: linear-gradient(90deg, #2257d7 0%, #2f8f6a 100%);
 }
 
 .module-bottom {
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
   align-items: flex-start;
   margin-top: 14px;
 }
 
 .mini-stats {
-  display: flex;
-  gap: 14px;
-  flex-wrap: wrap;
   color: var(--muted);
   font-size: 13px;
 }
 
-.focus-badges {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  justify-content: flex-end;
+.focus-chip,
+.priority-block,
+.status-count,
+.panel-item {
+  border: 1px solid var(--line);
+  background: #fff;
 }
 
 .focus-chip {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 140px;
-  padding: 12px 14px;
+  min-width: 132px;
+  padding: 10px 12px;
   border-radius: 16px;
-  background: rgba(255, 255, 255, 0.86);
-  border: 1px solid rgba(43, 72, 124, 0.08);
 }
 
 .focus-chip strong,
-.panel-item strong,
 .stack strong {
   color: var(--text);
 }
@@ -1268,12 +1216,6 @@ button:disabled {
   color: var(--muted);
 }
 
-.sidebar {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-}
-
 .priority-summary,
 .status-summary {
   display: grid;
@@ -1281,29 +1223,46 @@ button:disabled {
   margin-top: 16px;
 }
 
-.priority-block,
+.priority-block {
+  padding: 14px;
+  border-radius: 18px;
+}
+
+.priority-line strong {
+  font-size: 26px;
+  color: var(--text);
+}
+
+.priority-block small {
+  margin-top: 10px;
+  display: block;
+  color: var(--muted);
+}
+
 .status-count {
   display: flex;
   align-items: center;
   gap: 12px;
   padding: 14px;
   border-radius: 18px;
-  background: rgba(248, 250, 252, 0.9);
-  border: 1px solid rgba(43, 72, 124, 0.08);
 }
 
-.priority-block {
+.panel-list {
   flex-direction: column;
-  align-items: stretch;
+  margin-top: 16px;
 }
 
-.priority-line strong {
-  font-size: 24px;
-  color: var(--text);
+.panel-item {
+  align-items: center;
+  padding: 13px 14px;
+  border-radius: 18px;
 }
 
-.priority-block small {
-  color: var(--muted);
+.legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex: 0 0 auto;
 }
 
 .priority,
@@ -1332,55 +1291,57 @@ button:disabled {
   color: #2563eb;
 }
 
+.status-todo,
 .status-pill-todo {
   background: #f1f5f9;
   color: #475569;
 }
 
+.status-doing,
 .status-pill-doing {
   background: #dbeafe;
   color: #1d4ed8;
 }
 
+.status-dev-done,
 .status-pill-dev-done {
   background: #ede9fe;
   color: #6d28d9;
 }
 
+.status-verified,
 .status-pill-verified {
   background: #dcfce7;
   color: #15803d;
 }
 
+.status-reserved,
 .status-pill-reserved {
   background: #e2e8f0;
   color: #475569;
 }
 
 .detail-toolbar {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
   margin-bottom: 16px;
 }
 
 .table-shell {
   overflow: auto;
-  border-radius: 22px;
-  border: 1px solid rgba(43, 72, 124, 0.08);
+  border: 1px solid var(--line);
+  border-radius: 20px;
 }
 
 .table {
   width: 100%;
   min-width: 1180px;
   border-collapse: collapse;
-  background: rgba(255, 255, 255, 0.86);
+  background: #fff;
 }
 
 .table th,
 .table td {
   padding: 16px 18px;
-  border-bottom: 1px solid rgba(43, 72, 124, 0.1);
+  border-bottom: 1px solid #e2e8f1;
   text-align: left;
   vertical-align: top;
 }
@@ -1388,10 +1349,10 @@ button:disabled {
 .table th {
   position: sticky;
   top: 0;
-  background: rgba(244, 248, 255, 0.98);
-  color: #24324b;
-  font-size: 13px;
   z-index: 1;
+  background: #f5f8fd;
+  color: #334155;
+  font-size: 13px;
 }
 
 .table-empty-cell {
@@ -1430,13 +1391,23 @@ button:disabled {
 }
 
 @media (max-width: 1024px) {
-  .login-layout,
-  .hero {
+  .login-layout {
     grid-template-columns: 1fr;
+  }
+
+  .hero-head,
+  .workspace-top {
+    flex-direction: column;
   }
 
   .login-card {
     width: 100%;
+  }
+
+  .hero-actions,
+  .workspace-tools {
+    width: 100%;
+    justify-content: flex-start;
   }
 
   .filters {
@@ -1450,22 +1421,17 @@ button:disabled {
   .module-bottom {
     flex-direction: column;
   }
-
-  .focus-badges {
-    justify-content: flex-start;
-  }
 }
 
 @media (max-width: 768px) {
   .page {
-    padding: 12px 12px 32px;
+    padding: 14px 12px 32px;
   }
 
   .login-layout,
   .hero,
-  .controls,
-  .module-board,
-  .focus-card,
+  .workspace-card,
+  .content-card,
   .detail-board,
   .login-card {
     padding: 18px;
@@ -1477,15 +1443,10 @@ button:disabled {
     grid-template-columns: 1fr;
   }
 
-  .section-head,
+  .toolbar,
   .module-header,
-  .panel-item,
-  .priority-line {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .toolbar {
+  .module-bottom,
+  .panel-item {
     flex-direction: column;
     align-items: flex-start;
   }
@@ -1496,7 +1457,6 @@ button:disabled {
 
   .view-tab {
     flex: 1 1 0;
-    text-align: center;
   }
 
   .module-progress {

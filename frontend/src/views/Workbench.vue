@@ -63,6 +63,10 @@
             <template #header>
               <div class="card-header">
                 <span class="card-header-title">快捷入口</span>
+                <el-button link type="primary" @click="openQuickActionDialog">
+                  <el-icon><Setting /></el-icon>
+                  配置快捷入口
+                </el-button>
               </div>
             </template>
 
@@ -78,7 +82,7 @@
                 <div class="quick-action-desc">{{ action.description }}</div>
               </el-card>
             </div>
-            <el-empty v-else description="当前没有可用的快捷入口" :image-size="90" />
+            <el-empty v-else description="当前还没有配置快捷入口，请先点击右上角进行设置" :image-size="90" />
           </el-card>
         </el-col>
 
@@ -164,6 +168,83 @@
         </el-col>
       </el-row>
     </template>
+
+    <el-dialog
+      v-model="showQuickActionDialog"
+      title="配置快捷入口"
+      width="880px"
+      :close-on-click-modal="false"
+    >
+      <div class="quick-action-config-panel">
+        <div class="quick-action-config-toolbar">
+          <el-input
+            v-model="quickActionKeyword"
+            placeholder="搜索功能名称或描述"
+            clearable
+          >
+            <template #prefix>
+              <el-icon><Search /></el-icon>
+            </template>
+          </el-input>
+          <div class="quick-action-config-summary">
+            已选择 {{ quickActionDraft.length }} 项
+          </div>
+        </div>
+
+        <div class="quick-action-config-tip">
+          可在当前身份范围内，从全部功能项中自由选择快捷入口；带“当前未启用”标记的能力暂不会在工作台展示。
+        </div>
+
+        <el-checkbox-group v-model="quickActionDraft" class="quick-action-group-list">
+          <section
+            v-for="group in quickActionGroups"
+            :key="group.category"
+            class="quick-action-group"
+          >
+            <header class="quick-action-group__header">
+              <h4>{{ group.category }}</h4>
+              <span>{{ group.items.length }} 项</span>
+            </header>
+
+            <div class="quick-action-group__grid">
+              <el-checkbox
+                v-for="option in group.items"
+                :key="option.id"
+                :label="option.id"
+                class="quick-action-option"
+              >
+                <div class="quick-action-option__content">
+                  <div class="quick-action-option__top">
+                    <span class="quick-action-option__title">{{ option.title }}</span>
+                    <el-tag
+                      v-if="!isQuickActionAvailable(option)"
+                      size="small"
+                      type="warning"
+                      effect="plain"
+                    >
+                      当前未启用
+                    </el-tag>
+                  </div>
+                  <div class="quick-action-option__desc">{{ option.description }}</div>
+                  <div class="quick-action-option__link">{{ option.link }}</div>
+                </div>
+              </el-checkbox>
+            </div>
+          </section>
+        </el-checkbox-group>
+
+        <el-empty
+          v-if="!quickActionGroups.length"
+          description="没有匹配的功能项"
+          :image-size="80"
+        />
+      </div>
+      <template #footer>
+        <el-button @click="resetQuickActionsToDefault">恢复默认</el-button>
+        <el-button @click="showQuickActionDialog = false">取消</el-button>
+        <el-button type="primary" @click="saveQuickActions">保存配置</el-button>
+      </template>
+    </el-dialog>
 
     <el-dialog
       v-model="showPasswordDialog"
@@ -272,7 +353,7 @@ import {
   type UploadFile,
   type UploadInstance
 } from 'element-plus'
-import { Bell, Camera, Edit, Lock, UploadFilled, User } from '@element-plus/icons-vue'
+import { Bell, Camera, Edit, Lock, Search, Setting, UploadFilled, User } from '@element-plus/icons-vue'
 import { VueCropper } from 'vue-cropper'
 import 'vue-cropper/dist/index.css'
 import { announcementApi } from '@/api/announcement'
@@ -281,6 +362,17 @@ import AnnouncementDialog from '@/components/AnnouncementDialog.vue'
 import AnnouncementList from '@/components/AnnouncementList.vue'
 import TaskCard from '@/components/TaskCard.vue'
 import { useAuthStore } from '@/stores/auth'
+import { useFeatureFlagStore } from '@/stores/featureFlag'
+import {
+  getConfigurableQuickActions,
+  getDefaultQuickActionIds,
+  getVisibleQuickActions,
+  getWorkbenchQuickActionStorageKey,
+  isQuickActionCurrentlyAvailable,
+  sanitizeQuickActionIds,
+  type WorkbenchQuickActionContext,
+  type WorkbenchQuickActionOption
+} from '@/config/workbenchQuickActions'
 import type { Announcement } from '@/types/announcement'
 import type {
   ChangePasswordRequest,
@@ -292,9 +384,14 @@ import type {
 
 const router = useRouter()
 const authStore = useAuthStore()
+const featureFlagStore = useFeatureFlagStore()
 
 const loading = ref(false)
 const dashboardData = ref<DashboardData | null>(null)
+const showQuickActionDialog = ref(false)
+const quickActionDraft = ref<string[]>([])
+const selectedQuickActionIds = ref<string[]>([])
+const quickActionKeyword = ref('')
 
 const showAnnouncementDialog = ref(false)
 const unreadImportantAnnouncements = ref<Announcement[]>([])
@@ -372,9 +469,43 @@ const featureBlocks = computed(() => dashboardData.value?.feature_blocks || {
   announcements: false,
   notifications: false
 })
-const quickActions = computed(() => dashboardData.value?.quick_actions || [])
 const sessionUser = computed(() => dashboardData.value?.user_info || authStore.userInfo)
 const environment = computed(() => dashboardData.value?.environment || authStore.currentEnvironment)
+const quickActionContext = computed<WorkbenchQuickActionContext>(() => ({
+  isInternal: authStore.isInternal,
+  isSupplier: authStore.isSupplier,
+  isPlatformAdmin: authStore.isPlatformAdmin,
+  isFeatureEnabled: (featureKey: string) => featureFlagStore.isFeatureEnabled(featureKey)
+}))
+const configurableQuickActions = computed(() =>
+  getConfigurableQuickActions(quickActionContext.value)
+)
+const quickActionGroups = computed(() => {
+  const keyword = quickActionKeyword.value.trim()
+  const groups = new Map<string, WorkbenchQuickActionOption[]>()
+
+  for (const option of configurableQuickActions.value) {
+    const matchesKeyword = !keyword || [option.title, option.description, option.category]
+      .some((field) => field.includes(keyword))
+
+    if (!matchesKeyword) {
+      continue
+    }
+
+    const group = groups.get(option.category) || []
+    group.push(option)
+    groups.set(option.category, group)
+  }
+
+  return Array.from(groups.entries()).map(([category, items]) => ({ category, items }))
+})
+const quickActions = computed(() =>
+  getVisibleQuickActions(
+    selectedQuickActionIds.value,
+    configurableQuickActions.value,
+    quickActionContext.value
+  )
+)
 const taskList = computed<TodoTask[]>(() => {
   if (authStore.isInternal) {
     return internalDashboard.value?.todos || []
@@ -463,11 +594,87 @@ async function loadDashboardData() {
   loading.value = true
   try {
     dashboardData.value = await workbenchApi.getDashboardData()
+    initializeQuickActions()
   } catch (error: any) {
     ElMessage.error(error.message || '加载工作台数据失败')
   } finally {
     loading.value = false
   }
+}
+
+function getQuickActionDefaultIds() {
+  const defaultIds = getDefaultQuickActionIds(
+    dashboardData.value?.quick_actions || [],
+    configurableQuickActions.value
+  )
+
+  return sanitizeQuickActionIds(defaultIds, configurableQuickActions.value)
+}
+
+function initializeQuickActions() {
+  const currentUserId = sessionUser.value?.id || authStore.userInfo?.id
+  if (!currentUserId) {
+    selectedQuickActionIds.value = []
+    quickActionDraft.value = []
+    return
+  }
+
+  const storageKey = getWorkbenchQuickActionStorageKey(currentUserId)
+  const defaultIds = getQuickActionDefaultIds()
+  const storedValue = localStorage.getItem(storageKey)
+
+  if (!storedValue) {
+    selectedQuickActionIds.value = defaultIds
+    quickActionDraft.value = [...defaultIds]
+    return
+  }
+
+  try {
+    const parsed = JSON.parse(storedValue)
+    const sanitizedIds = sanitizeQuickActionIds(
+      Array.isArray(parsed) ? parsed : [],
+      configurableQuickActions.value
+    )
+
+    selectedQuickActionIds.value = sanitizedIds.length ? sanitizedIds : defaultIds
+    quickActionDraft.value = [...selectedQuickActionIds.value]
+  } catch (error) {
+    console.error('Failed to parse quick action preferences:', error)
+    selectedQuickActionIds.value = defaultIds
+    quickActionDraft.value = [...defaultIds]
+  }
+}
+
+function openQuickActionDialog() {
+  quickActionDraft.value = [...selectedQuickActionIds.value]
+  quickActionKeyword.value = ''
+  showQuickActionDialog.value = true
+}
+
+function resetQuickActionsToDefault() {
+  quickActionDraft.value = getQuickActionDefaultIds()
+}
+
+function saveQuickActions() {
+  const currentUserId = sessionUser.value?.id || authStore.userInfo?.id
+  const sanitizedIds = sanitizeQuickActionIds(quickActionDraft.value, configurableQuickActions.value)
+
+  selectedQuickActionIds.value = sanitizedIds
+  quickActionDraft.value = [...sanitizedIds]
+
+  if (currentUserId) {
+    localStorage.setItem(
+      getWorkbenchQuickActionStorageKey(currentUserId),
+      JSON.stringify(sanitizedIds)
+    )
+  }
+
+  showQuickActionDialog.value = false
+  ElMessage.success('快捷入口配置已保存')
+}
+
+function isQuickActionAvailable(option: WorkbenchQuickActionOption) {
+  return isQuickActionCurrentlyAvailable(option, quickActionContext.value)
 }
 
 async function loadUnreadImportantAnnouncements() {
@@ -560,6 +767,7 @@ async function handleUploadSignature() {
 }
 
 onMounted(async () => {
+  await featureFlagStore.loadFeatureFlags()
   await loadDashboardData()
   await loadUnreadImportantAnnouncements()
 })
@@ -685,6 +893,138 @@ onMounted(async () => {
   color: #909399;
 }
 
+.quick-action-config-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.quick-action-config-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.quick-action-config-toolbar :deep(.el-input) {
+  flex: 1;
+}
+
+.quick-action-config-summary {
+  min-width: 92px;
+  color: #606266;
+  font-size: 13px;
+  text-align: right;
+}
+
+.quick-action-config-tip {
+  border-radius: 10px;
+  background: #f4f8ff;
+  color: #5b6b83;
+  font-size: 13px;
+  line-height: 1.6;
+  padding: 12px 14px;
+}
+
+.quick-action-group-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.quick-action-group {
+  border: 1px solid #ebeef5;
+  border-radius: 14px;
+  padding: 16px;
+}
+
+.quick-action-group__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.quick-action-group__header h4 {
+  margin: 0;
+  color: #303133;
+  font-size: 15px;
+}
+
+.quick-action-group__header span {
+  color: #909399;
+  font-size: 12px;
+}
+
+.quick-action-group__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.quick-action-option {
+  display: block;
+  margin-right: 0;
+}
+
+.quick-action-option :deep(.el-checkbox__input) {
+  margin-top: 2px;
+}
+
+.quick-action-option :deep(.el-checkbox__label) {
+  width: 100%;
+  padding-left: 10px;
+}
+
+.quick-action-option__content {
+  display: flex;
+  min-height: 108px;
+  flex-direction: column;
+  justify-content: space-between;
+  border: 1px solid #e4e7ed;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #ffffff 0%, #f9fbff 100%);
+  padding: 14px;
+  transition: all 0.2s ease;
+}
+
+.quick-action-option:hover .quick-action-option__content {
+  border-color: #bfd9ff;
+  box-shadow: 0 10px 24px rgba(64, 158, 255, 0.08);
+}
+
+.quick-action-option__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.quick-action-option__title {
+  color: #303133;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.quick-action-option__desc {
+  margin-top: 8px;
+  color: #606266;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.quick-action-option__link {
+  margin-top: 12px;
+  color: #909399;
+  font-size: 12px;
+}
+
+.quick-action-option :deep(.el-checkbox__input.is-checked) + .el-checkbox__label .quick-action-option__content {
+  border-color: #409eff;
+  background: linear-gradient(180deg, #f7fbff 0%, #ecf5ff 100%);
+  box-shadow: 0 12px 30px rgba(64, 158, 255, 0.12);
+}
+
 .metrics-list {
   display: flex;
   flex-direction: column;
@@ -791,8 +1131,21 @@ onMounted(async () => {
     width: 100%;
   }
 
+  .quick-action-config-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .quick-action-config-summary {
+    text-align: left;
+  }
+
   .todo-grid,
   .quick-action-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .quick-action-group__grid {
     grid-template-columns: 1fr;
   }
 

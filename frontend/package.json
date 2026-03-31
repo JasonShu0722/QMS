@@ -8,7 +8,7 @@
     "build": "vue-tsc && vite build",
     "preview": "vite preview",
     "test": "vitest --run",
-    "test:foundation": "vitest --run src/stores/test/auth.spec.ts src/composables/test/useEnvironment.spec.ts src/views/admin/test/PermissionMatrix.spec.ts",
+    "test:foundation": "vitest --run src/stores/test/auth.spec.ts src/composables/test/useEnvironment.spec.ts src/views/admin/test/PermissionMatrix.spec.ts src/config/test/workbenchQuickActions.spec.ts",
     "test:watch": "vitest",
     "test:ui": "vitest --ui"
   },

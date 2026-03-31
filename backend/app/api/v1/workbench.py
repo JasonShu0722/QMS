@@ -115,6 +115,7 @@ async def get_dashboard_data(
                 urgency=t.urgency,
                 color=t.color,
                 link=t.link,
+                title=t.title if hasattr(t, 'title') else None,
                 description=t.description if hasattr(t, 'description') else None,
             )
             for t in tasks
@@ -132,14 +133,14 @@ async def get_dashboard_data(
     )
 
     quick_actions = [
-        {"title": "Profile", "description": "View and maintain your personal profile", "link": "/workbench"},
+        {"title": "个人中心", "description": "查看资料、修改密码与电子签名", "link": "/workbench"},
     ]
     if is_platform_admin(current_user):
         quick_actions.extend(
             [
-                {"title": "User Admin", "description": "Review registrations and govern accounts", "link": "/admin/users"},
-                {"title": "Permissions", "description": "Configure the platform permission matrix", "link": "/admin/permissions"},
-                {"title": "Feature Flags", "description": "Manage preview and stable capabilities", "link": "/admin/feature-flags"},
+                {"title": "用户管理", "description": "审核注册申请并治理平台账号", "link": "/admin/users"},
+                {"title": "权限矩阵", "description": "配置平台模块与操作权限矩阵", "link": "/admin/permissions"},
+                {"title": "功能开关", "description": "管理正式与预览环境的功能可见性", "link": "/admin/feature-flags"},
             ]
         )
 
@@ -159,7 +160,7 @@ async def get_dashboard_data(
             metrics=[
                 MetricItem(
                     key="foundation.pending_reviews",
-                    name="Pending Reviews",
+                    name="待处理事项",
                     value=len(todo_items),
                     status="warning" if todo_items else "good",
                     achievement=100 if not todo_items else max(0, 100 - len(todo_items) * 10),

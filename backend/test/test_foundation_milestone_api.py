@@ -438,10 +438,10 @@ async def test_internal_workbench_returns_foundation_tasks_and_feature_blocks(
     assert data["user_info"]["is_platform_admin"] is True
     assert data["user_info"]["signature_image_path"] == "/uploads/signatures/admin.png"
     assert {action["title"] for action in data["quick_actions"]} >= {
-        "Profile",
-        "User Admin",
-        "Permissions",
-        "Feature Flags",
+        "个人中心",
+        "用户管理",
+        "权限矩阵",
+        "功能开关",
     }
     assert data["feature_blocks"] == {
         "metrics": True,
@@ -450,9 +450,9 @@ async def test_internal_workbench_returns_foundation_tasks_and_feature_blocks(
     }
     assert len(data["metrics"]) == 1
     assert {item["task_type"] for item in data["todos"]} == {
-        "Account Review",
-        "Permission Bootstrap",
-        "Preview Governance",
+        "注册审批",
+        "权限初始化",
+        "预览环境治理",
     }
 
 
@@ -486,7 +486,7 @@ async def test_supplier_workbench_returns_supplier_shape_and_safe_defaults(
     assert data["user_info"]["supplier_name"] == "Supplier Dashboard Co"
     assert data["user_info"]["signature_image_path"] == "/uploads/signatures/supplier_dashboard_user.png"
     assert data["user_info"]["is_platform_admin"] is False
-    assert [action["title"] for action in data["quick_actions"]] == ["Profile"]
+    assert [action["title"] for action in data["quick_actions"]] == ["个人中心"]
     assert data["performance_status"] is None
     assert data["action_required_tasks"] == []
     assert set(data["feature_blocks"].keys()) == {"metrics", "announcements", "notifications"}

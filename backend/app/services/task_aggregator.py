@@ -82,7 +82,7 @@ class TaskAggregator:
             )
             tasks.append(
                 TaskItem(
-                    task_type="Account Review",
+                    task_type="注册审批",
                     task_id=100000 + user.id,
                     task_number=f"USR-{user.id}",
                     deadline=deadline,
@@ -90,8 +90,8 @@ class TaskAggregator:
                     color=color,
                     remaining_hours=TaskAggregator._calculate_remaining(deadline),
                     link="/admin/users",
-                    title=f"Review registration: {user.full_name}",
-                    description=f"{user.username} is pending review. Type: {user.user_type}. Target: {target_name}",
+                    title=f"审核注册申请：{user.full_name}",
+                    description=f"账号 {user.username} 待审核，用户类型为 {user.user_type}，归属对象：{target_name}",
                 )
             )
 
@@ -107,7 +107,7 @@ class TaskAggregator:
         urgency, color = TaskAggregator._calculate_urgency(deadline)
         return [
             TaskItem(
-                task_type="Permission Bootstrap",
+                task_type="权限初始化",
                 task_id=200001,
                 task_number="PERM-BOOTSTRAP",
                 deadline=deadline,
@@ -115,8 +115,8 @@ class TaskAggregator:
                 color=color,
                 remaining_hours=TaskAggregator._calculate_remaining(deadline),
                 link="/admin/permissions",
-                title="Initialize permission matrix",
-                description="No permission records exist yet. Complete the first matrix authorization pass.",
+                title="初始化平台权限矩阵",
+                description="当前尚未生成权限记录，请完成首轮模块授权配置。",
             )
         ]
 
@@ -135,7 +135,7 @@ class TaskAggregator:
         urgency, color = TaskAggregator._calculate_urgency(deadline)
         return [
             TaskItem(
-                task_type="Preview Governance",
+                task_type="预览环境治理",
                 task_id=200002,
                 task_number="FLAG-PREVIEW",
                 deadline=deadline,
@@ -143,8 +143,8 @@ class TaskAggregator:
                 color=color,
                 remaining_hours=TaskAggregator._calculate_remaining(deadline),
                 link="/admin/feature-flags",
-                title="Review preview feature flags",
-                description=f"There are {preview_count} enabled preview feature flags. Confirm the rollout scope.",
+                title="复核预览环境功能开关",
+                description=f"当前共有 {preview_count} 个预览环境功能已启用，请确认灰度范围与发布节奏。",
             )
         ]
 

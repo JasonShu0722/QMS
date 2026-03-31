@@ -11,7 +11,7 @@ from app.models.user import User
 
 
 def _normalize_usernames(raw_value: str) -> set[str]:
-    return {item.strip() for item in raw_value.split(",") if item.strip()}
+    return {item.strip().lower() for item in raw_value.split(",") if item.strip()}
 
 
 def get_platform_admin_usernames() -> set[str]:
@@ -21,7 +21,7 @@ def get_platform_admin_usernames() -> set[str]:
 
 
 def is_platform_admin(user: User) -> bool:
-    return user.username in get_platform_admin_usernames()
+    return user.username.strip().lower() in get_platform_admin_usernames()
 
 
 async def get_current_platform_admin(

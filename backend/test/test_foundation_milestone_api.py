@@ -251,6 +251,26 @@ async def test_auth_me_returns_normalized_supplier_payload(
 
 
 @pytest.mark.asyncio
+async def test_auth_me_marks_platform_admin_case_insensitively(
+    async_client: AsyncClient, db_session: AsyncSession
+):
+    admin_user = await _create_user(
+        db_session,
+        username="Admin",
+        password="AdminPass123!",
+        full_name="Platform Admin",
+    )
+
+    response = await async_client.get(
+        "/api/v1/auth/me",
+        headers=_bearer_token_for(admin_user),
+    )
+
+    assert response.status_code == 200
+    assert response.json()["is_platform_admin"] is True
+
+
+@pytest.mark.asyncio
 async def test_permission_matrix_requires_platform_admin(
     async_client: AsyncClient, db_session: AsyncSession
 ):

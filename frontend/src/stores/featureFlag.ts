@@ -24,6 +24,7 @@ export const useFeatureFlagStore = defineStore('featureFlag', () => {
   // State
   const features = ref<Record<string, FeatureFlag>>({})
   const loading = ref(false)
+  const loadedContext = ref<string | null>(null)
 
   /**
    * 检查功能是否启用
@@ -79,7 +80,14 @@ export const useFeatureFlagStore = defineStore('featureFlag', () => {
   /**
    * 从后端加载功能开关配置
    */
-  async function loadFeatureFlags(): Promise<void> {
+  async function loadFeatureFlags(force = false): Promise<void> {
+    const userInfoStr = localStorage.getItem('user_info')
+    const environment = localStorage.getItem('current_environment') || 'stable'
+    const contextKey = `${environment}:${userInfoStr || 'anonymous'}`
+    if (!force && loadedContext.value === contextKey) {
+      return
+    }
+
     loading.value = true
 
     try {
@@ -109,8 +117,10 @@ export const useFeatureFlagStore = defineStore('featureFlag', () => {
           }
         }
         features.value = flagMap
+        loadedContext.value = contextKey
       } else {
         features.value = {}
+        loadedContext.value = contextKey
       }
     } catch (error) {
       console.error('Failed to load feature flags:', error)
@@ -131,6 +141,7 @@ export const useFeatureFlagStore = defineStore('featureFlag', () => {
           scope: 'global'
         }
       }
+      loadedContext.value = contextKey
     } finally {
       loading.value = false
     }
@@ -141,10 +152,14 @@ export const useFeatureFlagStore = defineStore('featureFlag', () => {
    * @param featureKey 功能键名
    * @param enabled 是否启用
    */
-  async function updateFeatureFlag(featureKey: string, enabled: boolean): Promise<void> {
+  async function updateFeatureFlag(
+    featureFlagId: number,
+    featureKey: string,
+    enabled: boolean
+  ): Promise<void> {
     try {
       const { featureFlagApi } = await import('@/api/featureFlag')
-      await featureFlagApi.updateFeatureFlag(featureKey, { is_enabled: enabled })
+      await featureFlagApi.updateFeatureFlag(featureFlagId, { is_enabled: enabled })
 
       // 更新本地状态
       if (features.value[featureKey]) {
@@ -160,6 +175,7 @@ export const useFeatureFlagStore = defineStore('featureFlag', () => {
     // State
     features,
     loading,
+    loadedContext,
 
     // Actions
     isFeatureEnabled,

@@ -9,6 +9,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.feature_flag import FeatureFlag, FeatureFlagScope, FeatureFlagEnvironment
 from app.services.feature_flag_service import FeatureFlagService
 
+pytestmark = pytest.mark.foundation_smoke
+
 
 @pytest.mark.asyncio
 async def test_create_feature_flag(db_session: AsyncSession):
@@ -171,6 +173,44 @@ async def test_environment_isolation(db_session: AsyncSession):
         environment="stable"
     )
     assert is_enabled is False
+
+
+@pytest.mark.asyncio
+async def test_same_feature_key_can_exist_in_both_environments(db_session: AsyncSession):
+    """同一 feature_key 可以分别在 stable / preview 维护。"""
+    await FeatureFlagService.create_feature_flag(
+        db=db_session,
+        feature_key="dual_env_feature",
+        feature_name="Dual Env Feature Stable",
+        is_enabled=False,
+        scope="global",
+        environment="stable"
+    )
+
+    await FeatureFlagService.create_feature_flag(
+        db=db_session,
+        feature_key="dual_env_feature",
+        feature_name="Dual Env Feature Preview",
+        is_enabled=True,
+        scope="global",
+        environment="preview"
+    )
+
+    stable_enabled = await FeatureFlagService.is_feature_enabled(
+        db=db_session,
+        feature_key="dual_env_feature",
+        user_id=1,
+        environment="stable"
+    )
+    preview_enabled = await FeatureFlagService.is_feature_enabled(
+        db=db_session,
+        feature_key="dual_env_feature",
+        user_id=1,
+        environment="preview"
+    )
+
+    assert stable_enabled is False
+    assert preview_enabled is True
 
 
 @pytest.mark.asyncio

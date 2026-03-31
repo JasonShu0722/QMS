@@ -1,39 +1,21 @@
 <template>
-  <div 
-    class="task-card"
-    :class="`task-card--${task.color}`"
-    @click="handleClick"
-  >
-    <!-- 任务类型标签 -->
+  <div class="task-card" :class="`task-card--${task.color}`" @click="handleClick">
     <div class="task-card__header">
-      <el-tag :type="tagType" size="small">
-        {{ task.task_type }}
-      </el-tag>
+      <el-tag :type="tagType" size="small">{{ task.task_type }}</el-tag>
       <span class="task-card__id">{{ task.task_id }}</span>
     </div>
 
-    <!-- 任务标题（如果有） -->
-    <div v-if="task.title" class="task-card__title">
-      {{ task.title }}
-    </div>
+    <div v-if="task.title" class="task-card__title">{{ task.title }}</div>
+    <div v-if="task.description" class="task-card__description">{{ task.description }}</div>
 
-    <!-- 任务描述（如果有） -->
-    <div v-if="task.description" class="task-card__description">
-      {{ task.description }}
-    </div>
-
-    <!-- 时间信息 -->
     <div class="task-card__footer">
       <div class="task-card__time">
         <el-icon><Clock /></el-icon>
         <span>{{ formattedRemainingTime }}</span>
       </div>
-      <div class="task-card__deadline">
-        截止: {{ formattedDeadline }}
-      </div>
+      <div class="task-card__deadline">截止: {{ formattedDeadline }}</div>
     </div>
 
-    <!-- 紧急程度指示器 -->
     <div class="task-card__indicator" :class="`task-card__indicator--${task.color}`"></div>
   </div>
 </template>
@@ -53,9 +35,6 @@ const emit = defineEmits<{
   click: [task: TodoTask]
 }>()
 
-/**
- * Element Plus Tag 类型映射
- */
 const tagType = computed(() => {
   switch (props.task.color) {
     case 'red':
@@ -69,32 +48,27 @@ const tagType = computed(() => {
   }
 })
 
-/**
- * 格式化剩余时间
- */
 const formattedRemainingTime = computed(() => {
   const hours = props.task.remaining_hours
-  
+
+  if (!Number.isFinite(hours)) {
+    return '待安排'
+  }
+
   if (hours < 0) {
     const overdue = Math.abs(hours)
-    if (overdue < 24) {
-      return `已超期 ${Math.floor(overdue)} 小时`
-    } else {
-      return `已超期 ${Math.floor(overdue / 24)} 天`
-    }
-  } else if (hours < 24) {
-    return `剩余 ${Math.floor(hours)} 小时`
-  } else {
-    return `剩余 ${Math.floor(hours / 24)} 天`
+    return overdue < 24 ? `已超期 ${Math.floor(overdue)} 小时` : `已超期 ${Math.floor(overdue / 24)} 天`
   }
+
+  return hours < 24 ? `剩余 ${Math.floor(hours)} 小时` : `剩余 ${Math.floor(hours / 24)} 天`
 })
 
-/**
- * 格式化截止时间
- */
 const formattedDeadline = computed(() => {
-  const date = new Date(props.task.deadline)
-  return date.toLocaleString('zh-CN', {
+  if (!props.task.deadline) {
+    return '待确认'
+  }
+
+  return new Date(props.task.deadline).toLocaleString('zh-CN', {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
@@ -103,9 +77,6 @@ const formattedDeadline = computed(() => {
   })
 })
 
-/**
- * 处理点击事件
- */
 function handleClick() {
   emit('click', props.task)
 }
@@ -114,18 +85,18 @@ function handleClick() {
 <style scoped>
 .task-card {
   position: relative;
-  padding: 16px;
-  background: white;
-  border-radius: 8px;
-  border: 1px solid #e4e7ed;
-  cursor: pointer;
-  transition: all 0.3s;
   overflow: hidden;
+  cursor: pointer;
+  border: 1px solid #e4e7ed;
+  border-radius: 8px;
+  background: #fff;
+  padding: 16px;
+  transition: all 0.3s;
 }
 
 .task-card:hover {
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
   transform: translateY(-2px);
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
 }
 
 .task-card--red {
@@ -142,38 +113,38 @@ function handleClick() {
 
 .task-card__header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
   margin-bottom: 12px;
 }
 
 .task-card__id {
-  font-size: 14px;
   color: #606266;
+  font-size: 14px;
   font-weight: 500;
 }
 
 .task-card__title {
+  margin-bottom: 8px;
+  color: #303133;
   font-size: 15px;
   font-weight: 500;
-  color: #303133;
-  margin-bottom: 8px;
   line-height: 1.5;
 }
 
 .task-card__description {
-  font-size: 13px;
-  color: #606266;
   margin-bottom: 12px;
+  color: #606266;
+  font-size: 13px;
   line-height: 1.5;
 }
 
 .task-card__footer {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  font-size: 12px;
+  justify-content: space-between;
   color: #909399;
+  font-size: 12px;
 }
 
 .task-card__time {
@@ -195,16 +166,12 @@ function handleClick() {
   color: #67c23a;
 }
 
-.task-card__deadline {
-  color: #909399;
-}
-
 .task-card__indicator {
   position: absolute;
   top: 0;
   right: 0;
-  width: 0;
   height: 0;
+  width: 0;
   border-style: solid;
   border-width: 0 40px 40px 0;
   opacity: 0.1;
@@ -222,7 +189,6 @@ function handleClick() {
   border-color: transparent #67c23a transparent transparent;
 }
 
-/* 移动端适配 */
 @media (max-width: 768px) {
   .task-card {
     padding: 12px;
@@ -233,13 +199,13 @@ function handleClick() {
   }
 
   .task-card__title {
-    font-size: 14px;
     margin-bottom: 6px;
+    font-size: 14px;
   }
 
   .task-card__description {
-    font-size: 12px;
     margin-bottom: 8px;
+    font-size: 12px;
   }
 
   .task-card__footer {

@@ -10,6 +10,8 @@ from datetime import datetime
 from app.models.user import User, UserType, UserStatus
 from app.core.auth_strategy import LocalAuthStrategy
 
+pytestmark = pytest.mark.foundation_smoke
+
 
 @pytest.mark.asyncio
 async def test_internal_user_login_success(async_client: AsyncClient, db_session: AsyncSession):
@@ -227,4 +229,4 @@ async def test_get_current_user_info_without_token(async_client: AsyncClient):
     """测试未提供 Token 时获取用户信息失败"""
     response = await async_client.get("/api/v1/auth/me")
     
-    assert response.status_code == 403  # FastAPI HTTPBearer 默认返回 403
+    assert response.status_code == 401

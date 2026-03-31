@@ -1,28 +1,37 @@
 """
-任务聚合服务模块
-Task Aggregator Service - 从各业务表聚合待办任务
+Foundation-aware task aggregation service.
 """
-from typing import List, Dict, Any, Optional
+from __future__ import annotations
+
 from datetime import datetime, timedelta
+from typing import Any, Optional
+
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import text
+
+from app.core.platform_admin import is_platform_admin
+from app.models.feature_flag import FeatureFlag, FeatureFlagEnvironment
+from app.models.permission import Permission
+from app.models.user import User, UserStatus
 
 
 class TaskItem:
     """
-    待办任务项数据模型
+    Lightweight task item for workbench usage.
     """
+
     def __init__(
         self,
         task_type: str,
         task_id: int,
         task_number: str,
-        deadline: datetime,
+        deadline: Optional[datetime],
         urgency: str,
         color: str,
         remaining_hours: float,
         link: str,
-        description: Optional[str] = None
+        title: Optional[str] = None,
+        description: Optional[str] = None,
     ):
         self.task_type = task_type
         self.task_id = task_id
@@ -32,244 +41,137 @@ class TaskItem:
         self.color = color
         self.remaining_hours = remaining_hours
         self.link = link
+        self.title = title
         self.description = description
-    
-    def to_dict(self) -> Dict[str, Any]:
-        """转换为字典格式"""
-        return {
-            "task_type": self.task_type,
-            "task_id": self.task_id,
-            "task_number": self.task_number,
-            "deadline": self.deadline.isoformat() if self.deadline else None,
-            "urgency": self.urgency,
-            "color": self.color,
-            "remaining_hours": round(self.remaining_hours, 2),
-            "link": self.link,
-            "description": self.description
-        }
 
 
 class TaskAggregator:
     """
-    任务聚合器
-    
-    功能：
-    - 从各业务表聚合待办任务
-    - 计算任务紧急程度
-    - 计算剩余处理时间
+    Aggregates a v1 set of real foundation-domain tasks and optional business tasks.
     """
-    
-    # 业务表配置：定义哪些表需要聚合待办任务
-    # 注：Phase 1 阶段，这些业务表尚未创建，此处为预留配置
-    BUSINESS_TABLES = [
-        {
-            "table": "scar_reports",
-            "handler_field": "current_handler_id",
-            "task_type": "SCAR报告处理",
-            "deadline_field": "deadline",
-            "number_field": "report_number",
-            "link_pattern": "/supplier/scar/{id}",
-            "description_field": "problem_description",
-            "enabled": False  # Phase 1 暂不启用
-        },
-        {
-            "table": "ppap_submissions",
-            "handler_field": "reviewer_id",
-            "task_type": "PPAP审批",
-            "deadline_field": "review_deadline",
-            "number_field": "submission_number",
-            "link_pattern": "/supplier/ppap/{id}",
-            "description_field": "material_name",
-            "enabled": False  # Phase 1 暂不启用
-        },
-        {
-            "table": "audit_nc_items",
-            "handler_field": "responsible_user_id",
-            "task_type": "审核整改项",
-            "deadline_field": "correction_deadline",
-            "number_field": "nc_number",
-            "link_pattern": "/audit/nc/{id}",
-            "description_field": "nc_description",
-            "enabled": False  # Phase 1 暂不启用
-        },
-        {
-            "table": "customer_complaints",
-            "handler_field": "current_handler_id",
-            "task_type": "客诉8D报告",
-            "deadline_field": "response_deadline",
-            "number_field": "complaint_number",
-            "link_pattern": "/customer/complaint/{id}",
-            "description_field": "problem_summary",
-            "enabled": False  # Phase 1 暂不启用
-        },
-        {
-            "table": "supplier_change_requests",
-            "handler_field": "reviewer_id",
-            "task_type": "供应商变更审批",
-            "deadline_field": "review_deadline",
-            "number_field": "change_number",
-            "link_pattern": "/supplier/change/{id}",
-            "description_field": "change_description",
-            "enabled": False  # Phase 1 暂不启用
-        }
-    ]
-    
+
     @staticmethod
-    def _calculate_remaining(deadline: datetime) -> float:
-        """
-        计算剩余处理时间（小时数）
-        
-        Args:
-            deadline: 截止时间
-            
-        Returns:
-            float: 剩余小时数（负数表示已超期）
-        """
+    def _calculate_remaining(deadline: Optional[datetime]) -> float:
         if deadline is None:
-            return float('inf')  # 无截止时间，返回无穷大
-        
-        now = datetime.utcnow()
-        delta = deadline - now
-        return delta.total_seconds() / 3600  # 转换为小时
-    
+            return float("inf")
+
+        return (deadline - datetime.utcnow()).total_seconds() / 3600
+
     @staticmethod
-    def _calculate_urgency(deadline: datetime) -> tuple[str, str]:
-        """
-        计算任务紧急程度
-        
-        Args:
-            deadline: 截止时间
-            
-        Returns:
-            tuple[str, str]: (紧急程度, 颜色标识)
-                - overdue/red: 已超期
-                - urgent/yellow: 即将超期（≤72小时）
-                - normal/green: 正常（>72小时）
-        """
+    def _calculate_urgency(deadline: Optional[datetime]) -> tuple[str, str]:
         remaining_hours = TaskAggregator._calculate_remaining(deadline)
-        
         if remaining_hours < 0:
             return ("overdue", "red")
-        elif remaining_hours <= 72:
+        if remaining_hours <= 72:
             return ("urgent", "yellow")
-        else:
-            return ("normal", "green")
-    
+        return ("normal", "green")
+
     @staticmethod
-    async def get_user_tasks(
-        db: AsyncSession,
-        user_id: int
-    ) -> List[TaskItem]:
-        """
-        获取用户所有待办任务
-        
-        Args:
-            db: 数据库会话
-            user_id: 用户ID
-            
-        Returns:
-            List[TaskItem]: 待办任务列表（按紧急程度排序）
-        """
-        tasks: List[TaskItem] = []
-        
-        # 遍历所有业务表配置
-        for config in TaskAggregator.BUSINESS_TABLES:
-            # 跳过未启用的表
-            if not config.get("enabled", False):
-                continue
-            
-            try:
-                # 动态构建查询 SQL
-                # 注：使用参数化查询防止 SQL 注入
-                query = text(f"""
-                    SELECT 
-                        id,
-                        {config['number_field']} as task_number,
-                        {config['deadline_field']} as deadline,
-                        {config.get('description_field', 'NULL')} as description
-                    FROM {config['table']}
-                    WHERE {config['handler_field']} = :user_id
-                    AND status NOT IN ('closed', 'completed', 'cancelled')
-                    ORDER BY {config['deadline_field']} ASC
-                """)
-                
-                result = await db.execute(query, {"user_id": user_id})
-                rows = result.fetchall()
-                
-                # 处理查询结果
-                for row in rows:
-                    task_id = row.id
-                    task_number = row.task_number
-                    deadline = row.deadline
-                    description = row.description if hasattr(row, 'description') else None
-                    
-                    # 计算紧急程度和剩余时间
-                    remaining_hours = TaskAggregator._calculate_remaining(deadline)
-                    urgency, color = TaskAggregator._calculate_urgency(deadline)
-                    
-                    # 生成跳转链接
-                    link = config['link_pattern'].format(id=task_id)
-                    
-                    # 创建任务项
-                    task_item = TaskItem(
-                        task_type=config['task_type'],
-                        task_id=task_id,
-                        task_number=task_number,
-                        deadline=deadline,
-                        urgency=urgency,
-                        color=color,
-                        remaining_hours=remaining_hours,
-                        link=link,
-                        description=description
-                    )
-                    
-                    tasks.append(task_item)
-                    
-            except Exception as e:
-                # 记录错误但不中断整个聚合流程
-                # 某个业务表查询失败不应影响其他表的任务聚合
-                print(f"警告：从表 {config['table']} 聚合任务失败: {str(e)}")
-                continue
-        
-        # 按剩余时间排序（最紧急的在前）
-        tasks.sort(key=lambda x: x.remaining_hours)
-        
+    async def _load_pending_user_tasks(db: AsyncSession) -> list[TaskItem]:
+        result = await db.execute(
+            select(User).where(User.status == UserStatus.PENDING).order_by(User.created_at.asc())
+        )
+        pending_users = result.scalars().all()
+
+        tasks: list[TaskItem] = []
+        for user in pending_users:
+            deadline = user.created_at + timedelta(days=2)
+            urgency, color = TaskAggregator._calculate_urgency(deadline)
+            target_name = user.department or (
+                f"Supplier {user.supplier_id}" if user.supplier_id else "Unassigned"
+            )
+            tasks.append(
+                TaskItem(
+                    task_type="Account Review",
+                    task_id=100000 + user.id,
+                    task_number=f"USR-{user.id}",
+                    deadline=deadline,
+                    urgency=urgency,
+                    color=color,
+                    remaining_hours=TaskAggregator._calculate_remaining(deadline),
+                    link="/admin/users",
+                    title=f"Review registration: {user.full_name}",
+                    description=f"{user.username} is pending review. Type: {user.user_type}. Target: {target_name}",
+                )
+            )
+
         return tasks
-    
+
     @staticmethod
-    async def get_task_statistics(
-        db: AsyncSession,
-        user_id: int
-    ) -> Dict[str, Any]:
-        """
-        获取用户任务统计信息
-        
-        Args:
-            db: 数据库会话
-            user_id: 用户ID
-            
-        Returns:
-            Dict[str, Any]: 统计信息
-                - total: 总任务数
-                - overdue: 已超期任务数
-                - urgent: 紧急任务数
-                - normal: 正常任务数
-        """
+    async def _load_permission_bootstrap_task(db: AsyncSession) -> list[TaskItem]:
+        permission_count = await db.scalar(select(func.count(Permission.id)))
+        if permission_count and permission_count > 0:
+            return []
+
+        deadline = datetime.utcnow() + timedelta(days=1)
+        urgency, color = TaskAggregator._calculate_urgency(deadline)
+        return [
+            TaskItem(
+                task_type="Permission Bootstrap",
+                task_id=200001,
+                task_number="PERM-BOOTSTRAP",
+                deadline=deadline,
+                urgency=urgency,
+                color=color,
+                remaining_hours=TaskAggregator._calculate_remaining(deadline),
+                link="/admin/permissions",
+                title="Initialize permission matrix",
+                description="No permission records exist yet. Complete the first matrix authorization pass.",
+            )
+        ]
+
+    @staticmethod
+    async def _load_preview_flag_review_task(db: AsyncSession) -> list[TaskItem]:
+        preview_count = await db.scalar(
+            select(func.count(FeatureFlag.id)).where(
+                FeatureFlag.environment == FeatureFlagEnvironment.PREVIEW,
+                FeatureFlag.is_enabled == True,
+            )
+        )
+        if not preview_count:
+            return []
+
+        deadline = datetime.utcnow() + timedelta(days=3)
+        urgency, color = TaskAggregator._calculate_urgency(deadline)
+        return [
+            TaskItem(
+                task_type="Preview Governance",
+                task_id=200002,
+                task_number="FLAG-PREVIEW",
+                deadline=deadline,
+                urgency=urgency,
+                color=color,
+                remaining_hours=TaskAggregator._calculate_remaining(deadline),
+                link="/admin/feature-flags",
+                title="Review preview feature flags",
+                description=f"There are {preview_count} enabled preview feature flags. Confirm the rollout scope.",
+            )
+        ]
+
+    @staticmethod
+    async def get_user_tasks(db: AsyncSession, user_id: int) -> list[TaskItem]:
+        user = await db.get(User, user_id)
+        if not user:
+            return []
+
+        tasks: list[TaskItem] = []
+        if is_platform_admin(user):
+            tasks.extend(await TaskAggregator._load_pending_user_tasks(db))
+            tasks.extend(await TaskAggregator._load_permission_bootstrap_task(db))
+            tasks.extend(await TaskAggregator._load_preview_flag_review_task(db))
+
+        tasks.sort(key=lambda item: item.remaining_hours)
+        return tasks
+
+    @staticmethod
+    async def get_task_statistics(db: AsyncSession, user_id: int) -> dict[str, Any]:
         tasks = await TaskAggregator.get_user_tasks(db, user_id)
-        
-        total = len(tasks)
-        overdue = sum(1 for task in tasks if task.urgency == "overdue")
-        urgent = sum(1 for task in tasks if task.urgency == "urgent")
-        normal = sum(1 for task in tasks if task.urgency == "normal")
-        
         return {
-            "total": total,
-            "overdue": overdue,
-            "urgent": urgent,
-            "normal": normal
+            "total": len(tasks),
+            "overdue": sum(1 for task in tasks if task.urgency == "overdue"),
+            "urgent": sum(1 for task in tasks if task.urgency == "urgent"),
+            "normal": sum(1 for task in tasks if task.urgency == "normal"),
         }
 
 
-# 创建全局任务聚合器实例
 task_aggregator = TaskAggregator()
-

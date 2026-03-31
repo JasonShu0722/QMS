@@ -12,6 +12,7 @@ from app.core.auth_strategy import LocalAuthStrategy
 from app.core.dependencies import get_current_user
 from app.models.user import User, UserType, UserStatus
 from app.models.supplier import Supplier, SupplierStatus
+from app.services.user_session_service import build_user_response
 from app.schemas.user import (
     UserRegisterSchema,
     RegisterResponseSchema,
@@ -315,8 +316,9 @@ async def login(
         return LoginResponseSchema(
             access_token=access_token,
             token_type="bearer",
-            user_info=UserResponseSchema.model_validate(user),
+            user_info=await build_user_response(db, user),
             environment=requested_env,
+            allowed_environments=allowed,
             password_expired=True
         )
     
@@ -336,8 +338,9 @@ async def login(
     return LoginResponseSchema(
         access_token=access_token,
         token_type="bearer",
-        user_info=UserResponseSchema.model_validate(user),
+        user_info=await build_user_response(db, user),
         environment=requested_env,
+        allowed_environments=allowed,
         password_expired=False
     )
 
@@ -397,14 +400,15 @@ async def get_captcha():
     """
 )
 async def get_current_user_info(
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
 ):
     """
     获取当前用户信息
     
     Requirements: 2.1.5
     """
-    return UserResponseSchema.model_validate(current_user)
+    return await build_user_response(db, current_user)
 
 
 @router.post(

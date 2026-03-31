@@ -2,13 +2,22 @@
   <div class="feature-flags-container p-4 md:p-6">
     <el-card>
       <template #header>
-        <div class="flex justify-between items-center">
-          <h2 class="text-xl font-bold">功能开关管理</h2>
-          <el-button @click="loadFeatureFlags" :icon="Refresh" circle />
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 class="text-xl font-bold">功能开关</h2>
+            <p class="mt-1 text-sm text-gray-500">环境先过滤，再按 global / whitelist 决定可见范围。</p>
+          </div>
+          <div class="flex gap-2">
+            <el-select v-model="environmentFilter" class="w-36" @change="loadFeatureFlags">
+              <el-option label="全部环境" value="" />
+              <el-option label="正式环境" value="stable" />
+              <el-option label="预览环境" value="preview" />
+            </el-select>
+            <el-button :icon="Refresh" circle @click="loadFeatureFlags" />
+          </div>
         </div>
       </template>
 
-      <!-- 功能开关列表 -->
       <div v-loading="loading">
         <el-table :data="featureFlags" stripe class="w-full">
           <el-table-column prop="feature_name" label="功能名称" min-width="180">
@@ -19,124 +28,97 @@
               </div>
             </template>
           </el-table-column>
-          
-          <el-table-column prop="description" label="功能描述" min-width="250" show-overflow-tooltip />
-          
+
+          <el-table-column prop="description" label="描述" min-width="240" show-overflow-tooltip />
+
           <el-table-column label="状态" width="100" align="center">
             <template #default="{ row }">
-              <el-switch
-                v-model="row.is_enabled"
-                @change="handleToggle(row)"
-                :loading="toggleLoading[row.id]"
-              />
+              <el-switch v-model="row.is_enabled" :loading="!!toggleLoading[row.id]" @change="handleToggle(row)" />
             </template>
           </el-table-column>
-          
-          <el-table-column label="作用范围" width="120">
+
+          <el-table-column label="范围" width="120">
             <template #default="{ row }">
               <el-tag :type="row.scope === 'global' ? 'success' : 'warning'">
                 {{ row.scope === 'global' ? '全局' : '白名单' }}
               </el-tag>
             </template>
           </el-table-column>
-          
-          <el-table-column label="白名单" width="150">
+
+          <el-table-column label="白名单" width="180">
             <template #default="{ row }">
               <div v-if="row.scope === 'whitelist'" class="text-sm">
-                <div v-if="row.whitelist_user_ids?.length">
-                  用户: {{ row.whitelist_user_ids.length }} 个
-                </div>
-                <div v-if="row.whitelist_supplier_ids?.length">
-                  供应商: {{ row.whitelist_supplier_ids.length }} 个
-                </div>
-                <div v-if="!row.whitelist_user_ids?.length && !row.whitelist_supplier_ids?.length" class="text-gray-400">
-                  未配置
-                </div>
+                <div>用户 {{ row.whitelist_user_ids?.length || 0 }} 个</div>
+                <div>供应商 {{ row.whitelist_supplier_ids?.length || 0 }} 个</div>
               </div>
-              <span v-else class="text-gray-400">-</span>
+              <span v-else class="text-gray-400">全部用户</span>
             </template>
           </el-table-column>
-          
-          <el-table-column label="环境" width="100">
+
+          <el-table-column label="环境" width="110">
             <template #default="{ row }">
-              <el-tag :type="row.environment === 'stable' ? 'primary' : 'info'" size="small">
+              <el-tag :type="row.environment === 'stable' ? 'primary' : 'warning'" size="small">
                 {{ row.environment === 'stable' ? '正式' : '预览' }}
               </el-tag>
             </template>
           </el-table-column>
-          
-          <el-table-column prop="updated_at" label="更新时间" width="160">
+
+          <el-table-column prop="updated_at" label="更新时间" width="170">
             <template #default="{ row }">
               {{ formatDate(row.updated_at) }}
             </template>
           </el-table-column>
-          
+
           <el-table-column label="操作" width="120" fixed="right">
             <template #default="{ row }">
-              <el-button
-                type="primary"
-                size="small"
-                @click="showConfigDialog(row)"
-              >
-                配置
-              </el-button>
+              <el-button type="primary" size="small" @click="showConfigDialog(row)">配置</el-button>
             </template>
           </el-table-column>
         </el-table>
 
-        <!-- 空状态 -->
-        <div v-if="featureFlags.length === 0 && !loading" class="text-center py-8 text-gray-500">
-          暂无功能开关数据
+        <div v-if="featureFlags.length === 0 && !loading" class="py-8 text-center text-gray-500">
+          当前没有功能开关数据。
         </div>
       </div>
     </el-card>
 
-    <!-- 配置对话框 -->
     <el-dialog
       v-model="configDialogVisible"
-      :title="`配置功能开关: ${currentFlag?.feature_name}`"
-      width="600px"
+      :title="`配置功能开关: ${currentFlag?.feature_name || ''}`"
+      width="640px"
       destroy-on-close
     >
-      <el-form
-        v-if="currentFlag"
-        :model="configForm"
-        label-width="120px"
-      >
-        <el-form-item label="功能名称">
-          <span>{{ currentFlag.feature_name }}</span>
-        </el-form-item>
-        
+      <el-form v-if="currentFlag" :model="configForm" label-width="120px">
         <el-form-item label="功能标识">
           <span class="text-gray-500">{{ currentFlag.feature_key }}</span>
         </el-form-item>
-        
-        <el-form-item label="功能描述">
-          <span>{{ currentFlag.description }}</span>
+
+        <el-form-item label="所属环境">
+          <el-tag :type="configForm.environment === 'stable' ? 'primary' : 'warning'">
+            {{ configForm.environment === 'stable' ? '正式环境' : '预览环境' }}
+          </el-tag>
         </el-form-item>
-        
+
         <el-form-item label="启用状态">
           <el-switch v-model="configForm.is_enabled" />
-          <span class="ml-2 text-sm text-gray-500">
-            {{ configForm.is_enabled ? '已启用' : '已禁用' }}
-          </span>
         </el-form-item>
-        
+
         <el-form-item label="作用范围">
           <el-radio-group v-model="configForm.scope">
-            <el-radio label="global">全局生效</el-radio>
-            <el-radio label="whitelist">白名单机制</el-radio>
+            <el-radio value="global">全局</el-radio>
+            <el-radio value="whitelist">白名单</el-radio>
           </el-radio-group>
         </el-form-item>
-        
-        <!-- 白名单配置 -->
+
         <template v-if="configForm.scope === 'whitelist'">
           <el-form-item label="用户白名单">
             <el-select
               v-model="configForm.whitelist_user_ids"
               multiple
               filterable
-              placeholder="请选择用户"
+              collapse-tags
+              collapse-tags-tooltip
+              placeholder="选择用户"
               style="width: 100%"
             >
               <el-option
@@ -146,107 +128,96 @@
                 :value="user.id"
               />
             </el-select>
-            <div class="text-xs text-gray-500 mt-1">
-              已选择 {{ configForm.whitelist_user_ids?.length || 0 }} 个用户
-            </div>
           </el-form-item>
-          
+
           <el-form-item label="供应商白名单">
             <el-select
               v-model="configForm.whitelist_supplier_ids"
               multiple
               filterable
-              placeholder="请选择供应商"
+              collapse-tags
+              collapse-tags-tooltip
+              placeholder="选择供应商"
               style="width: 100%"
             >
               <el-option
                 v-for="supplier in availableSuppliers"
                 :key="supplier.id"
-                :label="`${supplier.name} (${supplier.code})`"
+                :label="supplier.name"
                 :value="supplier.id"
               />
             </el-select>
-            <div class="text-xs text-gray-500 mt-1">
-              已选择 {{ configForm.whitelist_supplier_ids?.length || 0 }} 个供应商
-            </div>
           </el-form-item>
         </template>
-        
+
         <el-alert
           v-if="configForm.scope === 'global'"
           type="info"
           :closable="false"
-          class="mb-4"
-        >
-          全局模式下，功能将对所有用户生效（如果启用）
-        </el-alert>
-        
+          title="全局模式下，命中当前环境的所有用户都会看到该能力。"
+        />
         <el-alert
-          v-if="configForm.scope === 'whitelist' && configForm.is_enabled"
+          v-else
+          class="mt-3"
           type="warning"
           :closable="false"
-          class="mb-4"
-        >
-          白名单模式下，仅指定的用户或供应商可以使用此功能
-        </el-alert>
+          title="白名单模式下，需要至少配置一个用户或供应商。"
+        />
       </el-form>
-      
+
       <template #footer>
         <el-button @click="configDialogVisible = false">取消</el-button>
-        <el-button
-          type="primary"
-          @click="saveConfig"
-          :loading="saving"
-        >
-          保存配置
-        </el-button>
+        <el-button type="primary" :loading="saving" @click="saveConfig">保存</el-button>
       </template>
     </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Refresh } from '@element-plus/icons-vue'
 import { adminApi } from '@/api/admin'
-import type { FeatureFlag, FeatureFlagUpdateRequest } from '@/types/admin'
+import type { FeatureFlag, FeatureFlagUpdateRequest, PermissionMatrixRow } from '@/types/admin'
 import type { User } from '@/types/user'
 
-// 供应商类型定义
-interface Supplier {
+interface SupplierOption {
   id: number
   name: string
-  code: string
 }
 
-// 状态
 const loading = ref(false)
 const saving = ref(false)
+const environmentFilter = ref<'stable' | 'preview' | ''>('')
 const featureFlags = ref<FeatureFlag[]>([])
 const toggleLoading = reactive<Record<number, boolean>>({})
 
-// 配置对话框
 const configDialogVisible = ref(false)
 const currentFlag = ref<FeatureFlag | null>(null)
-const configForm = reactive<FeatureFlagUpdateRequest>({
+const configForm = reactive<FeatureFlagUpdateRequest & { environment: 'stable' | 'preview' }>({
   is_enabled: false,
   scope: 'global',
   whitelist_user_ids: [],
-  whitelist_supplier_ids: []
+  whitelist_supplier_ids: [],
+  environment: 'stable'
 })
 
-// 白名单选项
 const availableUsers = ref<User[]>([])
-const availableSuppliers = ref<Supplier[]>([])
+const availableSuppliers = ref<SupplierOption[]>([])
 
-/**
- * 加载功能开关列表
- */
+const supplierMap = computed(() => {
+  const map = new Map<number, SupplierOption>()
+  for (const supplier of availableSuppliers.value) {
+    map.set(supplier.id, supplier)
+  }
+  return map
+})
+
 async function loadFeatureFlags() {
   loading.value = true
   try {
-    featureFlags.value = await adminApi.getFeatureFlags()
+    const flags = await adminApi.getFeatureFlags(environmentFilter.value || undefined)
+    featureFlags.value = flags
   } catch (error: any) {
     ElMessage.error(error.message || '加载功能开关失败')
   } finally {
@@ -254,83 +225,96 @@ async function loadFeatureFlags() {
   }
 }
 
-/**
- * 处理开关切换
- */
+async function loadWhitelistOptions() {
+  try {
+    const matrix = await adminApi.getPermissionMatrix()
+    hydrateWhitelistOptions(matrix.rows)
+  } catch (error) {
+    console.error('Failed to load whitelist options:', error)
+  }
+}
+
+function hydrateWhitelistOptions(rows: PermissionMatrixRow[]) {
+  availableUsers.value = rows.map((row) => row.user)
+  const supplierOptions: SupplierOption[] = []
+
+  for (const row of rows) {
+    if (!row.user.supplier_id || !row.user.supplier_name) {
+      continue
+    }
+
+    if (!supplierMap.value.has(row.user.supplier_id)) {
+      supplierOptions.push({
+        id: row.user.supplier_id,
+        name: row.user.supplier_name
+      })
+    }
+  }
+
+  availableSuppliers.value = supplierOptions.sort((a, b) => a.name.localeCompare(b.name))
+}
+
 async function handleToggle(flag: FeatureFlag) {
+  const nextValue = flag.is_enabled
+  const previousValue = !nextValue
+
   try {
     await ElMessageBox.confirm(
-      `确认${flag.is_enabled ? '启用' : '禁用'}功能 "${flag.feature_name}"？`,
+      `确认${nextValue ? '启用' : '禁用'}功能 "${flag.feature_name}" 吗？`,
       '确认操作',
       {
         confirmButtonText: '确认',
         cancelButtonText: '取消',
-        type: flag.is_enabled ? 'success' : 'warning'
+        type: nextValue ? 'success' : 'warning'
       }
     )
 
     toggleLoading[flag.id] = true
     await adminApi.updateFeatureFlag(flag.id, {
-      is_enabled: flag.is_enabled,
+      is_enabled: nextValue,
       scope: flag.scope,
-      whitelist_user_ids: flag.whitelist_user_ids,
-      whitelist_supplier_ids: flag.whitelist_supplier_ids
+      whitelist_user_ids: flag.whitelist_user_ids || [],
+      whitelist_supplier_ids: flag.whitelist_supplier_ids || [],
+      environment: flag.environment
     })
-    
-    ElMessage.success(`功能已${flag.is_enabled ? '启用' : '禁用'}`)
+    ElMessage.success(`功能已${nextValue ? '启用' : '禁用'}`)
   } catch (error: any) {
+    flag.is_enabled = previousValue
     if (error !== 'cancel') {
-      // 恢复开关状态
-      flag.is_enabled = !flag.is_enabled
-      ElMessage.error(error.message || '操作失败')
-    } else {
-      // 用户取消，恢复开关状态
-      flag.is_enabled = !flag.is_enabled
+      ElMessage.error(error.message || '更新功能开关失败')
     }
   } finally {
     toggleLoading[flag.id] = false
   }
 }
 
-/**
- * 显示配置对话框
- */
 async function showConfigDialog(flag: FeatureFlag) {
   try {
-    // 加载完整的功能开关详情
     currentFlag.value = await adminApi.getFeatureFlagDetail(flag.id)
-    
-    // 初始化表单
     configForm.is_enabled = currentFlag.value.is_enabled
     configForm.scope = currentFlag.value.scope
-    configForm.whitelist_user_ids = currentFlag.value.whitelist_user_ids || []
-    configForm.whitelist_supplier_ids = currentFlag.value.whitelist_supplier_ids || []
-    
+    configForm.whitelist_user_ids = [...(currentFlag.value.whitelist_user_ids || [])]
+    configForm.whitelist_supplier_ids = [...(currentFlag.value.whitelist_supplier_ids || [])]
+    configForm.environment = currentFlag.value.environment
     configDialogVisible.value = true
-    
-    // TODO: 加载可用用户和供应商列表
   } catch (error: any) {
     ElMessage.error(error.message || '加载功能开关详情失败')
   }
 }
 
-/**
- * 保存配置
- */
 async function saveConfig() {
   if (!currentFlag.value) {
     return
   }
 
-  // 验证白名单配置
-  if (configForm.scope === 'whitelist' && configForm.is_enabled) {
-    if (
-      (!configForm.whitelist_user_ids || configForm.whitelist_user_ids.length === 0) &&
-      (!configForm.whitelist_supplier_ids || configForm.whitelist_supplier_ids.length === 0)
-    ) {
-      ElMessage.warning('白名单模式下至少需要配置一个用户或供应商')
-      return
-    }
+  if (
+    configForm.scope === 'whitelist' &&
+    configForm.is_enabled &&
+    (configForm.whitelist_user_ids?.length || 0) === 0 &&
+    (configForm.whitelist_supplier_ids?.length || 0) === 0
+  ) {
+    ElMessage.warning('白名单模式至少需要选择一个用户或供应商')
+    return
   }
 
   saving.value = true
@@ -339,13 +323,11 @@ async function saveConfig() {
       is_enabled: configForm.is_enabled,
       scope: configForm.scope,
       whitelist_user_ids: configForm.scope === 'whitelist' ? configForm.whitelist_user_ids : [],
-      whitelist_supplier_ids: configForm.scope === 'whitelist' ? configForm.whitelist_supplier_ids : []
+      whitelist_supplier_ids: configForm.scope === 'whitelist' ? configForm.whitelist_supplier_ids : [],
+      environment: configForm.environment
     })
-    
-    ElMessage.success('配置保存成功')
+    ElMessage.success('功能开关已保存')
     configDialogVisible.value = false
-    
-    // 刷新列表
     await loadFeatureFlags()
   } catch (error: any) {
     ElMessage.error(error.message || '保存配置失败')
@@ -354,12 +336,8 @@ async function saveConfig() {
   }
 }
 
-/**
- * 格式化日期
- */
-function formatDate(dateString: string): string {
-  const date = new Date(dateString)
-  return date.toLocaleString('zh-CN', {
+function formatDate(dateString: string) {
+  return new Date(dateString).toLocaleString('zh-CN', {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
@@ -368,10 +346,8 @@ function formatDate(dateString: string): string {
   })
 }
 
-// 初始化
-onMounted(() => {
-  loadFeatureFlags()
-  // TODO: 加载可用用户和供应商列表
+onMounted(async () => {
+  await Promise.all([loadFeatureFlags(), loadWhitelistOptions()])
 })
 </script>
 

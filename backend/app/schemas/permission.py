@@ -95,11 +95,23 @@ class UserPermissionSummary(BaseModel):
     )
 
 
+class PermissionMatrixModule(BaseModel):
+    """权限矩阵列定义"""
+    module_path: str
+    module_name: str
+    operations: List[str]
+
+
+class PermissionMatrixRow(BaseModel):
+    """权限矩阵行定义"""
+    user: Dict[str, Any]
+    permissions: Dict[str, bool]
+
+
 class PermissionMatrixResponse(BaseModel):
     """权限矩阵响应模型"""
-    users: List[UserPermissionSummary] = Field(..., description="用户列表及其权限")
-    available_modules: List[str] = Field(..., description="系统中所有可用的功能模块路径")
-    available_operations: List[str] = Field(..., description="所有可用的操作类型")
+    modules: List[PermissionMatrixModule] = Field(..., description="矩阵列定义")
+    rows: List[PermissionMatrixRow] = Field(..., description="矩阵行数据")
     
     class Config:
         json_schema_extra = {

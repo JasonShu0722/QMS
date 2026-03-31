@@ -33,6 +33,11 @@ export const useAuthStore = defineStore('auth', () => {
   const isSupplier = computed(() => userInfo.value?.user_type === 'supplier')
   const isInternal = computed(() => userInfo.value?.user_type === 'internal')
   const isPreviewEnv = computed(() => currentEnvironment.value === 'preview')
+  const isPlatformAdmin = computed(() => !!userInfo.value?.is_platform_admin)
+  const allowedEnvironments = computed(() => {
+    const raw = userInfo.value?.allowed_environments?.split(',').map((item) => item.trim()).filter(Boolean)
+    return raw && raw.length > 0 ? raw : ['stable']
+  })
 
   function initUserInfo() {
     const storedUserInfo = localStorage.getItem('user_info')
@@ -72,8 +77,18 @@ export const useAuthStore = defineStore('auth', () => {
     currentEnvironment.value = (response.environment || environment) as 'stable' | 'preview'
 
     localStorage.setItem('access_token', response.access_token)
-    localStorage.setItem('user_info', JSON.stringify(response.user_info))
+    localStorage.setItem(
+      'user_info',
+      JSON.stringify({
+        ...response.user_info,
+        allowed_environments: response.allowed_environments.join(',')
+      })
+    )
     localStorage.setItem('current_environment', currentEnvironment.value)
+
+    const { useFeatureFlagStore } = await import('@/stores/featureFlag')
+    const featureFlagStore = useFeatureFlagStore()
+    await featureFlagStore.loadFeatureFlags(true)
   }
 
   function logout() {
@@ -133,6 +148,8 @@ export const useAuthStore = defineStore('auth', () => {
     isSupplier,
     isInternal,
     isPreviewEnv,
+    isPlatformAdmin,
+    allowedEnvironments,
     login,
     logout,
     checkPermission,

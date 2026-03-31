@@ -13,6 +13,8 @@ from PIL import Image
 from app.models.user import User
 from app.core.auth_strategy import LocalAuthStrategy
 
+pytestmark = pytest.mark.foundation_smoke
+
 
 class TestGetProfile:
     """测试获取个人信息"""
@@ -47,7 +49,7 @@ class TestGetProfile:
         """测试未提供 Token 时返回 403"""
         response = await async_client.get("/api/v1/profile")
         
-        assert response.status_code == 403
+        assert response.status_code == 401
 
 
 class TestChangePassword:
@@ -229,7 +231,7 @@ class TestUploadSignature:
             files={"file": ("signature.png", img_bytes, "image/png")}
         )
         
-        assert response.status_code == 403
+        assert response.status_code == 401
     
     @pytest.mark.asyncio
     async def test_upload_signature_replaces_old(

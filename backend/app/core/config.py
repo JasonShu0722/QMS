@@ -60,6 +60,14 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: Optional[str] = None
     OPENAI_BASE_URL: Optional[str] = None
 
+    PLATFORM_ADMIN_USERNAMES: str = "admin"
+    REQ_PANEL_ADMIN_USERNAME: str = "requirements_admin"
+    REQ_PANEL_ADMIN_PASSWORD: str = "ReqPanelAdmin@2026"
+    REQ_PANEL_ADMIN_FULL_NAME: str = "需求面板管理员"
+    REQ_PANEL_VIEWER_USERNAME: str = "requirements_viewer"
+    REQ_PANEL_VIEWER_PASSWORD: str = "ReqPanelViewer@2026"
+    REQ_PANEL_VIEWER_FULL_NAME: str = "需求面板查阅账号"
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

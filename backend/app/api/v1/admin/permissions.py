@@ -5,16 +5,18 @@ Admin Permissions API - 管理员用于配置用户权限的接口
 from typing import List, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, or_
+from sqlalchemy import select, and_
 
 from app.core.database import get_db
-from app.core.dependencies import get_current_active_user
+from app.core.platform_admin import get_current_platform_admin
 from app.core.permissions import PermissionChecker
 from app.models.user import User, UserType
 from app.models.permission import Permission, OperationType
+from app.services.user_session_service import build_user_responses
 from app.schemas.permission import (
     PermissionMatrixResponse,
-    UserPermissionSummary,
+    PermissionMatrixModule,
+    PermissionMatrixRow,
     PermissionGrantRequest,
     PermissionRevokeRequest,
     PermissionOperationResponse,
@@ -48,6 +50,26 @@ AVAILABLE_MODULES = [
     "system.notifications",
 ]
 
+MODULE_LABELS = {
+    "supplier.management": "供应商管理",
+    "supplier.performance": "供应商绩效",
+    "supplier.audit": "供应商审核",
+    "supplier.ppap": "PPAP",
+    "supplier.scar": "SCAR",
+    "quality.incoming": "来料质量",
+    "quality.process": "过程质量",
+    "quality.customer": "客户质量",
+    "quality.data_panel": "质量数据面板",
+    "audit.system": "审核管理",
+    "audit.process": "过程审核",
+    "audit.product": "产品审核",
+    "newproduct.management": "新品管理",
+    "newproduct.trial": "试产管理",
+    "system.config": "系统配置",
+    "system.users": "用户管理",
+    "system.notifications": "消息通知",
+}
+
 
 @router.get(
     "/matrix",
@@ -67,7 +89,7 @@ AVAILABLE_MODULES = [
 async def get_permission_matrix(
     user_type: str = Query(None, description="按用户类型筛选（internal/supplier）"),
     department: str = Query(None, description="按部门筛选（仅内部员工）"),
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(get_current_platform_admin),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -91,29 +113,36 @@ async def get_permission_matrix(
     result = await db.execute(user_query)
     users = result.scalars().all()
     
-    # 为每个用户获取权限
-    user_summaries: List[UserPermissionSummary] = []
-    
-    for user in users:
-        # 获取用户的权限树
-        permission_tree = await PermissionChecker.get_user_permissions(user.id, db)
-        
-        user_summary = UserPermissionSummary(
-            user_id=user.id,
-            username=user.username,
-            full_name=user.full_name,
-            user_type=user.user_type,
-            department=user.department,
-            position=user.position,
-            permissions=permission_tree
+    serialized_users = await build_user_responses(db, users)
+    modules = [
+        PermissionMatrixModule(
+            module_path=module_path,
+            module_name=MODULE_LABELS.get(module_path, module_path),
+            operations=[op.value for op in OperationType],
         )
-        user_summaries.append(user_summary)
-    
-    # 返回权限矩阵
+        for module_path in AVAILABLE_MODULES
+    ]
+    rows: List[PermissionMatrixRow] = []
+
+    for serialized_user in serialized_users:
+        permission_tree = await PermissionChecker.get_user_permissions(serialized_user.id, db)
+        flattened_permissions: Dict[str, bool] = {}
+        for module in modules:
+            for operation in module.operations:
+                flattened_permissions[f"{module.module_path}.{operation}"] = bool(
+                    permission_tree.get(module.module_path, {}).get(operation, False)
+                )
+
+        rows.append(
+            PermissionMatrixRow(
+                user=serialized_user.model_dump(mode="json"),
+                permissions=flattened_permissions,
+            )
+        )
+
     return PermissionMatrixResponse(
-        users=user_summaries,
-        available_modules=AVAILABLE_MODULES,
-        available_operations=[op.value for op in OperationType]
+        modules=modules,
+        rows=rows,
     )
 
 
@@ -135,7 +164,7 @@ async def get_permission_matrix(
 )
 async def grant_permissions(
     request: PermissionGrantRequest,
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(get_current_platform_admin),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -230,7 +259,7 @@ async def grant_permissions(
 )
 async def revoke_permissions(
     request: PermissionRevokeRequest,
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(get_current_platform_admin),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -310,7 +339,7 @@ async def revoke_permissions(
 )
 async def get_user_permissions(
     user_id: int,
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(get_current_platform_admin),
     db: AsyncSession = Depends(get_db)
 ):
     """

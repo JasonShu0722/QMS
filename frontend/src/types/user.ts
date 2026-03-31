@@ -34,9 +34,11 @@ export interface User {
 
   // 电子签名
   signature_image_path?: string
+  digital_signature?: string
 
   // 环境权限（逗号分隔："stable", "preview", "stable,preview"）
   allowed_environments?: string
+  is_platform_admin?: boolean
 
   // 审计字段
   created_at: string
@@ -64,6 +66,7 @@ export interface LoginResponse {
   token_type: string
   user_info: User
   environment: string
+  allowed_environments: string[]
   password_expired: boolean
 }
 

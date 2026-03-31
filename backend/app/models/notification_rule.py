@@ -1,119 +1,107 @@
-"""
-NotificationRule Model - 通知规则配置模型
+from __future__ import annotations
 
-用于配置业务触发器和自动化消息推送规则,支持升级策略和多通道发送。
-"""
 from datetime import datetime
 from enum import Enum
-from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, ForeignKey, JSON, ARRAY
+
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, JSON, String
+from sqlalchemy.dialects.postgresql import ARRAY as PG_ARRAY
 from sqlalchemy.orm import relationship
 
 from app.models.base import Base
 
 
 class ActionType(str, Enum):
-    """通知动作类型枚举"""
-    SEND_EMAIL = "send_email"              # 发送邮件
-    SEND_NOTIFICATION = "send_notification"  # 发送站内信
-    SEND_WEBHOOK = "send_webhook"          # 发送Webhook（企业微信/钉钉）
+    SEND_EMAIL = "send_email"
+    SEND_NOTIFICATION = "send_notification"
+    SEND_WEBHOOK = "send_webhook"
 
 
 class NotificationRule(Base):
-    """
-    通知规则配置模型
-    
-    定义业务触发条件和自动化通知动作，支持超时升级策略。
-    管理员可通过配置界面创建规则，系统自动执行。
-    """
     __tablename__ = "notification_rules"
 
-    # 主键
-    id = Column(Integer, primary_key=True, index=True, comment="规则ID")
-    
-    # 规则基本信息
-    rule_name = Column(String(200), nullable=False, comment="规则名称")
+    id = Column(Integer, primary_key=True, index=True, comment="Rule id")
+
+    rule_name = Column(String(200), nullable=False, comment="Rule name")
     business_object = Column(
         String(100),
         nullable=False,
         index=True,
-        comment="业务对象: scar/ppap/audit/customer_complaint等"
+        comment="Business object, for example scar / ppap / audit / complaint",
     )
-    
-    # 触发条件（JSON格式存储复杂条件）
+
     trigger_condition = Column(
         JSON,
         nullable=False,
-        comment='触发条件JSON: {"field": "status", "operator": "equals", "value": "rejected"}'
+        comment='Trigger condition JSON, for example {"field": "status", "operator": "equals", "value": "rejected"}',
     )
-    
-    # 执行动作
+
     action_type = Column(
         String(50),
         nullable=False,
-        comment="动作类型: send_email/send_notification/send_webhook"
+        comment="Action type: send_email / send_notification / send_webhook",
     )
     action_config = Column(
         JSON,
         nullable=False,
-        comment='动作配置JSON: {"recipients": ["user_id"], "template": "rejection_notice"}'
+        comment='Action config JSON, for example {"recipients": ["user_id"], "template": "rejection_notice"}',
     )
-    
-    # 升级策略
+
     escalation_enabled = Column(
         Boolean,
         default=False,
         nullable=False,
-        comment="是否启用超时升级"
+        comment="Whether timeout escalation is enabled",
     )
     escalation_hours = Column(
         Integer,
         nullable=True,
-        comment="超时小时数（触发升级）"
+        comment="Escalation trigger threshold in hours",
     )
+    # Keep PostgreSQL native array semantics in runtime environments while allowing
+    # SQLite-based tests to create metadata successfully via a JSON fallback.
     escalation_recipients = Column(
-        ARRAY(Integer),
+        JSON().with_variant(PG_ARRAY(Integer), "postgresql"),
         nullable=True,
-        comment="升级抄送人ID列表"
+        comment="Escalation recipient user id list",
     )
-    
-    # 状态管理
+
     is_active = Column(
         Boolean,
         default=True,
         nullable=False,
         index=True,
-        comment="是否激活"
+        comment="Whether the rule is active",
     )
-    
-    # 审计字段
+
     created_at = Column(
         DateTime,
         default=datetime.utcnow,
         nullable=False,
-        comment="创建时间"
+        comment="Created at",
     )
     updated_at = Column(
         DateTime,
         default=datetime.utcnow,
         onupdate=datetime.utcnow,
         nullable=False,
-        comment="更新时间"
+        comment="Updated at",
     )
     created_by = Column(
         Integer,
         ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,
-        comment="创建人ID"
+        comment="Creator user id",
     )
-    
-    # 关系定义
+
     creator = relationship("User", foreign_keys=[created_by])
 
-    def __repr__(self):
-        return f"<NotificationRule(id={self.id}, name={self.rule_name}, object={self.business_object}, active={self.is_active})>"
+    def __repr__(self) -> str:
+        return (
+            f"<NotificationRule(id={self.id}, name={self.rule_name}, "
+            f"object={self.business_object}, active={self.is_active})>"
+        )
 
-    def to_dict(self):
-        """转换为字典格式"""
+    def to_dict(self) -> dict:
         return {
             "id": self.id,
             "rule_name": self.rule_name,

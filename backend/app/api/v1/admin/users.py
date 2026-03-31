@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
 
 from app.core.database import get_db
-from app.core.dependencies import get_current_active_user
+from app.core.platform_admin import get_current_platform_admin
 from app.models.user import User, UserStatus
 from app.schemas.user import UserResponseSchema
 from app.schemas.admin import (
@@ -21,6 +21,7 @@ from app.schemas.admin import (
 )
 from app.services.notification_service import notification_service
 from app.core.auth_strategy import LocalAuthStrategy
+from app.services.user_session_service import build_user_responses
 
 
 router = APIRouter(prefix="/admin/users", tags=["Admin - User Management"])
@@ -34,7 +35,7 @@ router = APIRouter(prefix="/admin/users", tags=["Admin - User Management"])
 )
 async def get_pending_users(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_platform_admin)
 ):
     """
     获取待审核用户列表
@@ -44,14 +45,6 @@ async def get_pending_users(
     Returns:
         List[UserResponseSchema]: 待审核用户列表
     """
-    # TODO: 添加权限检查（需要实现权限模块后集成）
-    # 当前简化实现：仅检查用户是否为内部员工
-    if current_user.user_type != "internal":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="仅内部员工可访问此接口"
-        )
-    
     # 查询待审核用户
     result = await db.execute(
         select(User)
@@ -60,7 +53,7 @@ async def get_pending_users(
     )
     pending_users = result.scalars().all()
     
-    return pending_users
+    return await build_user_responses(db, pending_users)
 
 
 @router.post(
@@ -72,7 +65,7 @@ async def get_pending_users(
 async def approve_user(
     user_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_platform_admin)
 ):
     """
     批准用户注册
@@ -88,13 +81,6 @@ async def approve_user(
     Returns:
         UserActionResponse: 操作结果
     """
-    # 权限检查
-    if current_user.user_type != "internal":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="仅内部员工可访问此接口"
-        )
-    
     # 查询用户
     result = await db.execute(
         select(User).where(User.id == user_id)
@@ -150,7 +136,7 @@ async def reject_user(
     user_id: int,
     request: UserApprovalRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_platform_admin)
 ):
     """
     拒绝用户注册
@@ -168,13 +154,6 @@ async def reject_user(
     Returns:
         UserActionResponse: 操作结果
     """
-    # 权限检查
-    if current_user.user_type != "internal":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="仅内部员工可访问此接口"
-        )
-    
     # 验证拒绝原因
     if not request.reason or not request.reason.strip():
         raise HTTPException(
@@ -240,7 +219,7 @@ async def freeze_user(
     user_id: int,
     request: UserFreezeRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_platform_admin)
 ):
     """
     冻结用户账号
@@ -256,13 +235,6 @@ async def freeze_user(
     Returns:
         UserActionResponse: 操作结果
     """
-    # 权限检查
-    if current_user.user_type != "internal":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="仅内部员工可访问此接口"
-        )
-    
     # 查询用户
     result = await db.execute(
         select(User).where(User.id == user_id)
@@ -316,7 +288,7 @@ async def freeze_user(
 async def unfreeze_user(
     user_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_platform_admin)
 ):
     """
     解冻用户账号
@@ -331,13 +303,6 @@ async def unfreeze_user(
     Returns:
         UserActionResponse: 操作结果
     """
-    # 权限检查
-    if current_user.user_type != "internal":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="仅内部员工可访问此接口"
-        )
-    
     # 查询用户
     result = await db.execute(
         select(User).where(User.id == user_id)
@@ -389,7 +354,7 @@ async def unfreeze_user(
 async def reset_user_password(
     user_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_platform_admin)
 ):
     """
     重置用户密码
@@ -407,13 +372,6 @@ async def reset_user_password(
     Returns:
         PasswordResetResponse: 操作结果（包含临时密码）
     """
-    # 权限检查
-    if current_user.user_type != "internal":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="仅内部员工可访问此接口"
-        )
-    
     # 查询用户
     result = await db.execute(
         select(User).where(User.id == user_id)

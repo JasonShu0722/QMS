@@ -10,6 +10,8 @@ from datetime import datetime
 from app.models.user import User, UserStatus, UserType
 from app.core.auth_strategy import LocalAuthStrategy
 
+pytestmark = pytest.mark.foundation_smoke
+
 
 @pytest.fixture
 async def admin_user(db_session: AsyncSession) -> User:

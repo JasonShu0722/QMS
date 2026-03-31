@@ -18,12 +18,13 @@ from app.core.database import get_db
 from app.core.auth_strategy import LocalAuthStrategy
 from app.core.config import settings
 from app.models.user import User
+from app.services.user_session_service import build_user_response
 from app.schemas.profile import (
-    ProfileResponseSchema,
     PasswordChangeSchema,
     PasswordChangeResponseSchema,
     SignatureUploadResponseSchema
 )
+from app.schemas.user import UserResponseSchema
 
 
 router = APIRouter(prefix="/profile", tags=["个人中心"])
@@ -35,13 +36,14 @@ auth_strategy = LocalAuthStrategy()
 
 @router.get(
     "",
-    response_model=ProfileResponseSchema,
+    response_model=UserResponseSchema,
     summary="获取个人信息",
     description="获取当前登录用户的个人信息"
 )
 async def get_profile(
-    current_user: User = Depends(get_current_active_user)
-) -> ProfileResponseSchema:
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db)
+) -> UserResponseSchema:
     """
     获取个人信息
     
@@ -54,23 +56,7 @@ async def get_profile(
     - 密码修改时间
     - 最后登录时间
     """
-    return ProfileResponseSchema(
-        id=current_user.id,
-        username=current_user.username,
-        full_name=current_user.full_name,
-        email=current_user.email,
-        phone=current_user.phone,
-        user_type=current_user.user_type,
-        status=current_user.status,
-        department=current_user.department,
-        position=current_user.position,
-        supplier_id=current_user.supplier_id,
-        avatar_image_path=current_user.avatar_image_path,
-        digital_signature=current_user.digital_signature,
-        password_changed_at=current_user.password_changed_at.isoformat() if current_user.password_changed_at else None,
-        last_login_at=current_user.last_login_at.isoformat() if current_user.last_login_at else None,
-        created_at=current_user.created_at.isoformat()
-    )
+    return await build_user_response(db, current_user)
 
 
 @router.post(

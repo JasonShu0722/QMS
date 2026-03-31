@@ -67,9 +67,8 @@ export const adminApi = {
    * 获取权限矩阵
    */
   getPermissionMatrix(): Promise<{
-    users: User[]
     modules: PermissionMatrixColumn[]
-    permissions: PermissionMatrixRow[]
+    rows: PermissionMatrixRow[]
   }> {
     return request.get('/v1/admin/permissions/matrix')
   },
@@ -164,8 +163,12 @@ export const adminApi = {
   /**
    * 获取所有功能开关
    */
-  getFeatureFlags(): Promise<FeatureFlag[]> {
-    return request.get('/v1/admin/feature-flags')
+  getFeatureFlags(environment?: 'stable' | 'preview'): Promise<FeatureFlag[]> {
+    return request
+      .get('/v1/admin/feature-flags', {
+        params: environment ? { environment } : undefined
+      })
+      .then((response: any) => response.feature_flags || [])
   },
 
   /**

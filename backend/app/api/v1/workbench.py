@@ -2,16 +2,19 @@
 工作台 API 路由
 Workbench API - 工作台首页数据聚合接口
 """
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel, Field
 from typing import Optional, List, Any
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
+from app.core.platform_admin import is_platform_admin
+from app.core.config import settings
 from app.models.user import User, UserType
+from app.services.feature_flag_service import FeatureFlagService
 from app.services.task_aggregator import task_aggregator
-from app.schemas.task import TaskItemResponse
+from app.services.user_session_service import build_user_response
 
 
 router = APIRouter(prefix="/workbench", tags=["workbench"])
@@ -51,6 +54,10 @@ class PerformanceStatus(BaseModel):
 
 class InternalDashboardResponse(BaseModel):
     """内部员工工作台数据"""
+    user_info: Any = Field(..., description="稳定的用户会话信息")
+    environment: str = Field(..., description="当前环境")
+    quick_actions: List[dict[str, str]] = Field(default_factory=list, description="快捷入口")
+    feature_blocks: dict[str, bool] = Field(default_factory=dict, description="按能力区块暴露的开关状态")
     metrics: List[MetricItem] = Field(default_factory=list, description="指标监控")
     todos: List[TodoTaskItem] = Field(default_factory=list, description="待办任务")
     notifications: int = Field(0, description="未读消息数量")
@@ -58,6 +65,10 @@ class InternalDashboardResponse(BaseModel):
 
 class SupplierDashboardResponse(BaseModel):
     """供应商工作台数据"""
+    user_info: Any = Field(..., description="稳定的用户会话信息")
+    environment: str = Field(..., description="当前环境")
+    quick_actions: List[dict[str, str]] = Field(default_factory=list, description="快捷入口")
+    feature_blocks: dict[str, bool] = Field(default_factory=dict, description="按能力区块暴露的开关状态")
     performance_status: Optional[PerformanceStatus] = Field(None, description="绩效状态")
     action_required_tasks: List[TodoTaskItem] = Field(default_factory=list, description="待处理任务")
 
@@ -112,16 +123,58 @@ async def get_dashboard_data(
         # 任务聚合服务可能因业务表未创建而失败，返回空列表
         todo_items = []
 
+    session_user = await build_user_response(db, current_user)
+    metrics_enabled = await FeatureFlagService.is_feature_enabled(
+        db, "foundation.workbench.metrics", current_user.id, current_user.supplier_id, settings.ENVIRONMENT
+    )
+    announcements_enabled = await FeatureFlagService.is_feature_enabled(
+        db, "foundation.workbench.announcements", current_user.id, current_user.supplier_id, settings.ENVIRONMENT
+    )
+
+    quick_actions = [
+        {"title": "Profile", "description": "View and maintain your personal profile", "link": "/workbench"},
+    ]
+    if is_platform_admin(current_user):
+        quick_actions.extend(
+            [
+                {"title": "User Admin", "description": "Review registrations and govern accounts", "link": "/admin/users"},
+                {"title": "Permissions", "description": "Configure the platform permission matrix", "link": "/admin/permissions"},
+                {"title": "Feature Flags", "description": "Manage preview and stable capabilities", "link": "/admin/feature-flags"},
+            ]
+        )
+
+    feature_blocks = {
+        "metrics": metrics_enabled,
+        "announcements": announcements_enabled,
+        "notifications": False,
+    }
+
     if current_user.user_type == UserType.INTERNAL:
         # 内部员工视图
         return InternalDashboardResponse(
-            metrics=[],       # 指标监控预留，待后续开发
+            user_info=session_user.model_dump(mode="json"),
+            environment=settings.ENVIRONMENT,
+            quick_actions=quick_actions,
+            feature_blocks=feature_blocks,
+            metrics=[
+                MetricItem(
+                    key="foundation.pending_reviews",
+                    name="Pending Reviews",
+                    value=len(todo_items),
+                    status="warning" if todo_items else "good",
+                    achievement=100 if not todo_items else max(0, 100 - len(todo_items) * 10),
+                )
+            ] if metrics_enabled else [],
             todos=todo_items,
             notifications=0,  # 未读消息数预留
         )
     else:
         # 供应商视图
         return SupplierDashboardResponse(
+            user_info=session_user.model_dump(mode="json"),
+            environment=settings.ENVIRONMENT,
+            quick_actions=quick_actions,
+            feature_blocks=feature_blocks,
             performance_status=None,  # 绩效数据预留
             action_required_tasks=todo_items,
         )

@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.dependencies import get_current_user
+from app.core.platform_admin import get_current_platform_admin
 from app.models.user import User
 from app.schemas.task import (
     TaskReassignRequest,
@@ -46,7 +46,7 @@ router = APIRouter(prefix="/admin/tasks", tags=["admin-tasks"])
 )
 async def reassign_tasks(
     request: TaskReassignRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_platform_admin),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -112,7 +112,7 @@ async def reassign_tasks(
     """
 )
 async def get_task_statistics(
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_platform_admin),
     db: AsyncSession = Depends(get_db)
 ):
     """

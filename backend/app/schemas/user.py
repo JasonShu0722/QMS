@@ -117,9 +117,12 @@ class UserResponseSchema(BaseModel):
     department: Optional[str]
     position: Optional[str]
     supplier_id: Optional[int]
+    supplier_name: Optional[str] = None
     avatar_image_path: Optional[str]
-    digital_signature: Optional[str]
+    signature_image_path: Optional[str] = None
+    digital_signature: Optional[str] = None
     allowed_environments: Optional[str]
+    is_platform_admin: bool = False
     last_login_at: Optional[datetime]
     created_at: datetime
     updated_at: datetime
@@ -224,6 +227,7 @@ class LoginResponseSchema(BaseModel):
     token_type: str = "bearer"
     user_info: UserResponseSchema
     environment: str = "stable"
+    allowed_environments: list[str] = Field(default_factory=list, description="当前用户可访问的环境列表")
     password_expired: bool = Field(default=False, description="密码是否过期（需要强制修改）")
     
     model_config = {

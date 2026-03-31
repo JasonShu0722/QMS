@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.dependencies import get_current_user, get_current_active_user
+from app.core.platform_admin import get_current_platform_admin
 from app.models.user import User
 from app.services.feature_flag_service import FeatureFlagService
 from app.schemas.feature_flag import (
@@ -38,7 +38,7 @@ router = APIRouter(prefix="/admin/feature-flags", tags=["admin-feature-flags"])
 )
 async def get_feature_flags(
     environment: Optional[str] = Query(None, description="环境标识（stable/preview）"),
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(get_current_platform_admin),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -96,7 +96,7 @@ async def get_feature_flags(
 )
 async def create_feature_flag(
     flag_data: FeatureFlagCreate,
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(get_current_platform_admin),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -154,7 +154,7 @@ async def create_feature_flag(
 )
 async def get_feature_flag(
     feature_flag_id: int,
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(get_current_platform_admin),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -216,7 +216,7 @@ async def get_feature_flag(
 async def update_feature_flag(
     feature_flag_id: int,
     flag_data: FeatureFlagUpdate,
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(get_current_platform_admin),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -291,7 +291,7 @@ async def update_feature_flag(
 )
 async def delete_feature_flag(
     feature_flag_id: int,
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(get_current_platform_admin),
     db: AsyncSession = Depends(get_db)
 ):
     """

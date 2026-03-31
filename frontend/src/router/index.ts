@@ -9,6 +9,8 @@ declare module 'vue-router' {
   interface RouteMeta {
     title?: string
     requiresAuth?: boolean
+    requiresPlatformAdmin?: boolean
+    featureKey?: string
     permission?: {
       modulePath: string
       operation: 'create' | 'read' | 'update' | 'delete' | 'export'
@@ -258,44 +260,44 @@ const routes: RouteRecordRaw[] = [
         path: 'admin/users',
         name: 'UserApproval',
         component: () => import('@/views/admin/UserApproval.vue'),
-        meta: { title: '用户管理', requiresAuth: true, permission: { modulePath: 'system.users', operation: 'read' } }
+        meta: { title: '用户管理', requiresAuth: true, requiresPlatformAdmin: true }
       },
       {
         path: 'admin/permissions',
         name: 'PermissionMatrix',
         component: () => import('@/views/admin/PermissionMatrix.vue'),
-        meta: { title: '权限管理', requiresAuth: true, permission: { modulePath: 'system.users', operation: 'read' } }
+        meta: { title: '权限管理', requiresAuth: true, requiresPlatformAdmin: true }
       },
       {
         path: 'admin/tasks',
         name: 'TaskMonitor',
         component: () => import('@/views/admin/TaskMonitor.vue'),
-        meta: { title: '任务监控', requiresAuth: true, permission: { modulePath: 'system.config', operation: 'read' } }
+        meta: { title: '任务监控', requiresAuth: true, requiresPlatformAdmin: true }
       },
       {
         path: 'admin/operation-logs',
         name: 'OperationLogs',
         component: () => import('@/views/admin/OperationLogs.vue'),
-        meta: { title: '操作日志', requiresAuth: true, permission: { modulePath: 'system.config', operation: 'read' } }
+        meta: { title: '操作日志', requiresAuth: true, requiresPlatformAdmin: true }
       },
       {
         path: 'admin/feature-flags',
         name: 'FeatureFlags',
         component: () => import('@/views/admin/FeatureFlags.vue'),
-        meta: { title: '功能开关', requiresAuth: true, permission: { modulePath: 'system.config', operation: 'read' } }
+        meta: { title: '功能开关', requiresAuth: true, requiresPlatformAdmin: true }
       },
       // ==================== 预留功能 ====================
       {
         path: 'instruments',
         name: 'Instruments',
         component: () => import('@/views/Instruments.vue'),
-        meta: { title: '仪器量具管理', requiresAuth: true, permission: { modulePath: 'instruments.management', operation: 'read' } }
+        meta: { title: '仪器量具管理', requiresAuth: true, featureKey: 'instruments.management' }
       },
       {
         path: 'quality-costs',
         name: 'QualityCosts',
         component: () => import('@/views/QualityCosts.vue'),
-        meta: { title: '质量成本管理', requiresAuth: true, permission: { modulePath: 'quality_costs.management', operation: 'read' } }
+        meta: { title: '质量成本管理', requiresAuth: true, featureKey: 'quality_costs.management' }
       }
     ]
   },
@@ -362,6 +364,8 @@ const router = createRouter({
  */
 router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore()
+  const { useFeatureFlagStore } = await import('@/stores/featureFlag')
+  const featureFlagStore = useFeatureFlagStore()
   const requiresAuth = to.meta.requiresAuth !== false
 
   // 设置页面标题
@@ -382,6 +386,22 @@ router.beforeEach(async (to, from, next) => {
 
   // 2. 已登录用户访问登录/注册页时重定向到工作台
   if (!requiresAuth && authStore.isAuthenticated && (to.path === '/login' || to.path === '/register')) {
+    next('/workbench')
+    return
+  }
+
+  if (requiresAuth) {
+    await featureFlagStore.loadFeatureFlags()
+  }
+
+  if (requiresAuth && to.meta.requiresPlatformAdmin && !authStore.isPlatformAdmin) {
+    ElMessage.error('仅平台管理员可访问该页面')
+    next('/workbench')
+    return
+  }
+
+  if (requiresAuth && to.meta.featureKey && !featureFlagStore.isFeatureEnabled(to.meta.featureKey)) {
+    ElMessage.error('该功能当前未对你开放')
     next('/workbench')
     return
   }

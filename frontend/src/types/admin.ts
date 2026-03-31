@@ -81,6 +81,7 @@ export interface TodoTask {
   task_type: string
   task_id: number
   title: string
+  description?: string
   deadline: string
   remaining_hours: number
   urgency: 'overdue' | 'urgent' | 'normal'
@@ -137,6 +138,7 @@ export interface FeatureFlagUpdateRequest {
   scope?: 'global' | 'whitelist'
   whitelist_user_ids?: number[]
   whitelist_supplier_ids?: number[]
+  environment?: 'stable' | 'preview'
 }
 
 /**

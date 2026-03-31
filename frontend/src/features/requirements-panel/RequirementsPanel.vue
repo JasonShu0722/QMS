@@ -6,8 +6,8 @@
           <span class="eyebrow">Independent Requirements Panel</span>
           <h1>{{ catalog.metadata.title }}</h1>
           <p>
-            这是部署在 QMS 子路径下的独立需求面板。它使用单独账号，不复用 QMS 主系统用户。
-            管理员账号可以在线调整状态，查阅账号只用于浏览和汇报。
+            这是部署在 QMS 子路径下的独立需求面板。它使用独立账号，不复用 QMS 主系统用户。
+            管理员账号可以在线调整状态，查阅账号仅用于浏览和汇报。
           </p>
           <div class="meta-row">
             <span class="pill">访问路径：/requirements-panel</span>
@@ -37,58 +37,74 @@
 
       <template v-else>
         <section class="card hero">
-          <div>
+          <div class="hero-copy">
             <span class="eyebrow">QMS Requirements Dashboard</span>
             <h1>{{ catalog.metadata.title }}</h1>
             <p>
-              用于持续整理、汇报和维护 QMS 项目的功能需求条目。模块状态在这里统一更新，
-              验证完成后也可以直接在线调整为最新状态。
+              页面改成“概览 + 明细”双视图后，先用紧凑摘要定位重点模块，再进入明细模式维护状态。
+              这样能保留汇报价值，同时避免把相同需求项在多个区块里重复铺开。
             </p>
             <div class="meta-row">
               <span class="pill">当前账号：{{ panelUser?.full_name }}</span>
               <span class="pill">账号角色：{{ canUpdate ? '管理员' : '查阅账号' }}</span>
               <span class="pill">版本：{{ catalog.metadata.version }}</span>
             </div>
-          </div>
-          <div class="hero-actions">
-            <button class="ghost" type="button" @click="refreshStatuses" :disabled="loading">
-              {{ loading ? '同步中...' : '刷新状态' }}
-            </button>
-            <button class="ghost" type="button" @click="exportSnapshot">导出快照</button>
-            <button class="ghost" type="button" @click="goToQmsLogin">返回 QMS</button>
-            <button class="ghost danger" type="button" @click="logoutFromPanel">退出面板账号</button>
-          </div>
-        </section>
 
-        <section class="stats">
-          <article class="card stat">
-            <strong>{{ catalog.modules.length }}</strong>
-            <span>功能模块</span>
-          </article>
-          <article class="card stat">
-            <strong>{{ allItems.length }}</strong>
-            <span>需求条目</span>
-          </article>
-          <article class="card stat">
-            <strong>{{ verifiedCount }}</strong>
-            <span>已验证完成</span>
-          </article>
-          <article class="card stat">
-            <strong>{{ inProgressCount }}</strong>
-            <span>开发推进中</span>
-          </article>
-          <article class="card stat">
-            <strong>{{ highPriorityCount }}</strong>
-            <span>高优先级条目</span>
-          </article>
+            <div class="overview-strip">
+              <article v-for="metric in headlineMetrics" :key="metric.label" class="metric-card">
+                <span>{{ metric.label }}</span>
+                <strong>{{ metric.value }}</strong>
+                <small>{{ metric.note }}</small>
+              </article>
+            </div>
+          </div>
+
+          <div class="hero-side">
+            <div class="hero-panel">
+              <div class="panel-head">
+                <div>
+                  <h3>操作区</h3>
+                  <p>刷新状态、导出快照或返回主系统。</p>
+                </div>
+              </div>
+              <div class="hero-actions">
+                <button class="ghost" type="button" @click="refreshStatuses" :disabled="loading">
+                  {{ loading ? '同步中...' : '刷新状态' }}
+                </button>
+                <button class="ghost" type="button" @click="exportSnapshot">导出快照</button>
+                <button class="ghost" type="button" @click="goToQmsLogin">返回 QMS</button>
+                <button class="ghost danger" type="button" @click="logoutFromPanel">退出面板账号</button>
+              </div>
+            </div>
+
+            <div class="hero-panel">
+              <div class="panel-head">
+                <div>
+                  <h3>当前焦点</h3>
+                  <p>{{ attentionItems.length }} 条仍需优先关注的需求。</p>
+                </div>
+              </div>
+              <div v-if="attentionItems.length > 0" class="panel-list">
+                <article v-for="item in attentionItems.slice(0, 4)" :key="item.id" class="panel-item">
+                  <div class="stack">
+                    <strong>{{ item.title }}</strong>
+                    <span>{{ item.moduleName }}</span>
+                  </div>
+                  <span class="status-pill" :class="`status-pill-${item.status}`">{{ statusText[item.status] }}</span>
+                </article>
+              </div>
+              <p v-else class="empty-copy">当前筛选结果已无待推进项。</p>
+            </div>
+          </div>
         </section>
 
         <section class="card controls">
-          <div class="section-head">
+          <div class="section-head section-head-tight">
             <div>
-              <h2>筛选</h2>
-              <p>按模块、优先级、范围和状态快速筛选当前关注内容。</p>
+              <h2>筛选与定位</h2>
+              <p>保留统一筛选入口，概览和明细共用同一组条件，避免来回重复查找。</p>
             </div>
+            <span class="pill">{{ filteredItems.length }} / {{ allItems.length }} 条需求</span>
           </div>
 
           <div class="filters">
@@ -135,143 +151,232 @@
           </div>
 
           <div class="toolbar">
-            <button class="ghost" type="button" @click="resetFilters">重置筛选</button>
-            <span v-for="legend in catalog.metadata.statusLegend" :key="legend.key" class="pill legend-pill">
-              <span class="legend-dot" :class="`status-${legend.key}`"></span>
-              {{ legend.label }}
-            </span>
+            <div class="toolbar-group">
+              <button class="ghost" type="button" @click="resetFilters">重置筛选</button>
+              <span v-if="hasActiveFilters" class="pill subtle-pill">{{ activeFiltersCount }} 个筛选生效</span>
+            </div>
+            <div class="toolbar-group legend-group">
+              <span v-for="legend in catalog.metadata.statusLegend" :key="legend.key" class="pill legend-pill">
+                <span class="legend-dot" :class="`status-${legend.key}`"></span>
+                {{ legend.label }}
+              </span>
+            </div>
           </div>
         </section>
 
-        <section>
-          <div class="section-head">
+        <section class="workspace">
+          <div class="section-head workspace-head">
             <div>
-              <h2>按功能模块</h2>
-              <p>用于查看各模块整体优先级、条目数量和验证进度。</p>
+              <h2>{{ activeView === 'overview' ? '总览模式' : '明细模式' }}</h2>
+              <p>
+                {{ activeView === 'overview'
+                  ? '将模块进度、优先级和待推进事项压缩到同一屏内，先看重点再下钻。'
+                  : '聚焦单一列表做核对和状态维护，避免与概览区重复占用页面长度。'
+                }}
+              </p>
             </div>
-            <span class="pill">{{ filteredModules.length }} 个模块命中筛选</span>
-          </div>
 
-          <div class="module-grid">
-            <article v-for="module in filteredModules" :key="module.id" class="card module-card">
-              <div class="module-top">
-                <div>
-                  <div class="title-row">
-                    <h3>{{ module.name }}</h3>
-                    <span class="priority" :class="`priority-${module.overallPriority}`">
-                      {{ priorityText[module.overallPriority] }}
-                    </span>
-                  </div>
-                  <p>{{ module.summary }}</p>
-                </div>
-                <div class="metric">{{ module.stats.verified }}/{{ module.items.length }}</div>
-              </div>
-
-              <div class="track">
-                <div class="bar" :style="{ width: `${module.stats.progress}%` }"></div>
-              </div>
-
-              <div class="mini-stats">
-                <span>开发中 {{ module.stats.doing }}</span>
-                <span>待验证 {{ module.stats.devDone }}</span>
-                <span>待开发 {{ module.stats.todo }}</span>
-              </div>
-            </article>
-          </div>
-        </section>
-
-        <section>
-          <div class="section-head">
-            <div>
-              <h2>按整体优先级</h2>
-              <p>用于和公司汇报优先级保持一致，快速聚焦当前最关键的条目。</p>
+            <div class="view-switch" role="tablist" aria-label="需求面板视图切换">
+              <button
+                class="view-tab"
+                :class="{ active: activeView === 'overview' }"
+                type="button"
+                @click="activeView = 'overview'"
+              >
+                总览
+              </button>
+              <button
+                class="view-tab"
+                :class="{ active: activeView === 'details' }"
+                type="button"
+                @click="activeView = 'details'"
+              >
+                明细
+              </button>
             </div>
           </div>
 
-          <div class="lane-grid">
-            <article v-for="lane in priorityLanes" :key="lane.key" class="card lane">
-              <header class="lane-header">
-                <div>
-                  <h3>{{ lane.title }}</h3>
-                  <p>{{ lane.description }}</p>
-                </div>
-                <span class="pill">{{ lane.items.length }} 项</span>
-              </header>
-
-              <div class="lane-list">
-                <div v-for="item in lane.items" :key="item.id" class="lane-item">
+          <template v-if="activeView === 'overview'">
+            <div class="workspace-grid">
+              <section class="card module-board">
+                <div class="board-head">
                   <div>
-                    <strong>{{ item.title }}</strong>
-                    <span>{{ item.moduleName }}</span>
+                    <h3>模块摘要</h3>
+                    <p>每个模块只保留进度、关键计数和少量焦点需求，避免完整列表重复铺陈。</p>
                   </div>
-                  <span class="status-pill" :class="`status-pill-${item.status}`">{{ statusText[item.status] }}</span>
+                  <span class="pill">{{ moduleSummaries.length }} 个命中模块</span>
                 </div>
-                <p v-if="lane.items.length === 0" class="empty-copy">当前筛选下暂无条目。</p>
-              </div>
-            </article>
-          </div>
-        </section>
 
-        <section>
-          <div class="section-head">
-            <div>
-              <h2>需求明细台账</h2>
-              <p>管理员可以直接在这里更新开发状态，查阅账号保持只读。</p>
+                <div v-if="moduleSummaries.length > 0" class="module-list">
+                  <article v-for="module in moduleSummaries" :key="module.id" class="module-row">
+                    <div class="module-header">
+                      <div>
+                        <div class="title-row">
+                          <h3>{{ module.name }}</h3>
+                          <span class="priority" :class="`priority-${module.overallPriority}`">
+                            {{ priorityText[module.overallPriority] }}
+                          </span>
+                        </div>
+                        <p>{{ module.summary }}</p>
+                      </div>
+
+                      <div class="module-progress">
+                        <strong>{{ module.stats.progress }}%</strong>
+                        <span>{{ module.stats.verified }}/{{ module.items.length }} 已验证</span>
+                      </div>
+                    </div>
+
+                    <div class="track">
+                      <div class="bar" :style="{ width: `${module.stats.progress}%` }"></div>
+                    </div>
+
+                    <div class="module-bottom">
+                      <div class="mini-stats">
+                        <span>开发中 {{ module.stats.doing }}</span>
+                        <span>待验证 {{ module.stats.devDone }}</span>
+                        <span>待开发 {{ module.stats.todo }}</span>
+                      </div>
+
+                      <div v-if="module.focusItems.length > 0" class="focus-badges">
+                        <div v-for="item in module.focusItems" :key="item.id" class="focus-chip">
+                          <strong>{{ item.title }}</strong>
+                          <span>{{ statusText[item.status] }}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </article>
+                </div>
+
+                <p v-else class="empty-copy board-empty">当前筛选条件下没有匹配的模块。</p>
+              </section>
+
+              <aside class="sidebar">
+                <article class="card focus-card">
+                  <div class="board-head">
+                    <div>
+                      <h3>优先级摘要</h3>
+                      <p>优先级泳道压缩为计数卡，保留汇报信息但不再单独占满版面。</p>
+                    </div>
+                  </div>
+
+                  <div class="priority-summary">
+                    <div v-for="lane in prioritySummary" :key="lane.key" class="priority-block">
+                      <div class="priority-line">
+                        <span class="priority" :class="`priority-${lane.key}`">{{ lane.title }}</span>
+                        <strong>{{ lane.items.length }}</strong>
+                      </div>
+                      <p>{{ lane.description }}</p>
+                      <small>未完成 {{ lane.pendingCount }} 项</small>
+                    </div>
+                  </div>
+                </article>
+
+                <article class="card focus-card">
+                  <div class="board-head">
+                    <div>
+                      <h3>状态分布</h3>
+                      <p>直接看到筛选结果的状态构成，便于快速判断推进压力。</p>
+                    </div>
+                  </div>
+
+                  <div class="status-summary">
+                    <div v-for="status in statusSummary" :key="status.key" class="status-count">
+                      <span class="legend-dot" :class="`status-${status.key}`"></span>
+                      <div class="stack">
+                        <strong>{{ status.count }}</strong>
+                        <span>{{ status.label }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </article>
+
+                <article class="card focus-card">
+                  <div class="board-head">
+                    <div>
+                      <h3>待推进清单</h3>
+                      <p>从所有筛选结果中只挑最需要动作的条目，替代原来的大块重复列表。</p>
+                    </div>
+                  </div>
+
+                  <div v-if="attentionItems.length > 0" class="panel-list">
+                    <article v-for="item in attentionItems" :key="item.id" class="panel-item">
+                      <div class="stack">
+                        <strong>{{ item.title }}</strong>
+                        <span>{{ item.moduleName }} · {{ item.phase }}</span>
+                      </div>
+                      <span class="priority" :class="`priority-${item.priority}`">{{ priorityText[item.priority] }}</span>
+                    </article>
+                  </div>
+                  <p v-else class="empty-copy">当前无需额外推进项。</p>
+                </article>
+              </aside>
             </div>
-            <span class="pill">{{ filteredItems.length }} 条明细</span>
-          </div>
+          </template>
 
-          <div class="card table-shell">
-            <table class="table">
-              <thead>
-                <tr>
-                  <th>功能模块</th>
-                  <th>功能条目</th>
-                  <th>优先级</th>
-                  <th>范围</th>
-                  <th>阶段</th>
-                  <th>开发状态</th>
-                  <th>验收标准</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="item in filteredItems" :key="item.id">
-                  <td>
-                    <div class="stack">
-                      <strong>{{ item.moduleName }}</strong>
-                      <span>{{ item.moduleSummary }}</span>
-                    </div>
-                  </td>
-                  <td>
-                    <div class="stack">
-                      <strong>{{ item.title }}</strong>
-                      <span>ID: {{ item.id }}</span>
-                    </div>
-                  </td>
-                  <td>
-                    <span class="priority" :class="`priority-${item.priority}`">{{ priorityText[item.priority] }}</span>
-                  </td>
-                  <td>{{ item.scope }}</td>
-                  <td>{{ item.phase }}</td>
-                  <td class="status-cell">
-                    <select
-                      v-if="canUpdate"
-                      :value="item.status"
-                      :disabled="savingItemId === item.id"
-                      @change="handleStatusChange(item.id, ($event.target as HTMLSelectElement).value)"
-                    >
-                      <option v-for="legend in catalog.metadata.statusLegend" :key="legend.key" :value="legend.key">
-                        {{ legend.label }}
-                      </option>
-                    </select>
-                    <span v-else class="status-pill" :class="`status-pill-${item.status}`">{{ statusText[item.status] }}</span>
-                    <small v-if="item.updatedByName" class="updated-by">最近更新：{{ item.updatedByName }}</small>
-                  </td>
-                  <td>{{ item.acceptance }}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+          <section v-else class="card detail-board">
+            <div class="detail-toolbar">
+              <span class="pill">共 {{ filteredItems.length }} 条需求</span>
+              <span class="pill subtle-pill">当前视图只保留可操作明细，避免重复展示</span>
+              <span v-if="canUpdate" class="pill subtle-pill">管理员可直接更新状态</span>
+            </div>
+
+            <div class="table-shell">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>功能模块</th>
+                    <th>功能条目</th>
+                    <th>优先级</th>
+                    <th>范围</th>
+                    <th>阶段</th>
+                    <th>开发状态</th>
+                    <th>验收标准</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-if="filteredItems.length === 0">
+                    <td colspan="7" class="table-empty-cell">
+                      <p class="empty-copy">当前筛选条件下没有匹配的需求项。</p>
+                    </td>
+                  </tr>
+                  <tr v-for="item in filteredItems" :key="item.id">
+                    <td>
+                      <div class="stack">
+                        <strong>{{ item.moduleName }}</strong>
+                        <span>{{ item.moduleSummary }}</span>
+                      </div>
+                    </td>
+                    <td>
+                      <div class="stack">
+                        <strong>{{ item.title }}</strong>
+                        <span>ID: {{ item.id }}</span>
+                      </div>
+                    </td>
+                    <td>
+                      <span class="priority" :class="`priority-${item.priority}`">{{ priorityText[item.priority] }}</span>
+                    </td>
+                    <td>{{ item.scope }}</td>
+                    <td>{{ item.phase }}</td>
+                    <td class="status-cell">
+                      <select
+                        v-if="canUpdate"
+                        :value="item.status"
+                        :disabled="savingItemId === item.id"
+                        @change="handleStatusChange(item.id, ($event.target as HTMLSelectElement).value)"
+                      >
+                        <option v-for="legend in catalog.metadata.statusLegend" :key="legend.key" :value="legend.key">
+                          {{ legend.label }}
+                        </option>
+                      </select>
+                      <span v-else class="status-pill" :class="`status-pill-${item.status}`">{{ statusText[item.status] }}</span>
+                      <small v-if="item.updatedByName" class="updated-by">最近更新：{{ item.updatedByName }}</small>
+                    </td>
+                    <td>{{ item.acceptance }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
         </section>
       </template>
     </div>
@@ -308,9 +413,26 @@ interface DisplayRequirementItem extends RequirementCatalogItem {
   updatedAt?: string | null
 }
 
+type WorkspaceView = 'overview' | 'details'
+
+const priorityRank: Record<RequirementPriority, number> = {
+  high: 0,
+  medium: 1,
+  low: 2
+}
+
+const statusRank: Record<RequirementStatus, number> = {
+  doing: 0,
+  'dev-done': 1,
+  todo: 2,
+  reserved: 3,
+  verified: 4
+}
+
 const router = useRouter()
 
 const panelUser = ref<RequirementPanelUser | null>(null)
+const activeView = ref<WorkspaceView>('overview')
 const loginLoading = ref(false)
 const loading = ref(false)
 const savingItemId = ref<string | null>(null)
@@ -344,6 +466,19 @@ const priorityText: Record<RequirementPriority, string> = {
   high: '高',
   medium: '中',
   low: '低 / 预留'
+}
+
+function compareItems(a: DisplayRequirementItem, b: DisplayRequirementItem) {
+  const priorityDelta = priorityRank[a.priority] - priorityRank[b.priority]
+  if (priorityDelta !== 0) return priorityDelta
+
+  const statusDelta = statusRank[a.status] - statusRank[b.status]
+  if (statusDelta !== 0) return statusDelta
+
+  const moduleDelta = a.moduleName.localeCompare(b.moduleName, 'zh-Hans-CN')
+  if (moduleDelta !== 0) return moduleDelta
+
+  return a.title.localeCompare(b.title, 'zh-Hans-CN')
 }
 
 const mergedModules = computed(() =>
@@ -394,7 +529,9 @@ const filteredItems = computed(() => {
 const filteredModules = computed(() =>
   mergedModules.value
     .map((module) => {
-      const items = filteredItems.value.filter((item) => item.moduleId === module.id)
+      const items = filteredItems.value
+        .filter((item) => item.moduleId === module.id)
+        .sort(compareItems)
       const verified = items.filter((item) => item.status === 'verified').length
       const doing = items.filter((item) => item.status === 'doing').length
       const devDone = items.filter((item) => item.status === 'dev-done').length
@@ -413,6 +550,21 @@ const filteredModules = computed(() =>
       }
     })
     .filter((module) => module.items.length > 0)
+)
+
+const moduleSummaries = computed(() =>
+  [...filteredModules.value]
+    .map((module) => ({
+      ...module,
+      focusItems: module.items
+        .filter((item) => item.status !== 'verified' && item.status !== 'reserved')
+        .slice(0, 3)
+    }))
+    .sort((a, b) => {
+      const priorityDelta = priorityRank[a.overallPriority] - priorityRank[b.overallPriority]
+      if (priorityDelta !== 0) return priorityDelta
+      return a.stats.progress - b.stats.progress
+    })
 )
 
 const priorityLanes = computed(() => [
@@ -436,11 +588,61 @@ const priorityLanes = computed(() => [
   }
 ])
 
+const prioritySummary = computed(() =>
+  priorityLanes.value.map((lane) => ({
+    ...lane,
+    pendingCount: lane.items.filter((item) => item.status !== 'verified' && item.status !== 'reserved').length
+  }))
+)
+
 const verifiedCount = computed(() => allItems.value.filter((item) => item.status === 'verified').length)
 const inProgressCount = computed(() =>
   allItems.value.filter((item) => item.status === 'doing' || item.status === 'dev-done').length
 )
 const highPriorityCount = computed(() => allItems.value.filter((item) => item.priority === 'high').length)
+
+const headlineMetrics = computed(() => [
+  {
+    label: '功能模块',
+    value: catalog.modules.length,
+    note: '用摘要卡片代替原来的独立统计区'
+  },
+  {
+    label: '需求条目',
+    value: allItems.value.length,
+    note: '汇总所有模块需求'
+  },
+  {
+    label: '已验证完成',
+    value: verifiedCount.value,
+    note: '主线进度一眼可见'
+  },
+  {
+    label: '推进中',
+    value: inProgressCount.value,
+    note: `${highPriorityCount.value} 条高优先级需求`
+  }
+])
+
+const statusSummary = computed(() =>
+  catalog.metadata.statusLegend.map((legend) => ({
+    ...legend,
+    count: filteredItems.value.filter((item) => item.status === legend.key).length
+  }))
+)
+
+const attentionItems = computed(() =>
+  [...filteredItems.value]
+    .filter((item) => item.status !== 'verified' && item.status !== 'reserved')
+    .sort(compareItems)
+    .slice(0, 6)
+)
+
+const activeFiltersCount = computed(
+  () => [filters.keyword, filters.priority, filters.scope, filters.status, filters.moduleId].filter(Boolean).length
+)
+
+const hasActiveFilters = computed(() => activeFiltersCount.value > 0)
 
 async function refreshStatuses() {
   if (!panelUser.value) return
@@ -563,6 +765,7 @@ function handleLogout(showMessage = true) {
   panelUser.value = null
   canUpdate.value = false
   overrides.value = {}
+  activeView.value = 'overview'
   loginForm.password = ''
   if (showMessage) {
     ElMessage.success('已退出需求面板账号')
@@ -589,9 +792,18 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .page {
+  --surface: rgba(255, 255, 255, 0.94);
+  --surface-strong: rgba(247, 250, 255, 0.98);
+  --border: rgba(43, 72, 124, 0.12);
+  --text: #172235;
+  --muted: #60708b;
+  --accent: #2a6bcf;
   min-height: 100vh;
   padding: 20px 16px 48px;
-  background: linear-gradient(135deg, #f4f7fb 0%, #eaf1fb 45%, #dfe7f6 100%);
+  background:
+    radial-gradient(circle at top left, rgba(102, 153, 255, 0.22), transparent 34%),
+    radial-gradient(circle at 90% 10%, rgba(22, 163, 74, 0.14), transparent 28%),
+    linear-gradient(135deg, #f4f7fb 0%, #eaf1fb 45%, #dfe7f6 100%);
 }
 
 .shell {
@@ -600,16 +812,16 @@ onBeforeUnmount(() => {
 }
 
 .card {
-  background: rgba(255, 255, 255, 0.94);
-  border: 1px solid rgba(43, 72, 124, 0.12);
+  background: var(--surface);
+  border: 1px solid var(--border);
   box-shadow: 0 24px 60px rgba(39, 67, 108, 0.12);
   backdrop-filter: blur(18px);
 }
 
 .login-layout,
 .hero {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(320px, 0.95fr);
   gap: 24px;
   padding: 28px;
   border-radius: 28px;
@@ -624,7 +836,7 @@ onBeforeUnmount(() => {
   padding: 8px 12px;
   border-radius: 999px;
   background: #dbe8ff;
-  color: #2a6bcf;
+  color: var(--accent);
   font-size: 13px;
   font-weight: 700;
 }
@@ -633,23 +845,23 @@ h1 {
   margin: 18px 0 12px;
   font-size: clamp(30px, 4vw, 44px);
   line-height: 1.08;
-  color: #172235;
+  color: var(--text);
 }
 
-h2, h3, p {
+h2,
+h3,
+p {
   margin: 0;
 }
 
 p {
-  color: #60708b;
+  color: var(--muted);
   line-height: 1.8;
 }
 
 .meta-row,
 .toolbar,
-.stats,
-.module-grid,
-.lane-grid {
+.hero-actions {
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
@@ -666,9 +878,13 @@ p {
   padding: 8px 14px;
   border-radius: 999px;
   border: 1px solid rgba(43, 72, 124, 0.14);
-  background: rgba(255, 255, 255, 0.8);
-  color: #60708b;
+  background: rgba(255, 255, 255, 0.84);
+  color: var(--muted);
   font-size: 13px;
+}
+
+.subtle-pill {
+  background: rgba(235, 241, 252, 0.9);
 }
 
 .login-card {
@@ -689,7 +905,7 @@ p {
 .field span {
   font-size: 12px;
   font-weight: 700;
-  color: #60708b;
+  color: var(--muted);
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
@@ -697,7 +913,8 @@ p {
 input,
 select,
 .ghost,
-.primary {
+.primary,
+.view-tab {
   border-radius: 14px;
   font-size: 14px;
 }
@@ -709,21 +926,25 @@ select {
   padding: 12px 14px;
   border: 1px solid rgba(43, 72, 124, 0.14);
   background: #fff;
-  color: #172235;
+  color: var(--text);
 }
 
-.actions,
-.hero-actions {
+.actions {
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
 
 .primary,
-.ghost {
+.ghost,
+.view-tab {
   padding: 12px 16px;
   font-weight: 700;
   cursor: pointer;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    border-color 0.18s ease;
 }
 
 .primary {
@@ -732,36 +953,106 @@ select {
   color: #fff;
 }
 
-.ghost {
+.ghost,
+.view-tab {
   border: 1px solid rgba(43, 72, 124, 0.14);
   background: #fff;
-  color: #172235;
+  color: var(--text);
+}
+
+.primary:hover,
+.ghost:hover,
+.view-tab:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 16px 30px rgba(39, 67, 108, 0.12);
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.72;
+  transform: none;
+  box-shadow: none;
 }
 
 .danger {
   color: #be123c;
 }
 
-.stats {
-  margin-top: 22px;
+.hero-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
 }
 
-.stat {
-  min-width: 180px;
-  padding: 20px;
+.overview-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.metric-card,
+.hero-panel {
+  padding: 18px;
   border-radius: 22px;
+  background: rgba(247, 250, 255, 0.98);
+  border: 1px solid rgba(43, 72, 124, 0.08);
+}
+
+.metric-card {
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
 
-.stat strong {
-  font-size: 34px;
-  color: #172235;
+.metric-card span,
+.metric-card small {
+  color: var(--muted);
 }
 
-.stat span {
-  color: #60708b;
+.metric-card strong {
+  font-size: 30px;
+  color: var(--text);
+}
+
+.hero-side {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.panel-head,
+.section-head,
+.board-head,
+.module-header,
+.priority-line,
+.panel-item,
+.title-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.panel-head {
+  align-items: flex-start;
+}
+
+.hero-actions {
+  margin-top: 16px;
+}
+
+.panel-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.panel-item {
+  align-items: center;
+  padding: 12px 14px;
+  border-radius: 18px;
+  background: rgba(248, 250, 252, 0.94);
+  border: 1px solid rgba(43, 72, 124, 0.08);
 }
 
 .controls {
@@ -771,20 +1062,23 @@ select {
 }
 
 .section-head {
-  display: flex;
-  justify-content: space-between;
   align-items: flex-end;
-  gap: 16px;
   margin: 34px 0 14px;
 }
 
-.section-head:first-child {
+.section-head-tight,
+.workspace-head,
+.board-head {
   margin-top: 0;
+}
+
+.workspace-head {
+  margin-bottom: 18px;
 }
 
 .filters {
   display: grid;
-  grid-template-columns: 1.6fr repeat(4, minmax(120px, 1fr));
+  grid-template-columns: 1.5fr repeat(4, minmax(120px, 1fr));
   gap: 14px;
   margin-top: 18px;
 }
@@ -795,40 +1089,99 @@ select {
 
 .toolbar {
   margin-top: 16px;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.toolbar-group {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.legend-group {
+  justify-content: flex-end;
 }
 
 .legend-dot {
   width: 10px;
   height: 10px;
   border-radius: 50%;
+  flex: 0 0 auto;
 }
 
-.status-todo { background: #94a3b8; }
-.status-doing { background: #2563eb; }
-.status-dev-done { background: #7c3aed; }
-.status-verified { background: #16a34a; }
-.status-reserved { background: #64748b; }
+.status-todo {
+  background: #94a3b8;
+}
 
-.module-grid,
-.lane-grid {
-  margin-top: 22px;
+.status-doing {
+  background: #2563eb;
+}
+
+.status-dev-done {
+  background: #7c3aed;
+}
+
+.status-verified {
+  background: #16a34a;
+}
+
+.status-reserved {
+  background: #64748b;
+}
+
+.workspace {
+  margin-top: 30px;
+}
+
+.view-switch {
+  display: inline-flex;
+  gap: 8px;
+  padding: 6px;
+  border-radius: 18px;
+  background: rgba(230, 238, 249, 0.9);
+}
+
+.view-tab {
+  min-width: 92px;
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+
+.view-tab.active {
+  background: #fff;
+  color: var(--accent);
+  border-color: rgba(42, 107, 207, 0.14);
+  box-shadow: 0 12px 24px rgba(39, 67, 108, 0.08);
+}
+
+.workspace-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  grid-template-columns: minmax(0, 1.45fr) minmax(320px, 0.9fr);
+  gap: 22px;
 }
 
-.module-card,
-.lane {
+.module-board,
+.focus-card,
+.detail-board {
   padding: 22px;
   border-radius: 24px;
 }
 
-.module-top,
-.lane-header,
-.lane-item,
-.title-row {
+.module-list {
   display: flex;
-  justify-content: space-between;
-  gap: 12px;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.module-row {
+  padding: 18px;
+  border-radius: 22px;
+  background: linear-gradient(180deg, rgba(249, 251, 255, 0.98), rgba(242, 246, 253, 0.92));
+  border: 1px solid rgba(43, 72, 124, 0.08);
 }
 
 .title-row {
@@ -837,12 +1190,20 @@ select {
   flex-wrap: wrap;
 }
 
-.metric {
-  min-width: 72px;
+.module-progress {
+  min-width: 112px;
   text-align: right;
-  font-size: 24px;
-  font-weight: 800;
-  color: #172235;
+}
+
+.module-progress strong {
+  display: block;
+  font-size: 28px;
+  color: var(--text);
+}
+
+.module-progress span {
+  color: var(--muted);
+  font-size: 13px;
 }
 
 .track {
@@ -860,70 +1221,160 @@ select {
   background: linear-gradient(90deg, #2a6bcf, #16a34a);
 }
 
-.mini-stats {
+.module-bottom {
   display: flex;
   justify-content: space-between;
-  gap: 10px;
-  margin-top: 12px;
-  color: #60708b;
+  gap: 16px;
+  align-items: flex-start;
+  margin-top: 14px;
+}
+
+.mini-stats {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  color: var(--muted);
   font-size: 13px;
 }
 
-.priority,
-.status-pill {
-  display: inline-flex;
-  align-items: center;
-  padding: 6px 10px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 700;
+.focus-badges {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
-.priority-high { background: #ffe2e8; color: #e11d48; }
-.priority-medium { background: #ffeedf; color: #ea580c; }
-.priority-low { background: #dbeafe; color: #2563eb; }
-
-.lane-list {
+.focus-chip {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 4px;
+  min-width: 140px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.86);
+  border: 1px solid rgba(43, 72, 124, 0.08);
+}
+
+.focus-chip strong,
+.panel-item strong,
+.stack strong {
+  color: var(--text);
+}
+
+.focus-chip span,
+.stack span,
+.empty-copy,
+.updated-by {
+  color: var(--muted);
+}
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.priority-summary,
+.status-summary {
+  display: grid;
+  gap: 12px;
   margin-top: 16px;
 }
 
-.lane-item {
+.priority-block,
+.status-count {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   padding: 14px;
   border-radius: 18px;
   background: rgba(248, 250, 252, 0.9);
   border: 1px solid rgba(43, 72, 124, 0.08);
 }
 
-.lane-item strong,
-.stack strong {
-  color: #172235;
+.priority-block {
+  flex-direction: column;
+  align-items: stretch;
 }
 
-.lane-item span,
-.stack span,
-.empty-copy,
-.updated-by {
-  color: #60708b;
+.priority-line strong {
+  font-size: 24px;
+  color: var(--text);
 }
 
-.status-pill-todo { background: #f1f5f9; color: #475569; }
-.status-pill-doing { background: #dbeafe; color: #1d4ed8; }
-.status-pill-dev-done { background: #ede9fe; color: #6d28d9; }
-.status-pill-verified { background: #dcfce7; color: #15803d; }
-.status-pill-reserved { background: #e2e8f0; color: #475569; }
+.priority-block small {
+  color: var(--muted);
+}
+
+.priority,
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.priority-high {
+  background: #ffe2e8;
+  color: #e11d48;
+}
+
+.priority-medium {
+  background: #ffeedf;
+  color: #ea580c;
+}
+
+.priority-low {
+  background: #dbeafe;
+  color: #2563eb;
+}
+
+.status-pill-todo {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.status-pill-doing {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.status-pill-dev-done {
+  background: #ede9fe;
+  color: #6d28d9;
+}
+
+.status-pill-verified {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.status-pill-reserved {
+  background: #e2e8f0;
+  color: #475569;
+}
+
+.detail-toolbar {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
 
 .table-shell {
   overflow: auto;
-  border-radius: 24px;
+  border-radius: 22px;
+  border: 1px solid rgba(43, 72, 124, 0.08);
 }
 
 .table {
   width: 100%;
   min-width: 1180px;
   border-collapse: collapse;
+  background: rgba(255, 255, 255, 0.86);
 }
 
 .table th,
@@ -937,9 +1388,15 @@ select {
 .table th {
   position: sticky;
   top: 0;
-  background: rgba(244, 248, 255, 0.96);
+  background: rgba(244, 248, 255, 0.98);
   color: #24324b;
   font-size: 13px;
+  z-index: 1;
+}
+
+.table-empty-cell {
+  padding: 36px 18px;
+  text-align: center;
 }
 
 .stack {
@@ -958,10 +1415,24 @@ select {
   font-size: 12px;
 }
 
+.board-empty {
+  padding: 28px 0 6px;
+}
+
+@media (max-width: 1180px) {
+  .overview-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .workspace-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 1024px) {
   .login-layout,
   .hero {
-    flex-direction: column;
+    grid-template-columns: 1fr;
   }
 
   .login-card {
@@ -975,6 +1446,14 @@ select {
   .field-search {
     grid-column: 1 / -1;
   }
+
+  .module-bottom {
+    flex-direction: column;
+  }
+
+  .focus-badges {
+    justify-content: flex-start;
+  }
 }
 
 @media (max-width: 768px) {
@@ -985,20 +1464,44 @@ select {
   .login-layout,
   .hero,
   .controls,
-  .module-card,
-  .lane,
-  .stat {
+  .module-board,
+  .focus-card,
+  .detail-board,
+  .login-card {
     padding: 18px;
     border-radius: 20px;
   }
 
+  .overview-strip,
   .filters {
     grid-template-columns: 1fr;
   }
 
-  .section-head {
+  .section-head,
+  .module-header,
+  .panel-item,
+  .priority-line {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .toolbar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .view-switch {
+    width: 100%;
+  }
+
+  .view-tab {
+    flex: 1 1 0;
+    text-align: center;
+  }
+
+  .module-progress {
+    min-width: 0;
+    text-align: left;
   }
 }
 </style>

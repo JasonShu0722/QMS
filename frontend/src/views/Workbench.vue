@@ -145,8 +145,15 @@
             <template v-if="featureBlocks.announcements">
               <AnnouncementList />
             </template>
-            <template v-else-if="authStore.isSupplier">
-              <div class="supplier-status">
+            <template v-else>
+              <div class="announcement-placeholder">
+                <div class="announcement-placeholder__headline">公告与通知将在这里集中展示</div>
+                <div class="announcement-placeholder__body">
+                  当前版本先保留公告通知区域布局，后续会在这里呈现系统公告、质量预警、文档更新与未读提醒。
+                </div>
+                <el-empty description="当前暂无公告通知" :image-size="88" />
+              </div>
+              <div v-if="false" class="supplier-status">
                 <div class="status-row">
                   <span>供应商</span>
                   <strong>{{ sessionUser?.supplier_name || '未关联' }}</strong>
@@ -161,7 +168,7 @@
                 </div>
               </div>
             </template>
-            <template v-else>
+            <template v-if="false">
               <el-empty description="公告能力未启用，当前显示基础空态。" :image-size="90" />
             </template>
           </el-card>
@@ -517,7 +524,7 @@ const taskSectionTitle = computed(() => (authStore.isInternal ? '待办任务' :
 const taskEmptyDescription = computed(() =>
   authStore.isInternal ? '当前没有待办任务' : '当前没有需要处理的任务'
 )
-const secondaryPanelTitle = computed(() => (featureBlocks.value.announcements ? '公告栏' : '基础说明'))
+const secondaryPanelTitle = computed(() => '通知公告')
 const profileDescription = computed(() => {
   if (authStore.isInternal) {
     return [sessionUser.value?.department, sessionUser.value?.position].filter(Boolean).join(' / ') || '内部员工'
@@ -929,6 +936,9 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  max-height: 52vh;
+  overflow-y: auto;
+  padding-right: 4px;
 }
 
 .quick-action-group {
@@ -958,29 +968,18 @@ onMounted(async () => {
 
 .quick-action-group__grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
 }
 
 .quick-action-option {
-  display: block;
-  margin-right: 0;
-}
-
-.quick-action-option :deep(.el-checkbox__input) {
-  margin-top: 2px;
-}
-
-.quick-action-option :deep(.el-checkbox__label) {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: flex-start;
+  gap: 12px;
   width: 100%;
-  padding-left: 10px;
-}
-
-.quick-action-option__content {
-  display: flex;
-  min-height: 108px;
-  flex-direction: column;
-  justify-content: space-between;
+  min-width: 0;
+  margin-right: 0;
   border: 1px solid #e4e7ed;
   border-radius: 12px;
   background: linear-gradient(180deg, #ffffff 0%, #f9fbff 100%);
@@ -988,7 +987,26 @@ onMounted(async () => {
   transition: all 0.2s ease;
 }
 
-.quick-action-option:hover .quick-action-option__content {
+.quick-action-option :deep(.el-checkbox__input) {
+  margin-top: 2px;
+}
+
+.quick-action-option :deep(.el-checkbox__label) {
+  display: block;
+  width: auto;
+  min-width: 0;
+  padding-left: 0;
+}
+
+.quick-action-option__content {
+  display: flex;
+  min-height: 108px;
+  min-width: 0;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.quick-action-option:hover {
   border-color: #bfd9ff;
   box-shadow: 0 10px 24px rgba(64, 158, 255, 0.08);
 }
@@ -1004,6 +1022,7 @@ onMounted(async () => {
   color: #303133;
   font-size: 14px;
   font-weight: 600;
+  line-height: 1.4;
 }
 
 .quick-action-option__desc {
@@ -1017,12 +1036,45 @@ onMounted(async () => {
   margin-top: 12px;
   color: #909399;
   font-size: 12px;
+  line-height: 1.5;
+  word-break: break-all;
+}
+
+.quick-action-option :deep(.el-checkbox__input.is-checked) + .el-checkbox__label {
+  min-width: 0;
 }
 
 .quick-action-option :deep(.el-checkbox__input.is-checked) + .el-checkbox__label .quick-action-option__content {
   border-color: #409eff;
-  background: linear-gradient(180deg, #f7fbff 0%, #ecf5ff 100%);
   box-shadow: 0 12px 30px rgba(64, 158, 255, 0.12);
+}
+
+.quick-action-option :deep(.el-checkbox__input.is-checked) + .el-checkbox__label .quick-action-option__content {
+  background: linear-gradient(180deg, #f7fbff 0%, #ecf5ff 100%);
+}
+
+.announcement-placeholder {
+  display: flex;
+  min-height: 280px;
+  flex-direction: column;
+  justify-content: space-between;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+  padding: 20px 4px 8px;
+}
+
+.announcement-placeholder__headline {
+  margin: 0 16px;
+  color: #303133;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.announcement-placeholder__body {
+  margin: 10px 16px 0;
+  color: #606266;
+  font-size: 13px;
+  line-height: 1.8;
 }
 
 .metrics-list {

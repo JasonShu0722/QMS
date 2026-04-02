@@ -48,7 +48,7 @@
             </div>
 
             <div class="profile-actions">
-              <el-button class="profile-action-button" plain @click="openProfileDialog">
+              <el-button class="profile-action-button" plain @click="openSettingsDialog('profile')">
                 <span class="profile-action-button__icon">
                   <el-icon><User /></el-icon>
                 </span>
@@ -57,7 +57,7 @@
                   <small>维护姓名、邮箱、电话和职位</small>
                 </span>
               </el-button>
-              <el-button class="profile-action-button" plain @click="openAvatarDialog">
+              <el-button class="profile-action-button" plain @click="openSettingsDialog('avatar')">
                 <span class="profile-action-button__icon">
                   <el-icon><Camera /></el-icon>
                 </span>
@@ -66,7 +66,7 @@
                   <small>上传并裁剪新的个人头像</small>
                 </span>
               </el-button>
-              <el-button class="profile-action-button" plain @click="openPasswordDialog">
+              <el-button class="profile-action-button" plain @click="openSettingsDialog('password')">
                 <span class="profile-action-button__icon">
                   <el-icon><Lock /></el-icon>
                 </span>
@@ -75,7 +75,7 @@
                   <small>更新登录密码并保护账户安全</small>
                 </span>
               </el-button>
-              <el-button class="profile-action-button" plain @click="openSignatureDialog">
+              <el-button class="profile-action-button" plain @click="openSettingsDialog('signature')">
                 <span class="profile-action-button__icon">
                   <el-icon><Edit /></el-icon>
                 </span>
@@ -274,165 +274,189 @@
     </el-dialog>
 
     <el-dialog
-      v-model="showProfileDialog"
-      title="账户信息"
-      width="560px"
+      v-model="showSettingsDialog"
+      title="系统设置"
+      width="920px"
       :close-on-click-modal="false"
+      class="system-settings-dialog"
     >
-      <div class="settings-dialog-intro">
-        <div class="settings-dialog-intro__title">维护个人资料与联系方式</div>
+      <div class="settings-dialog-intro settings-dialog-intro--hero">
+        <div class="settings-dialog-intro__title">集中维护当前账户的个人设置</div>
         <div class="settings-dialog-intro__desc">
-          用户名、账户类型与供应商归属由平台统一治理；这里仅维护个人展示信息。
+          在一个弹窗内完成账户信息、头像、密码与电子签名配置，避免同类功能分散在不同入口。
         </div>
-      </div>
 
-      <el-form
-        ref="profileFormRef"
-        :model="profileForm"
-        :rules="profileRules"
-        label-width="96px"
-        class="profile-settings-form"
-      >
-        <el-form-item label="用户名">
-          <el-input :model-value="sessionUser?.username || ''" disabled />
-        </el-form-item>
-        <el-form-item label="姓名" prop="full_name">
-          <el-input v-model="profileForm.full_name" placeholder="请输入姓名" />
-        </el-form-item>
-        <el-form-item label="邮箱" prop="email">
-          <el-input v-model="profileForm.email" placeholder="请输入常用邮箱" />
-        </el-form-item>
-        <el-form-item label="电话" prop="phone">
-          <el-input v-model="profileForm.phone" placeholder="请输入联系电话" />
-        </el-form-item>
-        <el-form-item v-if="authStore.isInternal" label="部门" prop="department">
-          <el-input v-model="profileForm.department" placeholder="请输入部门" />
-        </el-form-item>
-        <el-form-item v-if="authStore.isSupplier" label="供应商">
-          <el-input :model-value="sessionUser?.supplier_name || '未关联'" disabled />
-        </el-form-item>
-        <el-form-item label="职位" prop="position">
-          <el-input v-model="profileForm.position" placeholder="请输入职位" />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="showProfileDialog = false">取消</el-button>
-        <el-button type="primary" :loading="profileLoading" @click="handleUpdateProfile">保存资料</el-button>
-      </template>
-    </el-dialog>
-
-    <el-dialog
-      v-model="showAvatarDialog"
-      title="头像设置"
-      width="520px"
-      :close-on-click-modal="false"
-    >
-      <div class="settings-dialog-intro">
-        <div class="settings-dialog-intro__title">上传新的个人头像</div>
-        <div class="settings-dialog-intro__desc">
-          建议上传清晰的正方形图片，选择后可进入裁剪步骤统一生成头像。
-        </div>
-      </div>
-
-      <div class="avatar-settings-panel">
-        <div class="avatar-settings-preview">
-          <el-avatar :size="108" :src="avatarUrl">
-            <el-icon><User /></el-icon>
-          </el-avatar>
-          <div class="avatar-settings-preview__text">
+        <div class="settings-overview-grid">
+          <div class="settings-overview-card">
+            <span>当前用户</span>
             <strong>{{ sessionUser?.full_name || authStore.userInfo?.full_name }}</strong>
-            <span>支持 PNG / JPG / WEBP，系统会自动压缩并保存为头像图片</span>
+            <small>{{ sessionUser?.username }}</small>
+          </div>
+          <div class="settings-overview-card">
+            <span>当前环境</span>
+            <strong>{{ environment === 'stable' ? '正式环境' : '预览环境' }}</strong>
+            <small>{{ authStore.isPlatformAdmin ? '平台管理员可见' : '标准用户视角' }}</small>
+          </div>
+          <div class="settings-overview-card">
+            <span>身份摘要</span>
+            <strong>{{ profileDescription }}</strong>
+            <small>{{ sessionUser?.supplier_name || (authStore.isInternal ? '内部账号' : '供应商账号') }}</small>
           </div>
         </div>
+      </div>
 
-        <div class="avatar-settings-actions">
-          <el-button type="primary" @click="triggerAvatarUpload">
-            <el-icon><UploadFilled /></el-icon>
-            选择头像图片
-          </el-button>
-          <div class="avatar-settings-actions__tip">
-            选择图片后会进入裁剪弹窗，确认后立即更新当前头像。
+      <el-tabs v-model="activeSettingsTab" class="settings-tabs">
+        <el-tab-pane label="账户信息" name="profile">
+          <div class="settings-pane">
+            <div class="settings-pane__heading">
+              <div class="settings-pane__title">维护个人资料与联系方式</div>
+              <div class="settings-pane__desc">
+                用户名、账户类型与供应商归属由平台统一治理；这里仅维护个人展示信息。
+              </div>
+            </div>
+
+            <el-form
+              ref="profileFormRef"
+              :model="profileForm"
+              :rules="profileRules"
+              label-width="96px"
+              class="profile-settings-form"
+            >
+              <el-form-item label="用户名">
+                <el-input :model-value="sessionUser?.username || ''" disabled />
+              </el-form-item>
+              <el-form-item label="姓名" prop="full_name">
+                <el-input v-model="profileForm.full_name" placeholder="请输入姓名" />
+              </el-form-item>
+              <el-form-item label="邮箱" prop="email">
+                <el-input v-model="profileForm.email" placeholder="请输入常用邮箱" />
+              </el-form-item>
+              <el-form-item label="电话" prop="phone">
+                <el-input v-model="profileForm.phone" placeholder="请输入联系电话" />
+              </el-form-item>
+              <el-form-item v-if="authStore.isInternal" label="部门" prop="department">
+                <el-input v-model="profileForm.department" placeholder="请输入部门" />
+              </el-form-item>
+              <el-form-item v-if="authStore.isSupplier" label="供应商">
+                <el-input :model-value="sessionUser?.supplier_name || '未关联'" disabled />
+              </el-form-item>
+              <el-form-item label="职位" prop="position">
+                <el-input v-model="profileForm.position" placeholder="请输入职位" />
+              </el-form-item>
+            </el-form>
+
+            <div class="settings-pane__actions">
+              <el-button type="primary" :loading="profileLoading" @click="handleUpdateProfile">保存资料</el-button>
+            </div>
           </div>
-        </div>
-      </div>
+        </el-tab-pane>
+
+        <el-tab-pane label="头像设置" name="avatar">
+          <div class="settings-pane">
+            <div class="settings-pane__heading">
+              <div class="settings-pane__title">上传新的个人头像</div>
+              <div class="settings-pane__desc">
+                建议上传清晰的正方形图片，选择后可进入裁剪步骤统一生成头像。
+              </div>
+            </div>
+
+            <div class="avatar-settings-panel">
+              <div class="avatar-settings-preview">
+                <el-avatar :size="108" :src="avatarUrl">
+                  <el-icon><User /></el-icon>
+                </el-avatar>
+                <div class="avatar-settings-preview__text">
+                  <strong>{{ sessionUser?.full_name || authStore.userInfo?.full_name }}</strong>
+                  <span>支持 PNG / JPG / WEBP，系统会自动压缩并保存为头像图片</span>
+                </div>
+              </div>
+
+              <div class="avatar-settings-actions">
+                <el-button type="primary" @click="triggerAvatarUpload">
+                  <el-icon><UploadFilled /></el-icon>
+                  选择头像图片
+                </el-button>
+                <div class="avatar-settings-actions__tip">
+                  选择图片后会进入裁剪弹窗，确认后立即更新当前头像，当前设置弹窗会保持在头像页签。
+                </div>
+              </div>
+            </div>
+          </div>
+        </el-tab-pane>
+
+        <el-tab-pane label="修改密码" name="password">
+          <div class="settings-pane">
+            <div class="settings-pane__heading">
+              <div class="settings-pane__title">维护账户登录安全</div>
+              <div class="settings-pane__desc">
+                更新成功后系统会提示重新登录，请使用新的密码继续访问平台。
+              </div>
+            </div>
+
+            <el-form ref="passwordFormRef" :model="passwordForm" :rules="passwordRules" label-width="100px">
+              <el-form-item label="旧密码" prop="old_password">
+                <el-input v-model="passwordForm.old_password" type="password" show-password placeholder="请输入旧密码" />
+              </el-form-item>
+              <el-form-item label="新密码" prop="new_password">
+                <el-input v-model="passwordForm.new_password" type="password" show-password placeholder="请输入新密码" />
+                <div class="password-hint">密码需至少 8 位，并包含大写、小写、数字、特殊字符中的三类。</div>
+              </el-form-item>
+              <el-form-item label="确认密码" prop="confirm_password">
+                <el-input v-model="passwordForm.confirm_password" type="password" show-password placeholder="请再次输入新密码" />
+              </el-form-item>
+            </el-form>
+
+            <div class="settings-pane__actions">
+              <el-button type="primary" :loading="passwordLoading" @click="handleChangePassword">确认修改</el-button>
+            </div>
+          </div>
+        </el-tab-pane>
+
+        <el-tab-pane label="电子签名" name="signature">
+          <div class="settings-pane">
+            <div class="settings-pane__heading">
+              <div class="settings-pane__title">维护审批流使用的电子签名</div>
+              <div class="settings-pane__desc">
+                建议上传白底或透明底签名图片，系统会自动处理背景并用于后续审批场景。
+              </div>
+            </div>
+
+            <div class="signature-upload">
+              <div v-if="currentSignature" class="current-signature">
+                <h4>当前签名</h4>
+                <img :src="currentSignature" alt="电子签名" class="signature-preview" />
+              </div>
+              <div v-else class="signature-empty">
+                <el-empty description="当前还没有配置电子签名" :image-size="72" />
+              </div>
+
+              <el-upload
+                ref="uploadRef"
+                class="signature-uploader"
+                drag
+                :auto-upload="false"
+                :limit="1"
+                accept="image/png,image/jpeg,image/jpg"
+                :on-change="handleSignatureChange"
+                :on-exceed="handleExceed"
+              >
+                <el-icon class="el-icon--upload"><UploadFilled /></el-icon>
+                <div class="el-upload__text">拖拽文件到此处或 <em>点击上传</em></div>
+                <template #tip>
+                  <div class="el-upload__tip">支持 PNG / JPG，系统会自动处理签名图片背景。</div>
+                </template>
+              </el-upload>
+            </div>
+
+            <div class="settings-pane__actions">
+              <el-button type="primary" :loading="signatureLoading" @click="handleUploadSignature">上传签名</el-button>
+            </div>
+          </div>
+        </el-tab-pane>
+      </el-tabs>
+
       <template #footer>
-        <el-button @click="showAvatarDialog = false">关闭</el-button>
-      </template>
-    </el-dialog>
-
-    <el-dialog
-      v-model="showPasswordDialog"
-      title="修改密码"
-      width="500px"
-      :close-on-click-modal="false"
-    >
-      <div class="settings-dialog-intro">
-        <div class="settings-dialog-intro__title">维护账户登录安全</div>
-        <div class="settings-dialog-intro__desc">
-          更新成功后系统会提示重新登录，请使用新的密码继续访问平台。
-        </div>
-      </div>
-
-      <el-form ref="passwordFormRef" :model="passwordForm" :rules="passwordRules" label-width="100px">
-        <el-form-item label="旧密码" prop="old_password">
-          <el-input v-model="passwordForm.old_password" type="password" show-password placeholder="请输入旧密码" />
-        </el-form-item>
-        <el-form-item label="新密码" prop="new_password">
-          <el-input v-model="passwordForm.new_password" type="password" show-password placeholder="请输入新密码" />
-          <div class="password-hint">密码需至少 8 位，并包含大写、小写、数字、特殊字符中的三类。</div>
-        </el-form-item>
-        <el-form-item label="确认密码" prop="confirm_password">
-          <el-input v-model="passwordForm.confirm_password" type="password" show-password placeholder="请再次输入新密码" />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="showPasswordDialog = false">取消</el-button>
-        <el-button type="primary" :loading="passwordLoading" @click="handleChangePassword">确认</el-button>
-      </template>
-    </el-dialog>
-
-    <el-dialog
-      v-model="showSignatureDialog"
-      title="电子签名管理"
-      width="600px"
-      :close-on-click-modal="false"
-    >
-      <div class="settings-dialog-intro">
-        <div class="settings-dialog-intro__title">维护审批流使用的电子签名</div>
-        <div class="settings-dialog-intro__desc">
-          建议上传白底或透明底签名图片，系统会自动处理背景并用于后续审批场景。
-        </div>
-      </div>
-
-      <div class="signature-upload">
-        <div v-if="currentSignature" class="current-signature">
-          <h4>当前签名</h4>
-          <img :src="currentSignature" alt="电子签名" class="signature-preview" />
-        </div>
-        <div v-else class="signature-empty">
-          <el-empty description="当前还没有配置电子签名" :image-size="72" />
-        </div>
-
-        <el-upload
-          ref="uploadRef"
-          class="signature-uploader"
-          drag
-          :auto-upload="false"
-          :limit="1"
-          accept="image/png,image/jpeg,image/jpg"
-          :on-change="handleSignatureChange"
-          :on-exceed="handleExceed"
-        >
-          <el-icon class="el-icon--upload"><UploadFilled /></el-icon>
-          <div class="el-upload__text">拖拽文件到此处或 <em>点击上传</em></div>
-          <template #tip>
-            <div class="el-upload__tip">支持 PNG / JPG，系统会自动处理签名图片背景。</div>
-          </template>
-        </el-upload>
-      </div>
-      <template #footer>
-        <el-button @click="showSignatureDialog = false">取消</el-button>
-        <el-button type="primary" :loading="signatureLoading" @click="handleUploadSignature">上传签名</el-button>
+        <el-button @click="showSettingsDialog = false">关闭</el-button>
       </template>
     </el-dialog>
 
@@ -522,6 +546,8 @@ interface ProfileFormState {
   position: string
 }
 
+type SettingsTabName = 'profile' | 'avatar' | 'password' | 'signature'
+
 const router = useRouter()
 const authStore = useAuthStore()
 const featureFlagStore = useFeatureFlagStore()
@@ -538,8 +564,8 @@ const unreadImportantAnnouncements = ref<Announcement[]>([])
 
 const avatarInputRef = ref<HTMLInputElement>()
 const cropperRef = ref<any>()
-const showProfileDialog = ref(false)
-const showAvatarDialog = ref(false)
+const showSettingsDialog = ref(false)
+const activeSettingsTab = ref<SettingsTabName>('profile')
 const showCropperDialog = ref(false)
 const avatarLoading = ref(false)
 const profileLoading = ref(false)
@@ -557,7 +583,6 @@ const cropperOption = reactive({
   outputType: 'png'
 })
 
-const showPasswordDialog = ref(false)
 const passwordLoading = ref(false)
 const passwordFormRef = ref<FormInstance>()
 const passwordForm = ref<ChangePasswordRequest & { confirm_password: string }>({
@@ -566,7 +591,6 @@ const passwordForm = ref<ChangePasswordRequest & { confirm_password: string }>({
   confirm_password: ''
 })
 
-const showSignatureDialog = ref(false)
 const signatureLoading = ref(false)
 const uploadRef = ref<UploadInstance>()
 const signatureFile = ref<File | null>(null)
@@ -726,28 +750,29 @@ function triggerAvatarUpload() {
   avatarInputRef.value?.click()
 }
 
-function openProfileDialog() {
-  syncProfileForm()
-  showProfileDialog.value = true
-}
-
-function openAvatarDialog() {
-  showAvatarDialog.value = true
-}
-
-function openPasswordDialog() {
+function resetPasswordForm() {
   passwordForm.value = {
     old_password: '',
     new_password: '',
     confirm_password: ''
   }
-  showPasswordDialog.value = true
 }
 
-function openSignatureDialog() {
+function resetSignatureForm() {
   signatureFile.value = null
   uploadRef.value?.clearFiles()
-  showSignatureDialog.value = true
+}
+
+function prepareSettingsDialog() {
+  syncProfileForm()
+  resetPasswordForm()
+  resetSignatureForm()
+}
+
+function openSettingsDialog(tab: SettingsTabName = 'profile') {
+  activeSettingsTab.value = tab
+  prepareSettingsDialog()
+  showSettingsDialog.value = true
 }
 
 function handleAvatarFileChange(event: Event) {
@@ -760,7 +785,7 @@ function handleAvatarFileChange(event: Event) {
   const reader = new FileReader()
   reader.onload = (e) => {
     cropperOption.img = (e.target?.result as string) || ''
-    showAvatarDialog.value = false
+    activeSettingsTab.value = 'avatar'
     showCropperDialog.value = true
   }
   reader.readAsDataURL(file)
@@ -789,7 +814,6 @@ async function handleCropAndUpload() {
     await authStore.refreshUserInfo()
     syncSessionUserInfo()
     showCropperDialog.value = false
-    showAvatarDialog.value = false
     ElMessage.success('头像已更新')
   } catch (error: any) {
     ElMessage.error(error.message || '头像上传失败')
@@ -824,8 +848,7 @@ async function handleUpdateProfile() {
       await workbenchApi.updateProfile(payload)
       await authStore.refreshUserInfo()
       syncSessionUserInfo()
-
-      showProfileDialog.value = false
+      syncProfileForm()
       ElMessage.success('账户信息已更新')
     } catch (error: any) {
       ElMessage.error(error.message || '账户信息更新失败')
@@ -976,12 +999,8 @@ async function handleChangePassword() {
         old_password: passwordForm.value.old_password,
         new_password: passwordForm.value.new_password
       })
-      showPasswordDialog.value = false
-      passwordForm.value = {
-        old_password: '',
-        new_password: '',
-        confirm_password: ''
-      }
+      showSettingsDialog.value = false
+      resetPasswordForm()
       ElMessage.success('密码修改成功，请重新登录')
       setTimeout(() => {
         authStore.logout()
@@ -1014,9 +1033,7 @@ async function handleUploadSignature() {
     await workbenchApi.uploadSignature(signatureFile.value)
     await authStore.refreshUserInfo()
     syncSessionUserInfo()
-    showSignatureDialog.value = false
-    signatureFile.value = null
-    uploadRef.value?.clearFiles()
+    resetSignatureForm()
     ElMessage.success('电子签名已更新')
   } catch (error: any) {
     ElMessage.error(error.message || '签名上传失败')
@@ -1412,6 +1429,14 @@ onMounted(async () => {
   background: linear-gradient(180deg, #f8fbff 0%, #f2f7ff 100%);
 }
 
+.system-settings-dialog :deep(.el-dialog__body) {
+  padding-top: 18px;
+}
+
+.settings-dialog-intro--hero {
+  padding: 18px 20px;
+}
+
 .settings-dialog-intro__title {
   color: #1f2a37;
   font-size: 15px;
@@ -1423,6 +1448,106 @@ onMounted(async () => {
   color: #687385;
   font-size: 13px;
   line-height: 1.7;
+}
+
+.settings-overview-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.settings-overview-card {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid rgba(219, 229, 241, 0.9);
+}
+
+.settings-overview-card span {
+  color: #7b8794;
+  font-size: 12px;
+}
+
+.settings-overview-card strong {
+  color: #1f2a37;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.settings-overview-card small {
+  color: #8a94a6;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.settings-tabs {
+  margin-top: 20px;
+}
+
+.settings-tabs :deep(.el-tabs__header) {
+  margin-bottom: 18px;
+}
+
+.settings-tabs :deep(.el-tabs__nav-wrap::after) {
+  display: none;
+}
+
+.settings-tabs :deep(.el-tabs__item) {
+  height: 40px;
+  padding: 0 16px;
+  margin-right: 8px;
+  border-radius: 999px;
+  color: #687385;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.settings-tabs :deep(.el-tabs__item.is-active) {
+  background: #edf5ff;
+  color: #409eff;
+}
+
+.settings-tabs :deep(.el-tabs__active-bar) {
+  display: none;
+}
+
+.settings-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-height: 420px;
+  padding: 6px 2px 2px;
+}
+
+.settings-pane__heading {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.settings-pane__title {
+  color: #1f2a37;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.settings-pane__desc {
+  color: #687385;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.settings-pane__actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: auto;
+  padding-top: 4px;
 }
 
 .profile-settings-form {
@@ -1579,6 +1704,19 @@ onMounted(async () => {
     min-width: 0;
   }
 
+  .settings-overview-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-tabs :deep(.el-tabs__item) {
+    margin-right: 6px;
+    padding: 0 12px;
+  }
+
+  .settings-pane {
+    min-height: auto;
+  }
+
   .profile-actions {
     width: 100%;
     grid-template-columns: 1fr;
@@ -1604,6 +1742,11 @@ onMounted(async () => {
 
   .quick-action-group__grid {
     grid-template-columns: 1fr;
+  }
+
+  .avatar-settings-preview {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }
 </style>

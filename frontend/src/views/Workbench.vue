@@ -233,6 +233,10 @@
       <el-tabs v-model="activeSettingsTab" class="settings-tabs">
         <el-tab-pane label="账户信息" name="profile">
           <div class="settings-pane">
+            <div v-if="!canEditOwnProfile" class="settings-inline-note">
+              仅平台管理员可修改，请在用户管理中调整。
+            </div>
+
             <el-form
               ref="profileFormRef"
               :model="profileForm"
@@ -244,28 +248,24 @@
                 <el-input :model-value="sessionUser?.username || ''" disabled />
               </el-form-item>
               <el-form-item label="姓名" prop="full_name">
-                <el-input v-model="profileForm.full_name" placeholder="请输入姓名" />
+                <el-input v-model="profileForm.full_name" :disabled="!canEditOwnProfile" placeholder="请输入姓名" />
               </el-form-item>
               <el-form-item label="邮箱" prop="email">
-                <el-input v-model="profileForm.email" placeholder="请输入常用邮箱" />
+                <el-input v-model="profileForm.email" :disabled="!canEditOwnProfile" placeholder="请输入常用邮箱" />
               </el-form-item>
               <el-form-item label="电话" prop="phone">
-                <el-input v-model="profileForm.phone" placeholder="请输入联系电话" />
+                <el-input v-model="profileForm.phone" :disabled="!canEditOwnProfile" placeholder="请输入联系电话" />
               </el-form-item>
               <el-form-item v-if="authStore.isInternal" label="部门" prop="department">
-                <el-input v-model="profileForm.department" placeholder="请输入部门" />
+                <el-input v-model="profileForm.department" :disabled="!canEditOwnProfile" placeholder="请输入部门" />
               </el-form-item>
               <el-form-item v-if="authStore.isSupplier" label="供应商">
                 <el-input :model-value="sessionUser?.supplier_name || '未关联'" disabled />
               </el-form-item>
               <el-form-item label="职位" prop="position">
-                <el-input v-model="profileForm.position" placeholder="请输入职位" />
+                <el-input v-model="profileForm.position" :disabled="!canEditOwnProfile" placeholder="请输入职位" />
               </el-form-item>
             </el-form>
-
-            <div class="settings-pane__actions">
-              <el-button type="primary" :loading="profileLoading" @click="handleUpdateProfile">保存资料</el-button>
-            </div>
           </div>
         </el-tab-pane>
 
@@ -306,10 +306,6 @@
                 <el-input v-model="passwordForm.confirm_password" type="password" show-password placeholder="请再次输入新密码" />
               </el-form-item>
             </el-form>
-
-            <div class="settings-pane__actions">
-              <el-button type="primary" :loading="passwordLoading" @click="handleChangePassword">确认修改</el-button>
-            </div>
           </div>
         </el-tab-pane>
 
@@ -341,16 +337,23 @@
                 </template>
               </el-upload>
             </div>
-
-            <div class="settings-pane__actions">
-              <el-button type="primary" :loading="signatureLoading" @click="handleUploadSignature">上传签名</el-button>
-            </div>
           </div>
         </el-tab-pane>
       </el-tabs>
 
       <template #footer>
-        <el-button @click="showSettingsDialog = false">关闭</el-button>
+        <div class="settings-dialog-footer">
+          <el-button class="settings-dialog-footer__button" @click="showSettingsDialog = false">关闭</el-button>
+          <el-button
+            class="settings-dialog-footer__button"
+            type="primary"
+            :loading="settingsPrimaryLoading"
+            :disabled="settingsPrimaryDisabled"
+            @click="handleSettingsPrimaryAction"
+          >
+            {{ settingsPrimaryLabel }}
+          </el-button>
+        </div>
       </template>
     </el-dialog>
 
@@ -610,6 +613,41 @@ const currentSignature = computed(() => toAssetUrl(
   sessionUser.value?.signature_image_path || sessionUser.value?.digital_signature || ''
 ))
 const avatarUrl = computed(() => toAssetUrl(sessionUser.value?.avatar_image_path || ''))
+const canEditOwnProfile = computed(() => authStore.isPlatformAdmin)
+const settingsPrimaryLabel = computed(() => {
+  switch (activeSettingsTab.value) {
+    case 'profile':
+      return '保存资料'
+    case 'avatar':
+      return '选择头像'
+    case 'password':
+      return '确认修改'
+    case 'signature':
+      return '上传签名'
+    default:
+      return '保存'
+  }
+})
+const settingsPrimaryLoading = computed(() => {
+  switch (activeSettingsTab.value) {
+    case 'profile':
+      return profileLoading.value
+    case 'avatar':
+      return avatarLoading.value
+    case 'password':
+      return passwordLoading.value
+    case 'signature':
+      return signatureLoading.value
+    default:
+      return false
+  }
+})
+const settingsPrimaryDisabled = computed(() => {
+  if (activeSettingsTab.value === 'profile' && !canEditOwnProfile.value) {
+    return true
+  }
+  return false
+})
 
 function syncProfileForm() {
   profileForm.full_name = sessionUser.value?.full_name || ''
@@ -669,6 +707,23 @@ function openSettingsDialog(tab: SettingsTabName = 'profile') {
   showSettingsDialog.value = true
 }
 
+function handleSettingsPrimaryAction() {
+  switch (activeSettingsTab.value) {
+    case 'profile':
+      void handleUpdateProfile()
+      break
+    case 'avatar':
+      triggerAvatarUpload()
+      break
+    case 'password':
+      void handleChangePassword()
+      break
+    case 'signature':
+      void handleUploadSignature()
+      break
+  }
+}
+
 function handleAvatarFileChange(event: Event) {
   const target = event.target as HTMLInputElement
   const file = target.files?.[0]
@@ -717,6 +772,11 @@ async function handleCropAndUpload() {
 }
 
 async function handleUpdateProfile() {
+  if (!canEditOwnProfile.value) {
+    ElMessage.warning('仅平台管理员可修改账户信息')
+    return
+  }
+
   if (!profileFormRef.value) {
     return
   }
@@ -1208,6 +1268,10 @@ onMounted(async () => {
 }
 
 .settings-tabs :deep(.el-tabs__item) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 104px;
   height: 40px;
   padding: 0 16px;
   margin-right: 8px;
@@ -1235,11 +1299,27 @@ onMounted(async () => {
   padding: 4px 2px 2px;
 }
 
-.settings-pane__actions {
+.settings-inline-note {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 12px;
+  background: #f5f9ff;
+  color: #4b6280;
+  font-size: 13px;
+}
+
+.settings-dialog-footer {
   display: flex;
   justify-content: flex-end;
-  margin-top: auto;
-  padding-top: 4px;
+  gap: 12px;
+}
+
+.settings-dialog-footer__button {
+  min-width: 120px;
+  height: 40px;
+  margin: 0;
 }
 
 .profile-settings-form {
@@ -1387,10 +1467,20 @@ onMounted(async () => {
   .settings-tabs :deep(.el-tabs__item) {
     margin-right: 6px;
     padding: 0 12px;
+    min-width: 92px;
   }
 
   .settings-pane {
     min-height: auto;
+  }
+
+  .settings-dialog-footer {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .settings-dialog-footer__button {
+    flex: 1;
   }
 
   .profile-actions :deep(.el-button) {

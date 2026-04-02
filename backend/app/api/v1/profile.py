@@ -17,6 +17,7 @@ from app.core.dependencies import get_current_active_user
 from app.core.database import get_db
 from app.core.auth_strategy import LocalAuthStrategy
 from app.core.config import settings
+from app.core.platform_admin import is_platform_admin
 from app.models.user import User, UserType
 from app.services.user_session_service import build_user_response
 from app.schemas.profile import (
@@ -77,6 +78,12 @@ async def update_profile(
     允许用户维护个人展示与联系方式字段，不涉及账号类型、供应商关联、
     环境权限等平台治理字段。
     """
+    if not is_platform_admin(current_user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="仅平台管理员可修改账户信息，请在用户管理中调整"
+        )
+
     raw_payload = profile_data.model_dump(exclude_unset=True)
 
     if current_user.user_type != UserType.INTERNAL:

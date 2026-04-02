@@ -12,8 +12,33 @@ from PIL import Image
 
 from app.models.user import User, UserStatus, UserType
 from app.core.auth_strategy import LocalAuthStrategy
+from app.core.platform_admin import get_platform_admin_usernames
 
 pytestmark = pytest.mark.foundation_smoke
+
+
+async def create_platform_admin_user(db_session: AsyncSession) -> User:
+    auth_strategy = LocalAuthStrategy()
+    admin_username = sorted(get_platform_admin_usernames())[0]
+
+    user = User(
+        username=admin_username,
+        password_hash=auth_strategy.hash_password("Test@1234"),
+        full_name="平台管理员",
+        email="admin@example.com",
+        phone="13800138009",
+        user_type=UserType.INTERNAL,
+        status=UserStatus.ACTIVE,
+        department="信息技术部",
+        position="系统管理员",
+        password_changed_at=datetime.utcnow(),
+        created_at=datetime.utcnow(),
+        updated_at=datetime.utcnow()
+    )
+    db_session.add(user)
+    await db_session.commit()
+    await db_session.refresh(user)
+    return user
 
 
 class TestGetProfile:
@@ -59,15 +84,16 @@ class TestUpdateProfile:
     async def test_update_profile_success(
         self,
         async_client: AsyncClient,
-        test_user: User,
-        test_user_token: str,
         db_session: AsyncSession
     ):
+        platform_admin = await create_platform_admin_user(db_session)
+        admin_token = LocalAuthStrategy().create_access_token(platform_admin.id)
+
         response = await async_client.patch(
             "/api/v1/profile",
-            headers={"Authorization": f"Bearer {test_user_token}"},
+            headers={"Authorization": f"Bearer {admin_token}"},
             json={
-                "full_name": "新测试用户",
+                "full_name": "新平台管理员",
                 "email": "updated@example.com",
                 "phone": "13900001111",
                 "department": "信息技术部",
@@ -78,28 +104,31 @@ class TestUpdateProfile:
         assert response.status_code == 200
         data = response.json()
 
-        assert data["full_name"] == "新测试用户"
+        assert data["full_name"] == "新平台管理员"
         assert data["email"] == "updated@example.com"
         assert data["phone"] == "13900001111"
         assert data["department"] == "信息技术部"
         assert data["position"] == "平台管理员"
 
-        await db_session.refresh(test_user)
-        assert test_user.full_name == "新测试用户"
-        assert test_user.email == "updated@example.com"
-        assert test_user.phone == "13900001111"
-        assert test_user.department == "信息技术部"
-        assert test_user.position == "平台管理员"
+        await db_session.refresh(platform_admin)
+        assert platform_admin.full_name == "新平台管理员"
+        assert platform_admin.email == "updated@example.com"
+        assert platform_admin.phone == "13900001111"
+        assert platform_admin.department == "信息技术部"
+        assert platform_admin.position == "平台管理员"
 
     @pytest.mark.asyncio
     async def test_update_profile_requires_payload(
         self,
         async_client: AsyncClient,
-        test_user_token: str
+        db_session: AsyncSession
     ):
+        platform_admin = await create_platform_admin_user(db_session)
+        admin_token = LocalAuthStrategy().create_access_token(platform_admin.id)
+
         response = await async_client.patch(
             "/api/v1/profile",
-            headers={"Authorization": f"Bearer {test_user_token}"},
+            headers={"Authorization": f"Bearer {admin_token}"},
             json={}
         )
 
@@ -110,19 +139,20 @@ class TestUpdateProfile:
     async def test_update_profile_can_clear_optional_fields(
         self,
         async_client: AsyncClient,
-        test_user: User,
-        test_user_token: str,
         db_session: AsyncSession
     ):
-        test_user.phone = "13900001111"
-        test_user.department = "质量部"
-        test_user.position = "质量工程师"
+        platform_admin = await create_platform_admin_user(db_session)
+        admin_token = LocalAuthStrategy().create_access_token(platform_admin.id)
+
+        platform_admin.phone = "13900001111"
+        platform_admin.department = "质量部"
+        platform_admin.position = "质量工程师"
         await db_session.commit()
-        await db_session.refresh(test_user)
+        await db_session.refresh(platform_admin)
 
         response = await async_client.patch(
             "/api/v1/profile",
-            headers={"Authorization": f"Bearer {test_user_token}"},
+            headers={"Authorization": f"Bearer {admin_token}"},
             json={
                 "phone": None,
                 "department": None,
@@ -137,20 +167,23 @@ class TestUpdateProfile:
         assert data["department"] is None
         assert data["position"] is None
 
-        await db_session.refresh(test_user)
-        assert test_user.phone is None
-        assert test_user.department is None
-        assert test_user.position is None
+        await db_session.refresh(platform_admin)
+        assert platform_admin.phone is None
+        assert platform_admin.department is None
+        assert platform_admin.position is None
 
     @pytest.mark.asyncio
     async def test_update_profile_blank_full_name_rejected(
         self,
         async_client: AsyncClient,
-        test_user_token: str
+        db_session: AsyncSession
     ):
+        platform_admin = await create_platform_admin_user(db_session)
+        admin_token = LocalAuthStrategy().create_access_token(platform_admin.id)
+
         response = await async_client.patch(
             "/api/v1/profile",
-            headers={"Authorization": f"Bearer {test_user_token}"},
+            headers={"Authorization": f"Bearer {admin_token}"},
             json={
                 "full_name": "   ",
                 "phone": "13900001111"
@@ -162,7 +195,25 @@ class TestUpdateProfile:
         assert any("姓名不能为空" in error["msg"] for error in errors)
 
     @pytest.mark.asyncio
-    async def test_supplier_cannot_update_department(
+    async def test_non_admin_cannot_update_profile(
+        self,
+        async_client: AsyncClient,
+        test_user_token: str
+    ):
+        response = await async_client.patch(
+            "/api/v1/profile",
+            headers={"Authorization": f"Bearer {test_user_token}"},
+            json={
+                "full_name": "普通员工",
+                "email": "updated@example.com"
+            }
+        )
+
+        assert response.status_code == 403
+        assert "仅平台管理员可修改账户信息" in response.json()["detail"]
+
+    @pytest.mark.asyncio
+    async def test_supplier_cannot_update_profile(
         self,
         async_client: AsyncClient,
         db_session: AsyncSession
@@ -192,20 +243,12 @@ class TestUpdateProfile:
             "/api/v1/profile",
             headers={"Authorization": f"Bearer {supplier_token}"},
             json={
-                "department": "信息技术部",
                 "position": "供应商经理"
             }
         )
 
-        assert response.status_code == 200
-        data = response.json()
-
-        assert data["department"] is None
-        assert data["position"] == "供应商经理"
-
-        await db_session.refresh(supplier_user)
-        assert supplier_user.department is None
-        assert supplier_user.position == "供应商经理"
+        assert response.status_code == 403
+        assert "仅平台管理员可修改账户信息" in response.json()["detail"]
 
 
 class TestChangePassword:

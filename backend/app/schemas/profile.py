@@ -3,7 +3,7 @@
 Profile Schemas - 用于个人中心 API 的数据验证
 """
 from typing import Optional
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator
 import re
 
 
@@ -81,6 +81,57 @@ class SignatureUploadResponseSchema(BaseModel):
                 {
                     "message": "电子签名上传成功",
                     "signature_path": "/uploads/signatures/user_1_signature.png"
+                }
+            ]
+        }
+    }
+
+
+class ProfileUpdateSchema(BaseModel):
+    """
+    更新个人信息请求模型
+    """
+    full_name: Optional[str] = Field(None, min_length=2, max_length=100, description="姓名")
+    email: Optional[EmailStr] = Field(None, description="邮箱")
+    phone: Optional[str] = Field(None, max_length=20, description="电话")
+    department: Optional[str] = Field(None, max_length=100, description="部门")
+    position: Optional[str] = Field(None, max_length=100, description="职位")
+
+    @field_validator("full_name", mode="before")
+    @classmethod
+    def normalize_full_name(cls, value):
+        if value is None:
+            return None
+
+        if isinstance(value, str):
+            normalized = value.strip()
+            if not normalized:
+                raise ValueError("姓名不能为空")
+            return normalized
+
+        return value
+
+    @field_validator("phone", "department", "position", mode="before")
+    @classmethod
+    def normalize_optional_text(cls, value):
+        if value is None:
+            return None
+
+        if isinstance(value, str):
+            normalized = value.strip()
+            return normalized or None
+
+        return value
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "full_name": "张三",
+                    "email": "zhangsan@company.com",
+                    "phone": "13800138000",
+                    "department": "信息技术部",
+                    "position": "系统管理员"
                 }
             ]
         }

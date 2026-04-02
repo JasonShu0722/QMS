@@ -67,6 +67,14 @@ export interface ChangePasswordRequest {
   new_password: string
 }
 
+export interface ProfileUpdateRequest {
+  full_name?: string
+  email?: string
+  phone?: string | null
+  department?: string | null
+  position?: string | null
+}
+
 export interface SignatureUploadResponse {
   signature_path: string
   message: string

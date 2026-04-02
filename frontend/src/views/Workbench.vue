@@ -14,13 +14,10 @@
     <template v-else>
       <el-card class="profile-card" shadow="hover">
         <div class="profile-header">
-          <div class="avatar-wrapper" @click="triggerAvatarUpload">
-            <el-avatar :size="64" :src="avatarUrl">
+          <div class="avatar-wrapper">
+            <el-avatar :size="72" :src="avatarUrl">
               <el-icon><User /></el-icon>
             </el-avatar>
-            <div class="avatar-overlay">
-              <el-icon><Camera /></el-icon>
-            </div>
           </div>
 
           <input
@@ -44,15 +41,50 @@
             </p>
           </div>
 
-          <div class="profile-actions">
-            <el-button size="small" @click="showPasswordDialog = true">
-              <el-icon><Lock /></el-icon>
-              修改密码
-            </el-button>
-            <el-button size="small" @click="showSignatureDialog = true">
-              <el-icon><Edit /></el-icon>
-              电子签名
-            </el-button>
+          <div class="profile-settings-panel">
+            <div class="profile-settings-panel__heading">
+              <div class="profile-settings-panel__title">账户设置</div>
+              <div class="profile-settings-panel__desc">资料、头像、密码与电子签名统一在这里维护</div>
+            </div>
+
+            <div class="profile-actions">
+              <el-button class="profile-action-button" plain @click="openProfileDialog">
+                <span class="profile-action-button__icon">
+                  <el-icon><User /></el-icon>
+                </span>
+                <span class="profile-action-button__content">
+                  <strong>账户信息</strong>
+                  <small>维护姓名、邮箱、电话和职位</small>
+                </span>
+              </el-button>
+              <el-button class="profile-action-button" plain @click="openAvatarDialog">
+                <span class="profile-action-button__icon">
+                  <el-icon><Camera /></el-icon>
+                </span>
+                <span class="profile-action-button__content">
+                  <strong>头像设置</strong>
+                  <small>上传并裁剪新的个人头像</small>
+                </span>
+              </el-button>
+              <el-button class="profile-action-button" plain @click="openPasswordDialog">
+                <span class="profile-action-button__icon">
+                  <el-icon><Lock /></el-icon>
+                </span>
+                <span class="profile-action-button__content">
+                  <strong>修改密码</strong>
+                  <small>更新登录密码并保护账户安全</small>
+                </span>
+              </el-button>
+              <el-button class="profile-action-button" plain @click="openSignatureDialog">
+                <span class="profile-action-button__icon">
+                  <el-icon><Edit /></el-icon>
+                </span>
+                <span class="profile-action-button__content">
+                  <strong>电子签名</strong>
+                  <small>维护审批流使用的签名图片</small>
+                </span>
+              </el-button>
+            </div>
           </div>
         </div>
       </el-card>
@@ -153,23 +185,6 @@
                 </div>
                 <el-empty description="当前暂无公告通知" :image-size="88" />
               </div>
-              <div v-if="false" class="supplier-status">
-                <div class="status-row">
-                  <span>供应商</span>
-                  <strong>{{ sessionUser?.supplier_name || '未关联' }}</strong>
-                </div>
-                <div class="status-row">
-                  <span>当前环境</span>
-                  <strong>{{ environment === 'stable' ? '正式环境' : '预览环境' }}</strong>
-                </div>
-                <div class="status-row">
-                  <span>说明</span>
-                  <strong>绩效和跨业务卡片将在真实数据源接入后开启</strong>
-                </div>
-              </div>
-            </template>
-            <template v-if="false">
-              <el-empty description="公告能力未启用，当前显示基础空态。" :image-size="90" />
             </template>
           </el-card>
         </el-col>
@@ -259,11 +274,105 @@
     </el-dialog>
 
     <el-dialog
+      v-model="showProfileDialog"
+      title="账户信息"
+      width="560px"
+      :close-on-click-modal="false"
+    >
+      <div class="settings-dialog-intro">
+        <div class="settings-dialog-intro__title">维护个人资料与联系方式</div>
+        <div class="settings-dialog-intro__desc">
+          用户名、账户类型与供应商归属由平台统一治理；这里仅维护个人展示信息。
+        </div>
+      </div>
+
+      <el-form
+        ref="profileFormRef"
+        :model="profileForm"
+        :rules="profileRules"
+        label-width="96px"
+        class="profile-settings-form"
+      >
+        <el-form-item label="用户名">
+          <el-input :model-value="sessionUser?.username || ''" disabled />
+        </el-form-item>
+        <el-form-item label="姓名" prop="full_name">
+          <el-input v-model="profileForm.full_name" placeholder="请输入姓名" />
+        </el-form-item>
+        <el-form-item label="邮箱" prop="email">
+          <el-input v-model="profileForm.email" placeholder="请输入常用邮箱" />
+        </el-form-item>
+        <el-form-item label="电话" prop="phone">
+          <el-input v-model="profileForm.phone" placeholder="请输入联系电话" />
+        </el-form-item>
+        <el-form-item v-if="authStore.isInternal" label="部门" prop="department">
+          <el-input v-model="profileForm.department" placeholder="请输入部门" />
+        </el-form-item>
+        <el-form-item v-if="authStore.isSupplier" label="供应商">
+          <el-input :model-value="sessionUser?.supplier_name || '未关联'" disabled />
+        </el-form-item>
+        <el-form-item label="职位" prop="position">
+          <el-input v-model="profileForm.position" placeholder="请输入职位" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showProfileDialog = false">取消</el-button>
+        <el-button type="primary" :loading="profileLoading" @click="handleUpdateProfile">保存资料</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog
+      v-model="showAvatarDialog"
+      title="头像设置"
+      width="520px"
+      :close-on-click-modal="false"
+    >
+      <div class="settings-dialog-intro">
+        <div class="settings-dialog-intro__title">上传新的个人头像</div>
+        <div class="settings-dialog-intro__desc">
+          建议上传清晰的正方形图片，选择后可进入裁剪步骤统一生成头像。
+        </div>
+      </div>
+
+      <div class="avatar-settings-panel">
+        <div class="avatar-settings-preview">
+          <el-avatar :size="108" :src="avatarUrl">
+            <el-icon><User /></el-icon>
+          </el-avatar>
+          <div class="avatar-settings-preview__text">
+            <strong>{{ sessionUser?.full_name || authStore.userInfo?.full_name }}</strong>
+            <span>支持 PNG / JPG / WEBP，系统会自动压缩并保存为头像图片</span>
+          </div>
+        </div>
+
+        <div class="avatar-settings-actions">
+          <el-button type="primary" @click="triggerAvatarUpload">
+            <el-icon><UploadFilled /></el-icon>
+            选择头像图片
+          </el-button>
+          <div class="avatar-settings-actions__tip">
+            选择图片后会进入裁剪弹窗，确认后立即更新当前头像。
+          </div>
+        </div>
+      </div>
+      <template #footer>
+        <el-button @click="showAvatarDialog = false">关闭</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog
       v-model="showPasswordDialog"
       title="修改密码"
       width="500px"
       :close-on-click-modal="false"
     >
+      <div class="settings-dialog-intro">
+        <div class="settings-dialog-intro__title">维护账户登录安全</div>
+        <div class="settings-dialog-intro__desc">
+          更新成功后系统会提示重新登录，请使用新的密码继续访问平台。
+        </div>
+      </div>
+
       <el-form ref="passwordFormRef" :model="passwordForm" :rules="passwordRules" label-width="100px">
         <el-form-item label="旧密码" prop="old_password">
           <el-input v-model="passwordForm.old_password" type="password" show-password placeholder="请输入旧密码" />
@@ -288,10 +397,20 @@
       width="600px"
       :close-on-click-modal="false"
     >
+      <div class="settings-dialog-intro">
+        <div class="settings-dialog-intro__title">维护审批流使用的电子签名</div>
+        <div class="settings-dialog-intro__desc">
+          建议上传白底或透明底签名图片，系统会自动处理背景并用于后续审批场景。
+        </div>
+      </div>
+
       <div class="signature-upload">
         <div v-if="currentSignature" class="current-signature">
           <h4>当前签名</h4>
           <img :src="currentSignature" alt="电子签名" class="signature-preview" />
+        </div>
+        <div v-else class="signature-empty">
+          <el-empty description="当前还没有配置电子签名" :image-size="72" />
         </div>
 
         <el-upload
@@ -390,9 +509,18 @@ import type {
   ChangePasswordRequest,
   DashboardData,
   InternalDashboard,
+  ProfileUpdateRequest,
   SupplierDashboard,
   TodoTask
 } from '@/types/workbench'
+
+interface ProfileFormState {
+  full_name: string
+  email: string
+  phone: string
+  department: string
+  position: string
+}
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -410,8 +538,19 @@ const unreadImportantAnnouncements = ref<Announcement[]>([])
 
 const avatarInputRef = ref<HTMLInputElement>()
 const cropperRef = ref<any>()
+const showProfileDialog = ref(false)
+const showAvatarDialog = ref(false)
 const showCropperDialog = ref(false)
 const avatarLoading = ref(false)
+const profileLoading = ref(false)
+const profileFormRef = ref<FormInstance>()
+const profileForm = reactive<ProfileFormState>({
+  full_name: '',
+  email: '',
+  phone: '',
+  department: '',
+  position: ''
+})
 const cropperOption = reactive({
   img: '',
   outputSize: 1,
@@ -431,6 +570,17 @@ const showSignatureDialog = ref(false)
 const signatureLoading = ref(false)
 const uploadRef = ref<UploadInstance>()
 const signatureFile = ref<File | null>(null)
+
+const profileRules: FormRules = {
+  full_name: [{ required: true, message: '请输入姓名', trigger: 'blur' }],
+  email: [
+    { required: true, message: '请输入邮箱', trigger: 'blur' },
+    { type: 'email', message: '请输入有效邮箱地址', trigger: ['blur', 'change'] }
+  ],
+  phone: [{ max: 20, message: '电话长度不能超过 20 位', trigger: 'blur' }],
+  department: [{ max: 100, message: '部门长度不能超过 100 个字符', trigger: 'blur' }],
+  position: [{ max: 100, message: '职位长度不能超过 100 个字符', trigger: 'blur' }]
+}
 
 const passwordRules: FormRules = {
   old_password: [{ required: true, message: '请输入旧密码', trigger: 'blur' }],
@@ -543,6 +693,25 @@ const currentSignature = computed(() => toAssetUrl(
 ))
 const avatarUrl = computed(() => toAssetUrl(sessionUser.value?.avatar_image_path || ''))
 
+function syncProfileForm() {
+  profileForm.full_name = sessionUser.value?.full_name || ''
+  profileForm.email = sessionUser.value?.email || ''
+  profileForm.phone = sessionUser.value?.phone || ''
+  profileForm.department = sessionUser.value?.department || ''
+  profileForm.position = sessionUser.value?.position || ''
+}
+
+function syncSessionUserInfo() {
+  if (!dashboardData.value || !authStore.userInfo) {
+    return
+  }
+
+  dashboardData.value = {
+    ...dashboardData.value,
+    user_info: authStore.userInfo
+  } as DashboardData
+}
+
 function toAssetUrl(path: string | null | undefined) {
   if (!path) {
     return ''
@@ -557,6 +726,30 @@ function triggerAvatarUpload() {
   avatarInputRef.value?.click()
 }
 
+function openProfileDialog() {
+  syncProfileForm()
+  showProfileDialog.value = true
+}
+
+function openAvatarDialog() {
+  showAvatarDialog.value = true
+}
+
+function openPasswordDialog() {
+  passwordForm.value = {
+    old_password: '',
+    new_password: '',
+    confirm_password: ''
+  }
+  showPasswordDialog.value = true
+}
+
+function openSignatureDialog() {
+  signatureFile.value = null
+  uploadRef.value?.clearFiles()
+  showSignatureDialog.value = true
+}
+
 function handleAvatarFileChange(event: Event) {
   const target = event.target as HTMLInputElement
   const file = target.files?.[0]
@@ -567,6 +760,7 @@ function handleAvatarFileChange(event: Event) {
   const reader = new FileReader()
   reader.onload = (e) => {
     cropperOption.img = (e.target?.result as string) || ''
+    showAvatarDialog.value = false
     showCropperDialog.value = true
   }
   reader.readAsDataURL(file)
@@ -593,13 +787,52 @@ async function handleCropAndUpload() {
 
     await workbenchApi.uploadAvatar(blob)
     await authStore.refreshUserInfo()
+    syncSessionUserInfo()
     showCropperDialog.value = false
+    showAvatarDialog.value = false
     ElMessage.success('头像已更新')
   } catch (error: any) {
     ElMessage.error(error.message || '头像上传失败')
   } finally {
     avatarLoading.value = false
   }
+}
+
+async function handleUpdateProfile() {
+  if (!profileFormRef.value) {
+    return
+  }
+
+  await profileFormRef.value.validate(async (valid) => {
+    if (!valid) {
+      return
+    }
+
+    profileLoading.value = true
+    try {
+      const payload: ProfileUpdateRequest = {
+        full_name: profileForm.full_name.trim(),
+        email: profileForm.email.trim(),
+        phone: profileForm.phone.trim() || null,
+        position: profileForm.position.trim() || null
+      }
+
+      if (authStore.isInternal) {
+        payload.department = profileForm.department.trim() || null
+      }
+
+      await workbenchApi.updateProfile(payload)
+      await authStore.refreshUserInfo()
+      syncSessionUserInfo()
+
+      showProfileDialog.value = false
+      ElMessage.success('账户信息已更新')
+    } catch (error: any) {
+      ElMessage.error(error.message || '账户信息更新失败')
+    } finally {
+      profileLoading.value = false
+    }
+  })
 }
 
 async function loadDashboardData() {
@@ -780,6 +1013,7 @@ async function handleUploadSignature() {
   try {
     await workbenchApi.uploadSignature(signatureFile.value)
     await authStore.refreshUserInfo()
+    syncSessionUserInfo()
     showSignatureDialog.value = false
     signatureFile.value = null
     uploadRef.value?.clearFiles()
@@ -819,11 +1053,12 @@ onMounted(async () => {
 .profile-header {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 20px;
 }
 
 .profile-info {
   flex: 1;
+  min-width: 0;
 }
 
 .profile-info h2 {
@@ -839,34 +1074,101 @@ onMounted(async () => {
   font-size: 14px;
 }
 
-.profile-actions {
-  display: flex;
-  gap: 8px;
-}
-
 .avatar-wrapper {
   position: relative;
-  cursor: pointer;
+  flex-shrink: 0;
   overflow: hidden;
   border-radius: 50%;
+  border: 6px solid #f5f8ff;
+  box-shadow: 0 14px 32px rgba(15, 23, 42, 0.08);
 }
 
-.avatar-overlay {
-  position: absolute;
-  inset: 0;
+.profile-settings-panel {
+  min-width: 360px;
   display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px 18px;
+  border: 1px solid #e6edf8;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #ffffff 0%, #f7fbff 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.profile-settings-panel__heading {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.profile-settings-panel__title {
+  color: #1f2a37;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.profile-settings-panel__desc {
+  color: #7b8794;
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.profile-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.profile-action-button {
+  height: auto;
+  margin: 0;
+  padding: 12px 14px;
+  justify-content: flex-start;
+  border-radius: 14px;
+  border-color: #dbe5f1;
+  background: #fff;
+  transition: all 0.2s ease;
+}
+
+.profile-action-button:hover {
+  border-color: #bfd7ff;
+  box-shadow: 0 12px 28px rgba(64, 158, 255, 0.08);
+  transform: translateY(-1px);
+}
+
+.profile-action-button__icon {
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 50%;
-  background: rgba(0, 0, 0, 0.4);
-  color: #fff;
-  font-size: 20px;
-  opacity: 0;
-  transition: opacity 0.3s;
+  width: 34px;
+  height: 34px;
+  margin-right: 10px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #f4f8ff 0%, #eaf3ff 100%);
+  color: #409eff;
+  font-size: 16px;
 }
 
-.avatar-wrapper:hover .avatar-overlay {
-  opacity: 1;
+.profile-action-button__content {
+  display: inline-flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.profile-action-button__content strong {
+  color: #1f2a37;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.profile-action-button__content small {
+  color: #7b8794;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: normal;
+  text-align: left;
 }
 
 .cropper-container {
@@ -1102,6 +1404,82 @@ onMounted(async () => {
   line-height: 1.8;
 }
 
+.settings-dialog-intro {
+  margin-bottom: 18px;
+  padding: 14px 16px;
+  border: 1px solid #e6edf8;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #f8fbff 0%, #f2f7ff 100%);
+}
+
+.settings-dialog-intro__title {
+  color: #1f2a37;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.settings-dialog-intro__desc {
+  margin-top: 6px;
+  color: #687385;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.profile-settings-form {
+  padding: 4px 2px 0;
+}
+
+.avatar-settings-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.avatar-settings-preview {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 18px;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+  border: 1px solid #e6edf8;
+}
+
+.avatar-settings-preview__text {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.avatar-settings-preview__text strong {
+  color: #1f2a37;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.avatar-settings-preview__text span {
+  color: #6b7280;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.avatar-settings-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 18px;
+  border-radius: 16px;
+  border: 1px dashed #c6d8f3;
+  background: #fbfdff;
+}
+
+.avatar-settings-actions__tip {
+  color: #7b8794;
+  font-size: 12px;
+  line-height: 1.7;
+}
+
 .metrics-list {
   display: flex;
   flex-direction: column;
@@ -1144,21 +1522,6 @@ onMounted(async () => {
   gap: 16px;
 }
 
-.supplier-status {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.status-row {
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  border-bottom: 1px solid #ebeef5;
-  padding-bottom: 12px;
-  font-size: 14px;
-}
-
 .password-hint {
   margin-top: 4px;
   font-size: 12px;
@@ -1166,18 +1529,30 @@ onMounted(async () => {
 }
 
 .signature-upload {
-  padding: 20px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 4px 0 12px;
 }
 
 .current-signature {
-  margin-bottom: 24px;
   text-align: center;
+  padding: 18px;
+  border: 1px solid #e6edf8;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
 }
 
 .current-signature h4 {
   margin: 0 0 12px;
   color: #606266;
   font-size: 14px;
+}
+
+.signature-empty {
+  border: 1px dashed #dbe5f1;
+  border-radius: 16px;
+  background: #fbfdff;
 }
 
 .signature-preview {
@@ -1199,9 +1574,14 @@ onMounted(async () => {
     align-items: flex-start;
   }
 
+  .profile-settings-panel {
+    width: 100%;
+    min-width: 0;
+  }
+
   .profile-actions {
     width: 100%;
-    flex-direction: column;
+    grid-template-columns: 1fr;
   }
 
   .profile-actions :deep(.el-button) {
@@ -1224,10 +1604,6 @@ onMounted(async () => {
 
   .quick-action-group__grid {
     grid-template-columns: 1fr;
-  }
-
-  .status-row {
-    flex-direction: column;
   }
 }
 </style>

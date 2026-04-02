@@ -17,9 +17,10 @@ from app.core.dependencies import get_current_active_user
 from app.core.database import get_db
 from app.core.auth_strategy import LocalAuthStrategy
 from app.core.config import settings
-from app.models.user import User
+from app.models.user import User, UserType
 from app.services.user_session_service import build_user_response
 from app.schemas.profile import (
+    ProfileUpdateSchema,
     PasswordChangeSchema,
     PasswordChangeResponseSchema,
     SignatureUploadResponseSchema
@@ -57,6 +58,64 @@ async def get_profile(
     - 最后登录时间
     """
     return await build_user_response(db, current_user)
+
+
+@router.patch(
+    "",
+    response_model=UserResponseSchema,
+    summary="更新个人信息",
+    description="更新当前登录用户可维护的个人资料字段"
+)
+async def update_profile(
+    profile_data: ProfileUpdateSchema,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db)
+) -> UserResponseSchema:
+    """
+    更新个人资料
+
+    允许用户维护个人展示与联系方式字段，不涉及账号类型、供应商关联、
+    环境权限等平台治理字段。
+    """
+    raw_payload = profile_data.model_dump(exclude_unset=True)
+
+    if current_user.user_type != UserType.INTERNAL:
+        raw_payload.pop("department", None)
+
+    nullable_fields = {"phone", "department", "position"}
+    update_payload = {}
+
+    for key, value in raw_payload.items():
+        if key in nullable_fields:
+            update_payload[key] = value
+            continue
+
+        if value is not None:
+            update_payload[key] = value
+
+    if not update_payload:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="至少提供一项需要更新的信息"
+        )
+
+    update_payload["updated_at"] = datetime.utcnow()
+
+    await db.execute(
+        update(User)
+        .where(User.id == current_user.id)
+        .values(**update_payload)
+    )
+    await db.commit()
+
+    refreshed_user = await db.get(User, current_user.id)
+    if not refreshed_user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="用户不存在"
+        )
+
+    return await build_user_response(db, refreshed_user)
 
 
 @router.post(

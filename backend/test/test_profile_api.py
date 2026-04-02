@@ -10,7 +10,7 @@ from pathlib import Path
 import io
 from PIL import Image
 
-from app.models.user import User
+from app.models.user import User, UserStatus, UserType
 from app.core.auth_strategy import LocalAuthStrategy
 
 pytestmark = pytest.mark.foundation_smoke
@@ -50,6 +50,162 @@ class TestGetProfile:
         response = await async_client.get("/api/v1/profile")
         
         assert response.status_code == 401
+
+
+class TestUpdateProfile:
+    """测试更新个人信息"""
+
+    @pytest.mark.asyncio
+    async def test_update_profile_success(
+        self,
+        async_client: AsyncClient,
+        test_user: User,
+        test_user_token: str,
+        db_session: AsyncSession
+    ):
+        response = await async_client.patch(
+            "/api/v1/profile",
+            headers={"Authorization": f"Bearer {test_user_token}"},
+            json={
+                "full_name": "新测试用户",
+                "email": "updated@example.com",
+                "phone": "13900001111",
+                "department": "信息技术部",
+                "position": "平台管理员"
+            }
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+
+        assert data["full_name"] == "新测试用户"
+        assert data["email"] == "updated@example.com"
+        assert data["phone"] == "13900001111"
+        assert data["department"] == "信息技术部"
+        assert data["position"] == "平台管理员"
+
+        await db_session.refresh(test_user)
+        assert test_user.full_name == "新测试用户"
+        assert test_user.email == "updated@example.com"
+        assert test_user.phone == "13900001111"
+        assert test_user.department == "信息技术部"
+        assert test_user.position == "平台管理员"
+
+    @pytest.mark.asyncio
+    async def test_update_profile_requires_payload(
+        self,
+        async_client: AsyncClient,
+        test_user_token: str
+    ):
+        response = await async_client.patch(
+            "/api/v1/profile",
+            headers={"Authorization": f"Bearer {test_user_token}"},
+            json={}
+        )
+
+        assert response.status_code == 400
+        assert "至少提供一项需要更新的信息" in response.json()["detail"]
+
+    @pytest.mark.asyncio
+    async def test_update_profile_can_clear_optional_fields(
+        self,
+        async_client: AsyncClient,
+        test_user: User,
+        test_user_token: str,
+        db_session: AsyncSession
+    ):
+        test_user.phone = "13900001111"
+        test_user.department = "质量部"
+        test_user.position = "质量工程师"
+        await db_session.commit()
+        await db_session.refresh(test_user)
+
+        response = await async_client.patch(
+            "/api/v1/profile",
+            headers={"Authorization": f"Bearer {test_user_token}"},
+            json={
+                "phone": None,
+                "department": None,
+                "position": None
+            }
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+
+        assert data["phone"] is None
+        assert data["department"] is None
+        assert data["position"] is None
+
+        await db_session.refresh(test_user)
+        assert test_user.phone is None
+        assert test_user.department is None
+        assert test_user.position is None
+
+    @pytest.mark.asyncio
+    async def test_update_profile_blank_full_name_rejected(
+        self,
+        async_client: AsyncClient,
+        test_user_token: str
+    ):
+        response = await async_client.patch(
+            "/api/v1/profile",
+            headers={"Authorization": f"Bearer {test_user_token}"},
+            json={
+                "full_name": "   ",
+                "phone": "13900001111"
+            }
+        )
+
+        assert response.status_code == 422
+        errors = response.json()["detail"]
+        assert any("姓名不能为空" in error["msg"] for error in errors)
+
+    @pytest.mark.asyncio
+    async def test_supplier_cannot_update_department(
+        self,
+        async_client: AsyncClient,
+        db_session: AsyncSession
+    ):
+        auth_strategy = LocalAuthStrategy()
+        supplier_user = User(
+            username="supplier_profile_user",
+            password_hash=auth_strategy.hash_password("Test@1234"),
+            full_name="供应商用户",
+            email="supplier@example.com",
+            phone="13800138001",
+            user_type=UserType.SUPPLIER,
+            status=UserStatus.ACTIVE,
+            department=None,
+            position="质量接口人",
+            password_changed_at=datetime.utcnow(),
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow()
+        )
+        db_session.add(supplier_user)
+        await db_session.commit()
+        await db_session.refresh(supplier_user)
+
+        supplier_token = auth_strategy.create_access_token(supplier_user.id)
+
+        response = await async_client.patch(
+            "/api/v1/profile",
+            headers={"Authorization": f"Bearer {supplier_token}"},
+            json={
+                "department": "信息技术部",
+                "position": "供应商经理"
+            }
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+
+        assert data["department"] is None
+        assert data["position"] == "供应商经理"
+
+        await db_session.refresh(supplier_user)
+        assert supplier_user.department is None
+        assert supplier_user.position == "供应商经理"
 
 
 class TestChangePassword:

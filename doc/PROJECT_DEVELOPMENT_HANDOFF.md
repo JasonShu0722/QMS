@@ -35,6 +35,9 @@
 8. 前端界面文案保持克制。
    默认用标题、标签、按钮和布局表达含义，避免给按钮、卡片、页签反复补充解释性文案；只有涉及风险、规则或误操作成本时才保留提示文字。
 
+9. 需求与设计升级要同步回写源文档。
+   如果后续开发中，实际需求、规划或实现方案相较于 `.kiro/steering/product.md`、`.kiro/steering/structure.md`、`.kiro/specs/qms-foundation-and-auth/requirements.md`、`.kiro/specs/qms-foundation-and-auth/design.md` 有升级或调整，必须同步更新这些文档，确保它们持续作为可信源头。
+
 ## 3. 当前项目上下文摘要
 
 - 项目是一个 QMS 质量管理系统，覆盖系统基础、质量看板、供应商质量、制程质量、客户质量、新品质量、审核管理及预留扩展模块。
@@ -86,6 +89,15 @@
 9. [`doc/FRONTEND_UI_COPY_REQUIREMENTS.md`](/E:/WorkSpace/QMS/doc/FRONTEND_UI_COPY_REQUIREMENTS.md)
    前端界面文案与解释性文本控制要求。后续页面开发与重构时，默认按这个口径控制按钮、卡片、页签、弹窗中的冗余说明文字。
 
+10. [`AGENTS.md`](/E:/WorkSpace/QMS/AGENTS.md)
+    项目级 Codex 协作契约。把当前仓库的技术栈、常用命令、开发原则、边界和渐进式阅读入口固化下来，适合新线程启动时优先加载。
+
+11. [`.agents/PLANS.md`](/E:/WorkSpace/QMS/.agents/PLANS.md)
+    大型任务执行计划模板。跨模块开发、底座改造、长时间任务默认先按这个模板收敛目标、非目标、验证命令和风险，再进入实现。
+
+12. [`.codex/config.toml`](/E:/WorkSpace/QMS/.codex/config.toml)
+    仓库级 Codex 默认配置，提供安全且偏工程化的默认运行方式，可被个人级配置覆盖。
+
 ### 第四层：按模块下钻时再查
 
 - `backend/doc/`
@@ -116,4 +128,5 @@
 - 不要把历史“完成总结”直接当成现状结论。
 - 不要把接口存在当成功能完成。
 - 优先用当前代码、当前页面和联调结果来判断真实完成度。
+- 如果实现已经偏离 `.kiro` 中的产品、结构、需求或设计定义，不要只改代码，记得同步回写对应源文档。
 - 开发完成一个子模块后，记得同步更新需求面板中的开发顺序、优先级判断与状态。

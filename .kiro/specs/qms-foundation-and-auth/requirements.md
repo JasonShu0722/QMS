@@ -31,6 +31,20 @@
 
 本模块需支持内部员工与外部供应商的统一登录入口，实现细粒度的"功能-操作"权限控制体系，并提供千人千面的动态工作台。同时需预留仪器量具管理、质量成本管理等功能接口，为后续扩展奠定基础。
 
+## 当前实施基线（2026-04）
+
+| 范围 | 当前状态 | 说明 |
+| --- | --- | --- |
+| Requirement 1-3 | 已落地 | 注册审核、统一登录、环境准入、平台管理员引导、权限矩阵已形成可联调闭环 |
+| Requirement 4 | 预留 | 操作日志管理入口保留，但不作为第一里程碑阻塞项 |
+| Requirement 5 | 部分落地 | 资料读取、头像、密码、签名已落地；账户信息自助修改仅限平台管理员 |
+| Requirement 6-7 | 基础版已落地 | 工作台、快捷入口、底座域待办聚合已落地；增强指标与跨全部业务任务聚合继续扩展 |
+| Requirement 8-11 | 预留/非阻塞 | 通知中心、公告管理、全局任务监控、通知规则配置保留兼容位，不作为第一里程碑主交付 |
+| Requirement 12 | 已落地 | 审批注册、冻结/解冻、重置密码、权限矩阵治理已可用 |
+| Requirement 13 | 部分落地 | 基础响应式已跟随前端布局实现；离线暂存等场景未落地 |
+| Requirement 14-16 | 已落地 | 双环境、非破坏性迁移约束、功能特性开关已纳入正式交付 |
+| Requirement 17-20 | 预留/按阶段推进 | 系统配置大面板、预留模块、DMZ 部署细节不作为当前验收阻塞 |
+
 ## Glossary
 
 - **QMS_System**: 质量管理系统，本文档所描述的整体应用系统
@@ -93,8 +107,9 @@
 4. WHEN 用户输入错误密码连续 5 次 THEN THE QMS_System SHALL 锁定账号 30 分钟
 5. WHEN 用户首次登录或密码超过 90 天 THEN THE QMS_System SHALL 强制用户修改密码
 6. WHEN 用户设置新密码 THEN THE QMS_System SHALL 验证密码包含大写、小写、数字、特殊字符中至少三种且长度大于 8 位
-7. WHEN 用户登录成功 THEN THE QMS_System SHALL 生成 JWT_Token 并返回给客户端
-8. WHERE LDAP_Auth 功能启用 WHEN 内部员工选择 SSO 登录 THEN THE QMS_System SHALL 调用 LDAP 接口进行身份验证（预留功能）
+7. WHEN 用户选择 stable 或 preview 环境 THEN THE QMS_System SHALL 使用 `allowed_environments` 作为唯一登录准入规则
+8. WHEN 用户登录成功 THEN THE QMS_System SHALL 生成 JWT_Token 并返回稳定会话对象，至少包含 `user_info`、`environment`、`allowed_environments` 与 `password_expired`
+9. WHERE LDAP_Auth 功能启用 WHEN 内部员工选择 SSO 登录 THEN THE QMS_System SHALL 调用 LDAP 接口进行身份验证（预留功能）
 
 ### Requirement 3: 细粒度权限控制
 
@@ -102,14 +117,16 @@
 
 #### Acceptance Criteria
 
-1. WHEN 管理员访问权限配置界面 THEN THE QMS_System SHALL 展示网格化的权限矩阵配置界面
-2. WHEN 管理员选择用户 THEN THE QMS_System SHALL 展示该用户当前的权限配置状态
-3. WHEN 管理员为用户配置功能模块权限 THEN THE QMS_System SHALL 支持配置一级、二级、三级菜单的访问权限
-4. WHEN 管理员为用户配置操作权限 THEN THE QMS_System SHALL 支持独立配置录入、查阅、修改、删除、导出五种操作权限
-5. WHEN 供应商用户查阅数据 THEN THE QMS_System SHALL 仅返回关联到该供应商名称的数据记录
-6. WHEN 管理员保存权限配置 THEN THE QMS_System SHALL 立即生效无需重启后端服务
-7. WHEN 用户访问功能模块 THEN THE QMS_System SHALL 根据权限配置动态渲染可用的操作按钮
-8. WHEN 用户尝试执行无权限的操作 THEN THE QMS_System SHALL 拒绝请求并返回权限不足提示
+1. WHEN 平台管理员访问权限配置界面 THEN THE QMS_System SHALL 允许其进入系统管理后台，而不依赖业务权限矩阵自举
+2. WHEN 管理员访问权限配置界面 THEN THE QMS_System SHALL 展示网格化的权限矩阵配置界面
+3. WHEN 前端读取权限矩阵 THEN THE QMS_System SHALL 返回统一的 `modules + rows` 契约
+4. WHEN 管理员选择用户 THEN THE QMS_System SHALL 展示该用户当前的权限配置状态
+5. WHEN 管理员为用户配置功能模块权限 THEN THE QMS_System SHALL 支持配置一级、二级、三级菜单的访问权限
+6. WHEN 管理员为用户配置操作权限 THEN THE QMS_System SHALL 支持独立配置录入、查阅、修改、删除、导出五种操作权限
+7. WHEN 供应商用户查阅数据 THEN THE QMS_System SHALL 仅返回关联到该供应商名称的数据记录
+8. WHEN 管理员保存权限配置 THEN THE QMS_System SHALL 立即生效无需重启后端服务
+9. WHEN 用户访问功能模块 THEN THE QMS_System SHALL 根据权限配置动态渲染可用的操作按钮
+10. WHEN 用户尝试执行无权限的操作 THEN THE QMS_System SHALL 拒绝请求并返回权限不足提示
 
 ### Requirement 4: 操作日志审计
 
@@ -130,11 +147,14 @@
 
 #### Acceptance Criteria
 
-1. WHEN 用户访问个人中心 THEN THE QMS_System SHALL 展示用户头像、姓名、部门、职位信息
-2. WHEN 用户修改密码 THEN THE QMS_System SHALL 验证旧密码正确性并应用 Password_Policy 规则
-3. WHEN 用户上传电子签名图片 THEN THE QMS_System SHALL 自动实现图片背景透明化处理
-4. WHEN 用户保存电子签名 THEN THE QMS_System SHALL 存储签名图片路径并关联到用户账号
-5. WHEN 系统需要用户签名 THEN THE QMS_System SHALL 调用用户的 Electronic_Signature 生成电子签章
+1. WHEN 用户访问工作台中的系统设置 THEN THE QMS_System SHALL 展示头像、姓名、部门/供应商名称、职位等个人信息
+2. WHEN 平台管理员修改自己的账户信息 THEN THE QMS_System SHALL 允许其更新姓名、邮箱、电话、部门、职位等资料
+3. WHEN 非平台管理员尝试自助修改账户信息 THEN THE QMS_System SHALL 拒绝该操作并要求通过管理员用户管理界面处理
+4. WHEN 用户上传头像 THEN THE QMS_System SHALL 支持头像上传与裁剪，并存储标准头像路径
+5. WHEN 用户修改密码 THEN THE QMS_System SHALL 验证旧密码正确性并应用 Password_Policy 规则
+6. WHEN 用户上传电子签名图片 THEN THE QMS_System SHALL 自动实现图片背景透明化处理
+7. WHEN 用户保存电子签名 THEN THE QMS_System SHALL 存储签名图片路径并关联到用户账号
+8. WHEN 系统需要用户签名 THEN THE QMS_System SHALL 调用用户的 Electronic_Signature 生成电子签章
 
 ### Requirement 6: 动态工作台
 
@@ -143,11 +163,12 @@
 #### Acceptance Criteria
 
 1. WHEN 用户登录系统 THEN THE QMS_System SHALL 将动态工作台设置为默认首页
-2. WHEN 内部员工访问工作台 THEN THE QMS_System SHALL 展示基于角色定义的指标全景监控图表
-3. WHEN 内部员工访问工作台 THEN THE QMS_System SHALL 聚合展示跨模块的待办任务清单
-4. WHEN 供应商访问工作台 THEN THE QMS_System SHALL 展示其当前绩效等级和本月扣分情况
-5. WHEN 供应商访问工作台 THEN THE QMS_System SHALL 仅展示需要其行动的任务卡片
-6. WHEN 用户点击待办任务 THEN THE QMS_System SHALL 跳转到对应模块的具体单据详情页
+2. WHEN 用户访问工作台 THEN THE QMS_System SHALL 展示个人信息卡、环境标识和统一的系统设置入口
+3. WHEN 用户访问工作台 THEN THE QMS_System SHALL 支持在其可见功能范围内自定义快捷入口
+4. WHEN 内部员工访问工作台 THEN THE QMS_System SHALL 聚合展示底座域待办任务，并在功能开关启用时展示指标增强块
+5. WHEN 供应商访问工作台 THEN THE QMS_System SHALL 优先展示需要其行动的任务卡片；绩效状态块仅在真实数据源可用时显示
+6. WHEN 公告或通知能力未启用 THEN THE QMS_System SHALL 允许隐藏对应区块或展示明确空态
+7. WHEN 用户点击待办任务 THEN THE QMS_System SHALL 跳转到对应模块的具体单据详情页
 
 ### Requirement 7: 待办任务聚合
 
@@ -155,12 +176,13 @@
 
 #### Acceptance Criteria
 
-1. WHEN 系统加载待办任务 THEN THE QMS_System SHALL 遍历所有业务表筛选当前处理人等于当前用户的记录
-2. WHEN 系统展示待办任务 THEN THE QMS_System SHALL 显示任务类型、单据编号、紧急程度、剩余处理时间
-3. WHEN 任务剩余时间小于 0 THEN THE QMS_System SHALL 标记为红色已超期状态
-4. WHEN 任务剩余时间小于等于 72 小时 THEN THE QMS_System SHALL 标记为黄色即将超期状态
-5. WHEN 任务剩余时间大于 72 小时 THEN THE QMS_System SHALL 标记为绿色正常状态
-6. WHEN 用户点击待办任务 THEN THE QMS_System SHALL 直接跳转到对应单据详情页进行处理
+1. WHEN 系统加载待办任务 THEN THE QMS_System SHALL 通过适配器注册式任务聚合器收集任务，并自动跳过不可用的数据源
+2. WHEN 第一里程碑加载工作台 THEN THE QMS_System SHALL 至少聚合注册审批、权限初始化、预览环境功能开关复核等底座域任务
+3. WHEN 系统展示待办任务 THEN THE QMS_System SHALL 显示任务类型、单据编号、紧急程度、剩余处理时间
+4. WHEN 任务剩余时间小于 0 THEN THE QMS_System SHALL 标记为红色已超期状态
+5. WHEN 任务剩余时间小于等于 72 小时 THEN THE QMS_System SHALL 标记为黄色即将超期状态
+6. WHEN 任务剩余时间大于 72 小时 THEN THE QMS_System SHALL 标记为绿色正常状态
+7. WHEN 用户点击待办任务 THEN THE QMS_System SHALL 直接跳转到对应单据详情页进行处理
 
 ### Requirement 8: 站内信通知
 
@@ -222,7 +244,8 @@
 3. WHEN 管理员重置用户密码 THEN THE QMS_System SHALL 生成临时密码并强制用户下次登录修改
 4. WHEN 管理员冻结用户账号 THEN THE QMS_System SHALL 将用户状态设置为"已冻结"并阻止其登录
 5. WHEN 管理员解冻用户账号 THEN THE QMS_System SHALL 将用户状态恢复为"已激活"并允许其登录
-6. WHEN 管理员配置用户权限 THEN THE QMS_System SHALL 展示 Permission_Matrix 配置界面并支持实时保存
+6. WHEN 管理员调整普通用户账户资料 THEN THE QMS_System SHALL 在用户管理能力中统一完成治理，而不是依赖普通用户自助修改
+7. WHEN 管理员配置用户权限 THEN THE QMS_System SHALL 展示 Permission_Matrix 配置界面并支持实时保存
 
 ### Requirement 13: 移动端响应式适配
 
@@ -247,7 +270,7 @@
 3. WHEN 用户访问正式域名 THEN THE QMS_System SHALL 路由请求到 Stable_Environment 容器
 4. WHEN 任一环境写入数据 THEN THE QMS_System SHALL 将数据存储到 Shared_Database
 5. WHEN 任一环境读取数据 THEN THE QMS_System SHALL 从 Shared_Database 查询数据
-6. WHEN 预览环境和正式环境同时访问 THEN THE QMS_System SHALL 在环境入口提供实时切换按钮
+6. WHEN 用户同时具备 stable 与 preview 访问权限 THEN THE QMS_System SHALL 在前端展示环境标识与切换入口
 
 ### Requirement 15: 数据库兼容性管理
 
@@ -272,9 +295,9 @@
 2. WHEN 管理员启用功能开关 THEN THE QMS_System SHALL 立即对指定范围的用户生效
 3. WHEN 管理员禁用功能开关 THEN THE QMS_System SHALL 立即对所有用户隐藏该功能
 4. WHEN 管理员配置白名单 THEN THE QMS_System SHALL 支持按用户 ID 或供应商代码指定可见范围
-5. WHEN 用户访问功能模块 THEN THE QMS_System SHALL 根据 Feature_Flag 配置动态判断功能可见性
+5. WHEN 用户访问功能模块 THEN THE QMS_System SHALL 先按 `environment` 过滤，再按 `global / whitelist` 规则判断功能可见性
 6. WHEN 白名单用户访问新功能 THEN THE QMS_System SHALL 展示新版界面
-7. WHEN 非白名单用户访问 THEN THE QMS_System SHALL 展示旧版界面
+7. WHEN 非白名单用户访问 THEN THE QMS_System SHALL 展示旧版界面或保持旧能力不显示新入口
 
 ### Requirement 17: 系统全局配置
 

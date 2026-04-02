@@ -1,0 +1,23 @@
+#:schema https://developers.openai.com/codex/config-schema.json
+
+model_reasoning_effort = "high"
+personality = "friendly"
+approval_policy = "on-request"
+sandbox_mode = "workspace-write"
+web_search = "cached"
+
+[features]
+shell_snapshot = true
+multi_agent = true
+fast_mode = true
+prevent_idle_sleep = true
+
+[profiles.fast]
+model_reasoning_effort = "low"
+
+[profiles.deep-review]
+model_reasoning_effort = "xhigh"
+
+[profiles.auto]
+approval_policy = "never"
+sandbox_mode = "workspace-write"

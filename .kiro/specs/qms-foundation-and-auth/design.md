@@ -29,203 +29,149 @@
 
 本设计文档描述质量管理系统（QMS）基础架构与认证授权模块的技术实现方案。该模块是整个 QMS 系统的核心底座，采用 **Monorepo + Docker Compose** 架构，实现 **Preview（预览环境）与 Stable（正式环境）双轨并行运行，共享同一 PostgreSQL 数据库底座**。
 
+## 当前第一里程碑实现基线（2026-04）
+
+当前仓库已经落地的底座能力如下：
+
+1. **统一认证闭环**：内部员工与供应商共用统一登录页；供应商保留验证码；登录时显式选择 `stable / preview` 环境；`allowed_environments` 成为唯一环境准入规则。
+2. **稳定会话契约**：登录成功后除 Token 外，统一返回 `user_info`、`environment`、`allowed_environments`、平台管理员标识、头像/签名路径和供应商名称。
+3. **平台管理员 bootstrap**：系统管理后台入口通过独立平台管理员标识引导，不依赖业务权限矩阵先完成自举。
+4. **权限矩阵闭环**：管理员后台已落地 `modules + rows` 契约的权限矩阵读取、授权、撤权能力。
+5. **账号治理与个人中心基础**：注册审批、冻结/解冻、重置密码、资料读取、头像上传、密码修改、电子签名上传已可联调；账户信息自助修改仅开放给平台管理员。
+6. **基础工作台**：工作台已具备个人信息卡、环境标识、统一系统设置弹窗、可配置快捷入口、底座域待办任务聚合与公告/通知占位区。
+7. **双环境与功能开关**：`stable / preview` 双环境已纳入正式设计，功能开关按“环境优先，再按 global / whitelist 判定”的规则生效。
+8. **当前非阻塞项**：通知中心、公告管理大面板、操作日志总览、系统配置大面板仍属于后续阶段，不构成第一里程碑阻塞。
+
 ### 核心设计目标
 
-1. **统一认证入口**：支持内部员工（Phase 1: 账号密码，预留 LDAP/AD）和外部供应商（账号密码 + 图形验证码）的统一登录
-2. **细粒度权限控制**：基于"功能模块-操作类型"的二维权限矩阵，支持录入/查阅/修改/删除/导出五种操作的独立配置
-3. **千人千面工作台**：根据用户角色动态渲染个性化看板和待办任务聚合
-4. **移动端响应式**：采用 Element Plus（桌面端）+ Tailwind CSS（移动端）实现跨设备适配
-5. **双轨发布机制**：通过 Nginx 路由分发，实现新功能在预览环境验证后平滑发布到正式环境
-6. **数据库兼容性**：遵循 Alembic 非破坏性迁移原则（Add Column Only），确保双轨环境数据一致性
-7. **预留扩展接口**：为仪器量具管理、质量成本管理等后续功能预留数据库表结构和 API 路由
+1. **统一认证入口与环境准入**：支持内部员工（Phase 1: 账号密码，预留 LDAP/AD）和外部供应商（账号密码 + 图形验证码）的统一登录，并返回稳定会话对象。
+2. **细粒度权限控制**：基于“功能模块-操作类型”的二维权限矩阵，支持录入/查阅/修改/删除/导出五种操作的独立配置。
+3. **平台管理自举**：在权限矩阵完全配置前，通过平台管理员引导机制保障用户管理、权限矩阵、功能开关等后台能力可进入。
+4. **基础工作台优先**：先交付可联调、可验证的工作台基础版，再逐步补齐指标增强块、公告中心和跨业务任务聚合。
+5. **双轨发布机制**：通过 Nginx 域名路由分发，实现新功能在预览环境验证后平滑发布到正式环境。
+6. **数据库兼容性**：遵循 Alembic 非破坏性迁移原则，确保双轨环境数据一致性。
+7. **预留扩展接口**：为仪器量具管理、质量成本管理等后续功能保留扩展槽位，但不把预留骨架误判为已交付能力。
 
 ### 技术栈选型
 
-- **后端**: Python 3.10+ / FastAPI / SQLAlchemy (Async) / Alembic / Celery + Redis
-- **前端**: Vue 3 (Composition API) / Vite / Element Plus / Tailwind CSS / Pinia / Axios
-- **数据库**: PostgreSQL 15+ / Redis
-- **认证**: Python-Jose (JWT) / LDAP3 (预留) / Passlib (密码哈希)
-- **网关**: Nginx (反向代理 + 路由分发)
-- **容器编排**: Docker Compose
-- **部署环境**: DMZ 区（双网卡：外网响应前端，内网访问 IMS）
+- **后端**：Python 3.10+ / FastAPI / SQLAlchemy (Async) / Alembic / Celery + Redis
+- **前端**：Vue 3 (Composition API) / Vite / Element Plus / Pinia / Axios / Vitest
+- **数据库**：PostgreSQL 15+ / Redis
+- **认证**：Python-Jose (JWT) / Passlib (密码哈希) / LDAP3（预留）
+- **网关**：Nginx（反向代理 + 双环境域名路由）
+- **容器编排**：Docker Compose
+- **部署环境**：面向 DMZ 部署设计，当前本地与云上均沿用双环境容器拓扑
 
 ## Architecture
 
 ### 系统拓扑架构
 
-
 ```mermaid
 graph TD
-    %% Define Styles
-    classDef external fill:#f9f,stroke:#333,stroke-width:2px;
     classDef preview fill:#eef,stroke:#333,stroke-width:2px,stroke-dasharray: 5 5;
     classDef stable fill:#dfd,stroke:#333,stroke-width:2px;
-    classDef shared fill:#ffd,stroke:#333,stroke-width:4px;
+    classDef shared fill:#ffd,stroke:#333,stroke-width:3px;
 
-    %% Users
-    subgraph Users [用户层]
-        Supplier[供应商用户]:::external
-        Staff[内部员工]:::external
-        KeyUser[关键用户]:::external
-    end
+    Supplier[供应商] --> Nginx
+    Staff[内部员工] --> Nginx
+    KeyUser[关键用户] --> Nginx
 
-    %% Gateway
-    subgraph Gateway [网关层]
-        Nginx[Nginx Reverse Proxy]:::shared
-    end
+    Nginx[Nginx Gateway]:::shared -->|qms.bigshuaibee.cn| FrontStable[frontend-stable]:::stable
+    Nginx -->|qms.bigshuaibee.cn /api| ApiStable[backend-stable]:::stable
+    Nginx -->|preview.qms.bigshuaibee.cn| FrontPreview[frontend-preview]:::preview
+    Nginx -->|preview.qms.bigshuaibee.cn /api| ApiPreview[backend-preview]:::preview
 
-    %% Application Cluster
-    subgraph App_Cluster [应用服务集群]
-        subgraph Stable_Env [正式环境]
-            Vue_Prod[前端 - Stable]:::stable
-            API_Prod[后端 - Stable]:::stable
-        end
-        
-        subgraph Preview_Env [预览环境]
-            Vue_Beta[前端 - Preview]:::preview
-            API_Beta[后端 - Preview]:::preview
-        end
-    end
-
-    %% Shared Data Kernel
-    subgraph Data_Kernel [共享数据底座]
-        Postgres[(PostgreSQL)]:::shared
-        Redis[(Redis Cache)]:::shared
-    end
-
-    %% Connections
-    Supplier -->|qms.company.com| Nginx
-    Staff -->|qms.company.com| Nginx
-    KeyUser -->|preview.company.com| Nginx
-
-    Nginx -->|Host: qms| Vue_Prod
-    Nginx -->|Host: preview| Vue_Beta
-    Nginx -->|/api| API_Prod
-    Nginx -->|/api/preview| API_Beta
-
-    API_Prod -->|Read/Write| Postgres
-    API_Beta -->|Read/Write| Postgres
-    
-    API_Prod --> Redis
-    API_Beta --> Redis
+    ApiStable --> Postgres[(PostgreSQL)]:::shared
+    ApiPreview --> Postgres
+    ApiStable --> Redis[(Redis)]:::shared
+    ApiPreview --> Redis
+    Worker[celery-worker]:::shared --> Redis
+    Worker --> Postgres
 ```
-
 
 ### 双轨发布机制
 
-**核心原理**：通过 Nginx 基于域名/路径的路由规则，将请求分发到不同的容器实例，两个环境共享同一个 PostgreSQL 数据库。
+**核心原理**：通过 Nginx 基于域名的路由规则，将请求分发到不同容器实例；`stable` 与 `preview` 共享同一个 PostgreSQL 数据库，但通过环境变量、功能开关和非破坏性迁移维持兼容。
 
-**Nginx 路由配置示例**：
+**当前路由规则**：
 
 ```nginx
-# 正式环境前端
+# 正式环境
 server {
     listen 80;
-    server_name qms.company.com;
+    server_name qms.bigshuaibee.cn;
+
     location / {
         proxy_pass http://frontend-stable:80;
     }
+
     location /api {
         proxy_pass http://backend-stable:8000;
     }
 }
 
-# 预览环境前端
+# 预览环境
 server {
     listen 80;
-    server_name preview.company.com;
+    server_name preview.qms.bigshuaibee.cn;
+
     location / {
         proxy_pass http://frontend-preview:80;
     }
+
     location /api {
         proxy_pass http://backend-preview:8000;
     }
 }
 ```
 
-**Docker Compose 编排示例**：
+**当前 Compose 拓扑**：
 
-```yaml
-version: '3.8'
-services:
-  # 共享数据库
-  postgres:
-    image: postgres:15
-    environment:
-      POSTGRES_DB: qms_db
-      POSTGRES_USER: qms_user
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
+- `postgres`
+- `redis`
+- `backend-stable`
+- `frontend-stable`
+- `backend-preview`
+- `frontend-preview`
+- `nginx`
+- `celery-worker`
 
-  # 共享缓存
-  redis:
-    image: redis:7-alpine
+### 功能开关设计要点
 
-  # 正式环境后端
-  backend-stable:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    environment:
-      DATABASE_URL: postgresql+asyncpg://qms_user:${DB_PASSWORD}@postgres:5432/qms_db
-      REDIS_URL: redis://redis:6379/0
-      ENVIRONMENT: stable
-    depends_on:
-      - postgres
-      - redis
+- 功能开关实体包含 `feature_key`、`environment`、`scope`、`whitelist_user_ids`、`whitelist_supplier_ids` 等字段。
+- 判定规则固定为：
+  1. 先校验当前环境是否命中 `environment`
+  2. 再根据 `scope=global/whitelist` 判断当前用户或供应商是否可见
+- 前端登录态、路由守卫、菜单和工作台增强块都应复用这套判断逻辑。
 
-  # 预览环境后端
-  backend-preview:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    environment:
-      DATABASE_URL: postgresql+asyncpg://qms_user:${DB_PASSWORD}@postgres:5432/qms_db
-      REDIS_URL: redis://redis:6379/0
-      ENVIRONMENT: preview
-    depends_on:
-      - postgres
-      - redis
+### 当前已实现 API 面
 
-  # 正式环境前端
-  frontend-stable:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-      args:
-        VITE_API_BASE_URL: /api
-        VITE_ENVIRONMENT: stable
+第一里程碑已稳定的底座接口面如下：
 
-  # 预览环境前端
-  frontend-preview:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-      args:
-        VITE_API_BASE_URL: /api
-        VITE_ENVIRONMENT: preview
-
-  # Nginx 网关
-  nginx:
-    image: nginx:alpine
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./deployment/nginx.conf:/etc/nginx/nginx.conf
-    depends_on:
-      - backend-stable
-      - backend-preview
-      - frontend-stable
-      - frontend-preview
-
-volumes:
-  postgres_data:
-```
-
+- `POST /api/v1/auth/register`
+- `GET /api/v1/auth/suppliers/search`
+- `POST /api/v1/auth/login`
+- `GET /api/v1/auth/me`
+- `GET /api/v1/auth/captcha`
+- `GET/PATCH /api/v1/profile`
+- `POST /api/v1/profile/avatar`
+- `PUT /api/v1/profile/password`
+- `POST /api/v1/profile/signature`
+- `GET /api/v1/workbench/dashboard`
+- `GET /api/v1/admin/permissions/matrix`
+- `PUT /api/v1/admin/permissions/grant`
+- `PUT /api/v1/admin/permissions/revoke`
+- `GET/POST/PUT/DELETE /api/v1/admin/feature-flags`
+- `GET /api/v1/admin/users/pending`
+- `POST /api/v1/admin/users/{user_id}/approve`
+- `POST /api/v1/admin/users/{user_id}/reject`
+- `POST /api/v1/admin/users/{user_id}/freeze`
+- `POST /api/v1/admin/users/{user_id}/unfreeze`
+- `POST /api/v1/admin/users/{user_id}/reset-password`
 
 ### 认证架构设计
+
+> 以下类图与伪代码用于表达组件职责。当前实现以 `auth.py`、`auth_strategy.py` 与 `user_session_service.py` 中的实际代码为准。
 
 采用 **Strategy Pattern（策略模式）** 实现可插拔的认证方式：
 
@@ -265,15 +211,17 @@ classDiagram
 
 **Phase 1 实现范围**：
 - ✅ LocalAuthStrategy（账号密码 + JWT）
+- ✅ 供应商验证码校验、密码过期引导、环境准入控制
 - ⏸️ LDAPAuthStrategy（预留接口，不实现）
 
 **认证流程**：
 
-1. **登录请求** → 前端提交 `{username, password, user_type}`
+1. **登录请求** → 前端提交 `{username, password, user_type, environment}`；供应商附带验证码
 2. **策略选择** → 后端根据 `user_type` 选择 LocalAuthStrategy
 3. **密码验证** → 使用 Passlib 验证密码哈希
-4. **生成 Token** → 使用 Python-Jose 生成 JWT（有效期 24 小时）
-5. **返回响应** → `{access_token, token_type, user_info}`
+4. **环境校验** → 使用 `allowed_environments` 判断当前环境是否可登录
+5. **生成 Token** → 使用 Python-Jose 生成 JWT（有效期 24 小时）
+6. **返回响应** → `{access_token, token_type, user_info, environment, allowed_environments, password_expired}`
 
 
 ## Components and Interfaces

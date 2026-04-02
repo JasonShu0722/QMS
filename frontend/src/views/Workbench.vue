@@ -202,7 +202,7 @@
           可在当前身份范围内，从全部功能项中自由选择快捷入口；带“当前未启用”标记的能力暂不会在工作台展示。
         </div>
 
-        <el-checkbox-group v-model="quickActionDraft" class="quick-action-group-list">
+        <div class="quick-action-group-list">
           <section
             v-for="group in quickActionGroups"
             :key="group.category"
@@ -214,12 +214,17 @@
             </header>
 
             <div class="quick-action-group__grid">
-              <el-checkbox
+              <button
                 v-for="option in group.items"
                 :key="option.id"
-                :label="option.id"
+                type="button"
                 class="quick-action-option"
+                :class="{ 'quick-action-option--selected': isQuickActionSelected(option.id) }"
+                @click="toggleQuickAction(option.id)"
               >
+                <div class="quick-action-option__check">
+                  <el-icon v-if="isQuickActionSelected(option.id)"><Check /></el-icon>
+                </div>
                 <div class="quick-action-option__content">
                   <div class="quick-action-option__top">
                     <span class="quick-action-option__title">{{ option.title }}</span>
@@ -235,10 +240,10 @@
                   <div class="quick-action-option__desc">{{ option.description }}</div>
                   <div class="quick-action-option__link">{{ option.link }}</div>
                 </div>
-              </el-checkbox>
+              </button>
             </div>
           </section>
-        </el-checkbox-group>
+        </div>
 
         <el-empty
           v-if="!quickActionGroups.length"
@@ -360,7 +365,7 @@ import {
   type UploadFile,
   type UploadInstance
 } from 'element-plus'
-import { Bell, Camera, Edit, Lock, Search, Setting, UploadFilled, User } from '@element-plus/icons-vue'
+import { Bell, Camera, Check, Edit, Lock, Search, Setting, UploadFilled, User } from '@element-plus/icons-vue'
 import { VueCropper } from 'vue-cropper'
 import 'vue-cropper/dist/index.css'
 import { announcementApi } from '@/api/announcement'
@@ -660,6 +665,19 @@ function openQuickActionDialog() {
 
 function resetQuickActionsToDefault() {
   quickActionDraft.value = getQuickActionDefaultIds()
+}
+
+function isQuickActionSelected(actionId: string) {
+  return quickActionDraft.value.includes(actionId)
+}
+
+function toggleQuickAction(actionId: string) {
+  if (isQuickActionSelected(actionId)) {
+    quickActionDraft.value = quickActionDraft.value.filter((id) => id !== actionId)
+    return
+  }
+
+  quickActionDraft.value = [...quickActionDraft.value, actionId]
 }
 
 function saveQuickActions() {
@@ -974,12 +992,17 @@ onMounted(async () => {
 
 .quick-action-option {
   display: grid;
-  grid-template-columns: 18px minmax(0, 1fr);
+  grid-template-columns: 24px minmax(0, 1fr);
   align-items: flex-start;
   gap: 12px;
   width: 100%;
   min-width: 0;
   margin-right: 0;
+  appearance: none;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
   border: 1px solid #e4e7ed;
   border-radius: 12px;
   background: linear-gradient(180deg, #ffffff 0%, #f9fbff 100%);
@@ -987,15 +1010,17 @@ onMounted(async () => {
   transition: all 0.2s ease;
 }
 
-.quick-action-option :deep(.el-checkbox__input) {
-  margin-top: 2px;
-}
-
-.quick-action-option :deep(.el-checkbox__label) {
-  display: block;
-  width: auto;
-  min-width: 0;
-  padding-left: 0;
+.quick-action-option__check {
+  display: flex;
+  height: 20px;
+  width: 20px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #d4dbe7;
+  border-radius: 6px;
+  background: #fff;
+  color: transparent;
+  transition: all 0.2s ease;
 }
 
 .quick-action-option__content {
@@ -1009,6 +1034,19 @@ onMounted(async () => {
 .quick-action-option:hover {
   border-color: #bfd9ff;
   box-shadow: 0 10px 24px rgba(64, 158, 255, 0.08);
+  transform: translateY(-1px);
+}
+
+.quick-action-option--selected {
+  border-color: #409eff;
+  background: linear-gradient(180deg, #f7fbff 0%, #ecf5ff 100%);
+  box-shadow: 0 12px 30px rgba(64, 158, 255, 0.12);
+}
+
+.quick-action-option--selected .quick-action-option__check {
+  border-color: #409eff;
+  background: #409eff;
+  color: #fff;
 }
 
 .quick-action-option__top {
@@ -1038,19 +1076,6 @@ onMounted(async () => {
   font-size: 12px;
   line-height: 1.5;
   word-break: break-all;
-}
-
-.quick-action-option :deep(.el-checkbox__input.is-checked) + .el-checkbox__label {
-  min-width: 0;
-}
-
-.quick-action-option :deep(.el-checkbox__input.is-checked) + .el-checkbox__label .quick-action-option__content {
-  border-color: #409eff;
-  box-shadow: 0 12px 30px rgba(64, 158, 255, 0.12);
-}
-
-.quick-action-option :deep(.el-checkbox__input.is-checked) + .el-checkbox__label .quick-action-option__content {
-  background: linear-gradient(180deg, #f7fbff 0%, #ecf5ff 100%);
 }
 
 .announcement-placeholder {

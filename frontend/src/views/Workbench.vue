@@ -41,50 +41,11 @@
             </p>
           </div>
 
-          <div class="profile-settings-panel">
-            <div class="profile-settings-panel__heading">
-              <div class="profile-settings-panel__title">账户设置</div>
-              <div class="profile-settings-panel__desc">资料、头像、密码与电子签名统一在这里维护</div>
-            </div>
-
-            <div class="profile-actions">
-              <el-button class="profile-action-button" plain @click="openSettingsDialog('profile')">
-                <span class="profile-action-button__icon">
-                  <el-icon><User /></el-icon>
-                </span>
-                <span class="profile-action-button__content">
-                  <strong>账户信息</strong>
-                  <small>维护姓名、邮箱、电话和职位</small>
-                </span>
-              </el-button>
-              <el-button class="profile-action-button" plain @click="openSettingsDialog('avatar')">
-                <span class="profile-action-button__icon">
-                  <el-icon><Camera /></el-icon>
-                </span>
-                <span class="profile-action-button__content">
-                  <strong>头像设置</strong>
-                  <small>上传并裁剪新的个人头像</small>
-                </span>
-              </el-button>
-              <el-button class="profile-action-button" plain @click="openSettingsDialog('password')">
-                <span class="profile-action-button__icon">
-                  <el-icon><Lock /></el-icon>
-                </span>
-                <span class="profile-action-button__content">
-                  <strong>修改密码</strong>
-                  <small>更新登录密码并保护账户安全</small>
-                </span>
-              </el-button>
-              <el-button class="profile-action-button" plain @click="openSettingsDialog('signature')">
-                <span class="profile-action-button__icon">
-                  <el-icon><Edit /></el-icon>
-                </span>
-                <span class="profile-action-button__content">
-                  <strong>电子签名</strong>
-                  <small>维护审批流使用的签名图片</small>
-                </span>
-              </el-button>
-            </div>
+          <div class="profile-actions">
+            <el-button class="profile-main-button" type="primary" @click="openSettingsDialog()">
+              <el-icon><Setting /></el-icon>
+              系统设置
+            </el-button>
           </div>
         </div>
       </el-card>
@@ -111,10 +72,9 @@
                 @click="router.push(action.link)"
               >
                 <div class="quick-action-title">{{ action.title }}</div>
-                <div class="quick-action-desc">{{ action.description }}</div>
               </el-card>
             </div>
-            <el-empty v-else description="当前还没有配置快捷入口，请先点击右上角进行设置" :image-size="90" />
+            <el-empty v-else description="暂无快捷入口" :image-size="90" />
           </el-card>
         </el-col>
 
@@ -179,11 +139,7 @@
             </template>
             <template v-else>
               <div class="announcement-placeholder">
-                <div class="announcement-placeholder__headline">公告与通知将在这里集中展示</div>
-                <div class="announcement-placeholder__body">
-                  当前版本先保留公告通知区域布局，后续会在这里呈现系统公告、质量预警、文档更新与未读提醒。
-                </div>
-                <el-empty description="当前暂无公告通知" :image-size="88" />
+                <el-empty description="暂无公告" :image-size="88" />
               </div>
             </template>
           </el-card>
@@ -211,10 +167,6 @@
           <div class="quick-action-config-summary">
             已选择 {{ quickActionDraft.length }} 项
           </div>
-        </div>
-
-        <div class="quick-action-config-tip">
-          可在当前身份范围内，从全部功能项中自由选择快捷入口；带“当前未启用”标记的能力暂不会在工作台展示。
         </div>
 
         <div class="quick-action-group-list">
@@ -252,8 +204,6 @@
                       当前未启用
                     </el-tag>
                   </div>
-                  <div class="quick-action-option__desc">{{ option.description }}</div>
-                  <div class="quick-action-option__link">{{ option.link }}</div>
                 </div>
               </button>
             </div>
@@ -280,41 +230,9 @@
       :close-on-click-modal="false"
       class="system-settings-dialog"
     >
-      <div class="settings-dialog-intro settings-dialog-intro--hero">
-        <div class="settings-dialog-intro__title">集中维护当前账户的个人设置</div>
-        <div class="settings-dialog-intro__desc">
-          在一个弹窗内完成账户信息、头像、密码与电子签名配置，避免同类功能分散在不同入口。
-        </div>
-
-        <div class="settings-overview-grid">
-          <div class="settings-overview-card">
-            <span>当前用户</span>
-            <strong>{{ sessionUser?.full_name || authStore.userInfo?.full_name }}</strong>
-            <small>{{ sessionUser?.username }}</small>
-          </div>
-          <div class="settings-overview-card">
-            <span>当前环境</span>
-            <strong>{{ environment === 'stable' ? '正式环境' : '预览环境' }}</strong>
-            <small>{{ authStore.isPlatformAdmin ? '平台管理员可见' : '标准用户视角' }}</small>
-          </div>
-          <div class="settings-overview-card">
-            <span>身份摘要</span>
-            <strong>{{ profileDescription }}</strong>
-            <small>{{ sessionUser?.supplier_name || (authStore.isInternal ? '内部账号' : '供应商账号') }}</small>
-          </div>
-        </div>
-      </div>
-
       <el-tabs v-model="activeSettingsTab" class="settings-tabs">
         <el-tab-pane label="账户信息" name="profile">
           <div class="settings-pane">
-            <div class="settings-pane__heading">
-              <div class="settings-pane__title">维护个人资料与联系方式</div>
-              <div class="settings-pane__desc">
-                用户名、账户类型与供应商归属由平台统一治理；这里仅维护个人展示信息。
-              </div>
-            </div>
-
             <el-form
               ref="profileFormRef"
               :model="profileForm"
@@ -353,13 +271,6 @@
 
         <el-tab-pane label="头像设置" name="avatar">
           <div class="settings-pane">
-            <div class="settings-pane__heading">
-              <div class="settings-pane__title">上传新的个人头像</div>
-              <div class="settings-pane__desc">
-                建议上传清晰的正方形图片，选择后可进入裁剪步骤统一生成头像。
-              </div>
-            </div>
-
             <div class="avatar-settings-panel">
               <div class="avatar-settings-preview">
                 <el-avatar :size="108" :src="avatarUrl">
@@ -367,7 +278,7 @@
                 </el-avatar>
                 <div class="avatar-settings-preview__text">
                   <strong>{{ sessionUser?.full_name || authStore.userInfo?.full_name }}</strong>
-                  <span>支持 PNG / JPG / WEBP，系统会自动压缩并保存为头像图片</span>
+                  <span>{{ sessionUser?.username }}</span>
                 </div>
               </div>
 
@@ -376,9 +287,6 @@
                   <el-icon><UploadFilled /></el-icon>
                   选择头像图片
                 </el-button>
-                <div class="avatar-settings-actions__tip">
-                  选择图片后会进入裁剪弹窗，确认后立即更新当前头像，当前设置弹窗会保持在头像页签。
-                </div>
               </div>
             </div>
           </div>
@@ -386,20 +294,13 @@
 
         <el-tab-pane label="修改密码" name="password">
           <div class="settings-pane">
-            <div class="settings-pane__heading">
-              <div class="settings-pane__title">维护账户登录安全</div>
-              <div class="settings-pane__desc">
-                更新成功后系统会提示重新登录，请使用新的密码继续访问平台。
-              </div>
-            </div>
-
             <el-form ref="passwordFormRef" :model="passwordForm" :rules="passwordRules" label-width="100px">
               <el-form-item label="旧密码" prop="old_password">
                 <el-input v-model="passwordForm.old_password" type="password" show-password placeholder="请输入旧密码" />
               </el-form-item>
               <el-form-item label="新密码" prop="new_password">
                 <el-input v-model="passwordForm.new_password" type="password" show-password placeholder="请输入新密码" />
-                <div class="password-hint">密码需至少 8 位，并包含大写、小写、数字、特殊字符中的三类。</div>
+                <div class="password-hint">至少 8 位，包含三类字符</div>
               </el-form-item>
               <el-form-item label="确认密码" prop="confirm_password">
                 <el-input v-model="passwordForm.confirm_password" type="password" show-password placeholder="请再次输入新密码" />
@@ -414,20 +315,13 @@
 
         <el-tab-pane label="电子签名" name="signature">
           <div class="settings-pane">
-            <div class="settings-pane__heading">
-              <div class="settings-pane__title">维护审批流使用的电子签名</div>
-              <div class="settings-pane__desc">
-                建议上传白底或透明底签名图片，系统会自动处理背景并用于后续审批场景。
-              </div>
-            </div>
-
             <div class="signature-upload">
               <div v-if="currentSignature" class="current-signature">
                 <h4>当前签名</h4>
                 <img :src="currentSignature" alt="电子签名" class="signature-preview" />
               </div>
               <div v-else class="signature-empty">
-                <el-empty description="当前还没有配置电子签名" :image-size="72" />
+                <el-empty description="未配置签名" :image-size="72" />
               </div>
 
               <el-upload
@@ -508,7 +402,7 @@ import {
   type UploadFile,
   type UploadInstance
 } from 'element-plus'
-import { Bell, Camera, Check, Edit, Lock, Search, Setting, UploadFilled, User } from '@element-plus/icons-vue'
+import { Bell, Check, Search, Setting, UploadFilled, User } from '@element-plus/icons-vue'
 import { VueCropper } from 'vue-cropper'
 import 'vue-cropper/dist/index.css'
 import { announcementApi } from '@/api/announcement'
@@ -1100,92 +994,17 @@ onMounted(async () => {
   box-shadow: 0 14px 32px rgba(15, 23, 42, 0.08);
 }
 
-.profile-settings-panel {
-  min-width: 360px;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  padding: 16px 18px;
-  border: 1px solid #e6edf8;
-  border-radius: 18px;
-  background: linear-gradient(180deg, #ffffff 0%, #f7fbff 100%);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
-}
-
-.profile-settings-panel__heading {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.profile-settings-panel__title {
-  color: #1f2a37;
-  font-size: 14px;
-  font-weight: 700;
-}
-
-.profile-settings-panel__desc {
-  color: #7b8794;
-  font-size: 12px;
-  line-height: 1.7;
-}
-
 .profile-actions {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  display: flex;
+  justify-content: flex-end;
 }
 
-.profile-action-button {
-  height: auto;
-  margin: 0;
-  padding: 12px 14px;
-  justify-content: flex-start;
-  border-radius: 14px;
-  border-color: #dbe5f1;
-  background: #fff;
-  transition: all 0.2s ease;
-}
-
-.profile-action-button:hover {
-  border-color: #bfd7ff;
-  box-shadow: 0 12px 28px rgba(64, 158, 255, 0.08);
-  transform: translateY(-1px);
-}
-
-.profile-action-button__icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 34px;
-  height: 34px;
-  margin-right: 10px;
-  border-radius: 12px;
-  background: linear-gradient(180deg, #f4f8ff 0%, #eaf3ff 100%);
-  color: #409eff;
-  font-size: 16px;
-}
-
-.profile-action-button__content {
-  display: inline-flex;
-  min-width: 0;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 4px;
-}
-
-.profile-action-button__content strong {
-  color: #1f2a37;
-  font-size: 14px;
-  font-weight: 600;
-}
-
-.profile-action-button__content small {
-  color: #7b8794;
-  font-size: 12px;
-  line-height: 1.5;
-  white-space: normal;
-  text-align: left;
+.profile-main-button {
+  min-width: 132px;
+  height: 40px;
+  padding: 0 18px;
+  border-radius: 999px;
+  box-shadow: 0 10px 24px rgba(64, 158, 255, 0.18);
 }
 
 .cropper-container {
@@ -1230,13 +1049,6 @@ onMounted(async () => {
   color: #303133;
 }
 
-.quick-action-desc {
-  margin-top: 8px;
-  font-size: 13px;
-  line-height: 1.6;
-  color: #909399;
-}
-
 .quick-action-config-panel {
   display: flex;
   flex-direction: column;
@@ -1258,15 +1070,6 @@ onMounted(async () => {
   color: #606266;
   font-size: 13px;
   text-align: right;
-}
-
-.quick-action-config-tip {
-  border-radius: 10px;
-  background: #f4f8ff;
-  color: #5b6b83;
-  font-size: 13px;
-  line-height: 1.6;
-  padding: 12px 14px;
 }
 
 .quick-action-group-list {
@@ -1344,10 +1147,10 @@ onMounted(async () => {
 
 .quick-action-option__content {
   display: flex;
-  min-height: 108px;
+  min-height: 24px;
   min-width: 0;
   flex-direction: column;
-  justify-content: space-between;
+  justify-content: center;
 }
 
 .quick-action-option:hover {
@@ -1382,115 +1185,22 @@ onMounted(async () => {
   line-height: 1.4;
 }
 
-.quick-action-option__desc {
-  margin-top: 8px;
-  color: #606266;
-  font-size: 12px;
-  line-height: 1.6;
-}
-
-.quick-action-option__link {
-  margin-top: 12px;
-  color: #909399;
-  font-size: 12px;
-  line-height: 1.5;
-  word-break: break-all;
-}
-
 .announcement-placeholder {
   display: flex;
   min-height: 280px;
-  flex-direction: column;
-  justify-content: space-between;
+  align-items: center;
+  justify-content: center;
   border-radius: 12px;
   background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
-  padding: 20px 4px 8px;
-}
-
-.announcement-placeholder__headline {
-  margin: 0 16px;
-  color: #303133;
-  font-size: 16px;
-  font-weight: 600;
-}
-
-.announcement-placeholder__body {
-  margin: 10px 16px 0;
-  color: #606266;
-  font-size: 13px;
-  line-height: 1.8;
-}
-
-.settings-dialog-intro {
-  margin-bottom: 18px;
-  padding: 14px 16px;
-  border: 1px solid #e6edf8;
-  border-radius: 14px;
-  background: linear-gradient(180deg, #f8fbff 0%, #f2f7ff 100%);
+  padding: 12px;
 }
 
 .system-settings-dialog :deep(.el-dialog__body) {
-  padding-top: 18px;
-}
-
-.settings-dialog-intro--hero {
-  padding: 18px 20px;
-}
-
-.settings-dialog-intro__title {
-  color: #1f2a37;
-  font-size: 15px;
-  font-weight: 700;
-}
-
-.settings-dialog-intro__desc {
-  margin-top: 6px;
-  color: #687385;
-  font-size: 13px;
-  line-height: 1.7;
-}
-
-.settings-overview-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-  margin-top: 16px;
-}
-
-.settings-overview-card {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 6px;
-  padding: 14px 16px;
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.82);
-  border: 1px solid rgba(219, 229, 241, 0.9);
-}
-
-.settings-overview-card span {
-  color: #7b8794;
-  font-size: 12px;
-}
-
-.settings-overview-card strong {
-  color: #1f2a37;
-  font-size: 15px;
-  font-weight: 700;
-}
-
-.settings-overview-card small {
-  color: #8a94a6;
-  font-size: 12px;
-  line-height: 1.6;
-}
-
-.settings-tabs {
-  margin-top: 20px;
+  padding-top: 12px;
 }
 
 .settings-tabs :deep(.el-tabs__header) {
-  margin-bottom: 18px;
+  margin-bottom: 14px;
 }
 
 .settings-tabs :deep(.el-tabs__nav-wrap::after) {
@@ -1520,27 +1230,9 @@ onMounted(async () => {
 .settings-pane {
   display: flex;
   flex-direction: column;
-  gap: 18px;
-  min-height: 420px;
-  padding: 6px 2px 2px;
-}
-
-.settings-pane__heading {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.settings-pane__title {
-  color: #1f2a37;
-  font-size: 16px;
-  font-weight: 700;
-}
-
-.settings-pane__desc {
-  color: #687385;
-  font-size: 13px;
-  line-height: 1.7;
+  gap: 16px;
+  min-height: 360px;
+  padding: 4px 2px 2px;
 }
 
 .settings-pane__actions {
@@ -1590,19 +1282,7 @@ onMounted(async () => {
 
 .avatar-settings-actions {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 18px;
-  border-radius: 16px;
-  border: 1px dashed #c6d8f3;
-  background: #fbfdff;
-}
-
-.avatar-settings-actions__tip {
-  color: #7b8794;
-  font-size: 12px;
-  line-height: 1.7;
+  justify-content: flex-end;
 }
 
 .metrics-list {
@@ -1699,13 +1379,9 @@ onMounted(async () => {
     align-items: flex-start;
   }
 
-  .profile-settings-panel {
+  .profile-actions {
     width: 100%;
-    min-width: 0;
-  }
-
-  .settings-overview-grid {
-    grid-template-columns: 1fr;
+    justify-content: stretch;
   }
 
   .settings-tabs :deep(.el-tabs__item) {
@@ -1715,11 +1391,6 @@ onMounted(async () => {
 
   .settings-pane {
     min-height: auto;
-  }
-
-  .profile-actions {
-    width: 100%;
-    grid-template-columns: 1fr;
   }
 
   .profile-actions :deep(.el-button) {

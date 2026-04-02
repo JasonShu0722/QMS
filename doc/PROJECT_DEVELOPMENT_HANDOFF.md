@@ -32,6 +32,9 @@
 7. 每推进一个模块，至少同步四件事。
    需求项顺序、优先级判断、开发状态、验证口径。
 
+8. 前端界面文案保持克制。
+   默认用标题、标签、按钮和布局表达含义，避免给按钮、卡片、页签反复补充解释性文案；只有涉及风险、规则或误操作成本时才保留提示文字。
+
 ## 3. 当前项目上下文摘要
 
 - 项目是一个 QMS 质量管理系统，覆盖系统基础、质量看板、供应商质量、制程质量、客户质量、新品质量、审核管理及预留扩展模块。
@@ -79,6 +82,9 @@
 
 8. [`frontend/src/features/requirements-panel/RequirementsPanel.vue`](/E:/WorkSpace/QMS/frontend/src/features/requirements-panel/RequirementsPanel.vue)
    当前需求面板实现，已包含总览、开发顺序、明细三种视图，以及开发顺序清单的批次划分逻辑。
+
+9. [`doc/FRONTEND_UI_COPY_REQUIREMENTS.md`](/E:/WorkSpace/QMS/doc/FRONTEND_UI_COPY_REQUIREMENTS.md)
+   前端界面文案与解释性文本控制要求。后续页面开发与重构时，默认按这个口径控制按钮、卡片、页签、弹窗中的冗余说明文字。
 
 ### 第四层：按模块下钻时再查
 

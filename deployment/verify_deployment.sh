@@ -1,7 +1,7 @@
 #!/bin/bash
 # Deployment verification script for QMS.
 
-set -e
+set -u
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -116,12 +116,18 @@ retry_http_check "http://${QMS_BIND_IP:-127.0.0.1}:${QMS_NGINX_PORT:-8081}/api/v
 print_test $? "Captcha API endpoint is working through nginx"
 
 echo -e "${YELLOW}[12/15] Checking Celery worker...${NC}"
-"${COMPOSE_CMD[@]}" logs celery-worker | grep -q "celery@" > /dev/null 2>&1
-print_test $? "Celery worker is running"
+if "${COMPOSE_CMD[@]}" exec -T celery-worker sh -lc "ps -ef | grep -q '[c]elery.*worker'"; then
+    print_test 0 "Celery worker is running"
+else
+    print_test 1 "Celery worker is running"
+fi
 
 echo -e "${YELLOW}[13/15] Checking Celery beat...${NC}"
-"${COMPOSE_CMD[@]}" logs celery-beat | grep -q "beat" > /dev/null 2>&1
-print_test $? "Celery beat is running"
+if "${COMPOSE_CMD[@]}" exec -T celery-beat sh -lc "ps -ef | grep -q '[c]elery.*beat'"; then
+    print_test 0 "Celery beat is running"
+else
+    print_test 1 "Celery beat is running"
+fi
 
 echo -e "${YELLOW}[14/15] Checking disk space...${NC}"
 DISK_USAGE=$(df -h / | awk 'NR==2 {print $5}' | sed 's/%//')

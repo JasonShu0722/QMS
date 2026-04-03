@@ -1263,22 +1263,36 @@ onMounted(async () => {
   margin-bottom: 14px;
 }
 
+.settings-tabs :deep(.el-tabs__nav-scroll) {
+  width: 100%;
+}
+
+.settings-tabs :deep(.el-tabs__nav) {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  width: 100%;
+}
+
 .settings-tabs :deep(.el-tabs__nav-wrap::after) {
   display: none;
 }
 
 .settings-tabs :deep(.el-tabs__item) {
   display: inline-flex;
+  width: 100%;
   align-items: center;
   justify-content: center;
-  min-width: 104px;
-  height: 40px;
-  padding: 0 16px;
-  margin-right: 8px;
+  text-align: center;
+  box-sizing: border-box;
+  height: 44px;
+  padding: 0 12px;
+  margin-right: 0;
   border-radius: 999px;
   color: #687385;
   font-size: 13px;
   font-weight: 600;
+  line-height: 1;
   transition: all 0.2s ease;
 }
 
@@ -1465,9 +1479,14 @@ onMounted(async () => {
   }
 
   .settings-tabs :deep(.el-tabs__item) {
-    margin-right: 6px;
-    padding: 0 12px;
-    min-width: 92px;
+    min-width: 0;
+    height: 42px;
+    padding: 0 8px;
+    margin-right: 0;
+  }
+
+  .settings-tabs :deep(.el-tabs__nav) {
+    gap: 8px;
   }
 
   .settings-pane {

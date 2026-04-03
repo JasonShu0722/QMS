@@ -8,9 +8,13 @@ PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 DEPLOY_BRANCH="${1:-main}"
 ENV_FILE="${PROJECT_ROOT}/.env.production"
 ENV_BACKUP="$(mktemp)"
+ENV_RESTORE_PENDING=0
 COMPOSE_CMD=(docker compose --env-file "$ENV_FILE")
 
 cleanup() {
+    if [ "${ENV_RESTORE_PENDING:-0}" -eq 1 ] && [ -f "$ENV_BACKUP" ]; then
+        cp "$ENV_BACKUP" "$ENV_FILE"
+    fi
     rm -f "$ENV_BACKUP"
 }
 
@@ -52,6 +56,7 @@ cd "$PROJECT_ROOT"
 
 echo "[INFO] Backing up local .env.production"
 cp "$ENV_FILE" "$ENV_BACKUP"
+ENV_RESTORE_PENDING=1
 
 echo "[INFO] Fetching latest code"
 git fetch origin "$DEPLOY_BRANCH" --prune
@@ -63,6 +68,7 @@ git pull --ff-only origin "$DEPLOY_BRANCH"
 
 echo "[INFO] Restoring server-specific .env.production"
 cp "$ENV_BACKUP" "$ENV_FILE"
+ENV_RESTORE_PENDING=0
 
 echo "[INFO] Building and updating containers"
 "${COMPOSE_CMD[@]}" up -d --build

@@ -22,55 +22,55 @@
             @change="handleAvatarFileChange"
           />
 
-          <div class="profile-identity">
-            <div class="avatar-wrapper">
-              <el-avatar :size="84" :src="avatarUrl">
-                <el-icon><User /></el-icon>
-              </el-avatar>
+          <div class="profile-sidebar">
+            <div class="profile-identity">
+              <div class="avatar-wrapper">
+                <el-avatar :size="76" :src="avatarUrl">
+                  <el-icon><User /></el-icon>
+                </el-avatar>
+              </div>
+
+              <div class="profile-info">
+                <div class="profile-name-row">
+                  <h2>{{ sessionUser?.full_name || authStore.userInfo?.full_name }}</h2>
+                  <div class="profile-tag-list">
+                    <el-tag :type="environment === 'stable' ? 'primary' : 'warning'" size="small">
+                      {{ environment === 'stable' ? '正式环境' : '预览环境' }}
+                    </el-tag>
+                    <el-tag v-if="authStore.isPlatformAdmin" type="danger" size="small">平台管理员</el-tag>
+                  </div>
+                </div>
+                <p class="profile-meta">
+                  {{ profileDescription }}
+                </p>
+              </div>
             </div>
 
-            <div class="profile-info">
-              <div class="flex items-center gap-2">
-                <h2>{{ sessionUser?.full_name || authStore.userInfo?.full_name }}</h2>
-                <el-tag :type="environment === 'stable' ? 'primary' : 'warning'" size="small">
-                  {{ environment === 'stable' ? '正式环境' : '预览环境' }}
-                </el-tag>
-                <el-tag v-if="authStore.isPlatformAdmin" type="danger" size="small">平台管理员</el-tag>
-              </div>
-              <p class="profile-meta">
-                {{ profileDescription }}
-              </p>
+            <div class="profile-actions">
+              <el-button class="profile-main-button" @click="openSettingsDialog()">
+                <el-icon><Setting /></el-icon>
+                个人信息设置
+              </el-button>
             </div>
           </div>
 
-          <div class="profile-overview">
-            <div class="profile-overview__top">
-              <div class="profile-overview__title">待办概览</div>
-              <div class="profile-actions">
-                <el-button class="profile-main-button" type="primary" @click="openSettingsDialog()">
-                  <el-icon><Setting /></el-icon>
-                  系统设置
-                </el-button>
+          <button type="button" class="todo-summary-panel" @click="openTodoDialog">
+            <div class="todo-summary-grid">
+              <div class="todo-summary-stat">
+                <strong class="todo-summary-stat__value">{{ todoSummary.total }}</strong>
+                <span class="todo-summary-stat__label">待办总数</span>
+              </div>
+              <div class="todo-summary-stat todo-summary-stat--danger">
+                <strong class="todo-summary-stat__value">{{ todoSummary.overdue }}</strong>
+                <span class="todo-summary-stat__label">超期事项</span>
+              </div>
+              <div class="todo-summary-stat todo-summary-stat--warning">
+                <strong class="todo-summary-stat__value">{{ todoSummary.due_soon }}</strong>
+                <span class="todo-summary-stat__label">临期事项</span>
               </div>
             </div>
+          </button>
 
-            <button type="button" class="todo-summary-panel" @click="openTodoDialog">
-              <div class="todo-summary-grid">
-                <div class="todo-summary-stat">
-                  <strong class="todo-summary-stat__value">{{ todoSummary.total }}</strong>
-                  <span class="todo-summary-stat__label">待办总数</span>
-                </div>
-                <div class="todo-summary-stat todo-summary-stat--danger">
-                  <strong class="todo-summary-stat__value">{{ todoSummary.overdue }}</strong>
-                  <span class="todo-summary-stat__label">超期事项</span>
-                </div>
-                <div class="todo-summary-stat todo-summary-stat--warning">
-                  <strong class="todo-summary-stat__value">{{ todoSummary.due_soon }}</strong>
-                  <span class="todo-summary-stat__label">临期事项</span>
-                </div>
-              </div>
-            </button>
-          </div>
         </div>
       </el-card>
 
@@ -290,7 +290,7 @@
 
     <el-dialog
       v-model="showSettingsDialog"
-      title="系统设置"
+      title="个人信息设置"
       width="920px"
       :close-on-click-modal="false"
       class="system-settings-dialog"
@@ -1162,35 +1162,55 @@ onMounted(async () => {
 
 .profile-header {
   display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(460px, 0.95fr);
-  align-items: stretch;
-  gap: 24px;
+  grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+  align-items: center;
+  gap: 20px 26px;
+}
+
+.profile-sidebar {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  justify-content: center;
+  gap: 14px;
 }
 
 .profile-identity {
   display: flex;
   min-width: 0;
   align-items: center;
-  gap: 22px;
-  padding: 8px 4px;
+  gap: 18px;
+  padding: 4px 0;
 }
 
 .profile-info {
-  flex: 1;
   min-width: 0;
+}
+
+.profile-name-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.profile-tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .profile-info h2 {
   margin: 0;
-  font-size: 20px;
-  font-weight: 600;
-  color: #303133;
+  color: #1f2a37;
+  font-size: 19px;
+  font-weight: 700;
 }
 
 .profile-meta {
   margin: 8px 0 0;
-  color: #909399;
+  color: #6b7280;
   font-size: 14px;
+  line-height: 1.6;
 }
 
 .avatar-wrapper {
@@ -1202,63 +1222,49 @@ onMounted(async () => {
   box-shadow: 0 14px 32px rgba(15, 23, 42, 0.08);
 }
 
-.profile-overview {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 18px;
-  justify-content: space-between;
-  padding: 20px 22px;
-  border: 1px solid #d9e7f8;
-  border-radius: 24px;
-  background:
-    radial-gradient(circle at top left, rgba(64, 158, 255, 0.1), transparent 36%),
-    linear-gradient(180deg, #ffffff 0%, #f7fbff 100%);
-}
-
-.profile-overview__top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.profile-overview__title {
-  color: #1f2a37;
-  font-size: 16px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-}
-
 .profile-actions {
   display: flex;
-  flex-shrink: 0;
-  justify-content: flex-end;
+  justify-content: flex-start;
 }
 
 .profile-main-button {
-  min-width: 124px;
-  height: 42px;
+  min-width: 132px;
+  height: 44px;
   padding: 0 18px;
   border-radius: 999px;
-  box-shadow: 0 10px 24px rgba(64, 158, 255, 0.18);
+  border-color: #cbd8ea;
+  background: linear-gradient(180deg, #edf3fb 0%, #dde8f5 100%);
+  color: #4f6480;
+  font-weight: 600;
+  box-shadow: 0 8px 18px rgba(115, 142, 178, 0.18);
+}
+
+.profile-main-button:hover,
+.profile-main-button:focus {
+  border-color: #b8c9e1;
+  background: linear-gradient(180deg, #e5eef9 0%, #d5e2f2 100%);
+  color: #425771;
 }
 
 .todo-summary-panel {
   display: flex;
-  width: 100%;
-  min-width: 0;
   flex-direction: column;
-  gap: 12px;
-  padding: 0;
-  border: none;
-  background: transparent;
+  min-width: 0;
+  min-height: 156px;
+  padding: 18px 20px;
+  border: 1px solid #dbe7f5;
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at top left, rgba(64, 158, 255, 0.08), transparent 38%),
+    linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
   cursor: pointer;
   text-align: left;
   transition: all 0.2s ease;
 }
 
 .todo-summary-panel:hover {
+  border-color: #bfd9ff;
+  box-shadow: 0 14px 30px rgba(64, 158, 255, 0.1);
   transform: translateY(-1px);
 }
 
@@ -1270,22 +1276,21 @@ onMounted(async () => {
 
 .todo-summary-stat {
   display: flex;
-  min-height: 128px;
+  min-height: 108px;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  border-radius: 20px;
-  background: rgba(255, 255, 255, 0.92);
-  border: 1px solid rgba(217, 231, 248, 0.92);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  gap: 8px;
+  border-radius: 18px;
+  background: #fff;
+  border: 1px solid #dfe8f5;
   text-align: center;
   transition: all 0.2s ease;
 }
 
 .todo-summary-panel:hover .todo-summary-stat {
   border-color: #bfd9ff;
-  box-shadow: 0 12px 28px rgba(64, 158, 255, 0.08);
+  box-shadow: 0 10px 22px rgba(64, 158, 255, 0.08);
 }
 
 .todo-summary-stat--danger {
@@ -1298,14 +1303,14 @@ onMounted(async () => {
 
 .todo-summary-stat__value {
   color: #1f2a37;
-  font-size: 34px;
+  font-size: 28px;
   font-weight: 700;
   line-height: 1;
 }
 
 .todo-summary-stat__label {
   color: #6b7280;
-  font-size: 14px;
+  font-size: 13px;
   line-height: 1;
 }
 
@@ -1814,15 +1819,12 @@ onMounted(async () => {
 
   .profile-header {
     grid-template-columns: 1fr;
+    align-items: stretch;
   }
 
+  .profile-sidebar,
   .profile-identity {
     width: 100%;
-  }
-
-  .profile-overview {
-    width: 100%;
-    padding: 18px;
   }
 
   .profile-actions {
@@ -1830,9 +1832,9 @@ onMounted(async () => {
     justify-content: stretch;
   }
 
-  .profile-overview__top {
-    flex-direction: column;
-    align-items: stretch;
+  .todo-summary-panel {
+    min-width: 0;
+    min-height: auto;
   }
 
   .settings-tabs :deep(.el-tabs__item) {

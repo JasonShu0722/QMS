@@ -101,6 +101,32 @@ start_services() {
     print_success "Services started"
 }
 
+check_database_auth() {
+    print_info "Validating database credentials before migrations..."
+    cd "$PROJECT_ROOT"
+
+    if "${COMPOSE_CMD[@]}" exec -T backend-stable python - <<'PY'
+from sqlalchemy import text
+from app.core.database import engine
+import asyncio
+
+async def main():
+    async with engine.begin() as conn:
+        await conn.execute(text("SELECT 1"))
+
+asyncio.run(main())
+PY
+    then
+        print_success "Database credentials are valid"
+    else
+        print_error "Database authentication failed for qms_user."
+        print_error "The DB_PASSWORD in $ENV_FILE does not match the password stored in the existing PostgreSQL volume."
+        print_error "If this server already has data, update qms_user password inside PostgreSQL to match .env.production and rerun deployment."
+        print_error "If this is a disposable environment, remove the qms_postgres_data volume and redeploy."
+        exit 1
+    fi
+}
+
 run_migrations() {
     print_info "Running database migrations..."
     print_info "Waiting for database to be ready..."
@@ -200,6 +226,7 @@ main() {
     backup_database
     stop_services
     start_services
+    check_database_auth
     run_migrations
     verify_services
     run_functional_tests

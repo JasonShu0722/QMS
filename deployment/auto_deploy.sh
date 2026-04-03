@@ -16,6 +16,31 @@ cleanup() {
 
 trap cleanup EXIT
 
+check_database_auth() {
+    echo "[INFO] Validating database credentials before migrations"
+
+    if "${COMPOSE_CMD[@]}" exec -T backend-stable python - <<'PY'
+from sqlalchemy import text
+from app.core.database import engine
+import asyncio
+
+async def main():
+    async with engine.begin() as conn:
+        await conn.execute(text("SELECT 1"))
+
+asyncio.run(main())
+PY
+    then
+        echo "[INFO] Database credentials are valid"
+    else
+        echo "[ERROR] Database authentication failed for qms_user"
+        echo "[ERROR] The DB_PASSWORD in .env.production does not match the password stored in the existing PostgreSQL volume"
+        echo "[ERROR] If this server already has data, update qms_user password inside PostgreSQL to match .env.production and rerun deployment"
+        echo "[ERROR] If this is a disposable environment, remove the qms_postgres_data volume and redeploy"
+        exit 1
+    fi
+}
+
 echo "[INFO] Starting auto-deploy for branch: ${DEPLOY_BRANCH}"
 
 if [ ! -f "$ENV_FILE" ]; then
@@ -41,6 +66,8 @@ cp "$ENV_BACKUP" "$ENV_FILE"
 
 echo "[INFO] Building and updating containers"
 "${COMPOSE_CMD[@]}" up -d --build
+
+check_database_auth
 
 echo "[INFO] Refreshing nginx gateway"
 "${COMPOSE_CMD[@]}" restart nginx

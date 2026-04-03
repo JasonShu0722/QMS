@@ -37,6 +37,23 @@ retry_http_check() {
     return 1
 }
 
+retry_container_running() {
+    local container="$1"
+    local max_attempts="${2:-10}"
+    local sleep_seconds="${3:-3}"
+
+    for ((attempt=1; attempt<=max_attempts; attempt++)); do
+        local state
+        state=$(docker inspect -f '{{.State.Status}}' "$container" 2>/dev/null || echo "missing")
+        if [ "$state" = "running" ]; then
+            return 0
+        fi
+        sleep "$sleep_seconds"
+    done
+
+    return 1
+}
+
 print_test() {
     TOTAL=$((TOTAL + 1))
     if [ $1 -eq 0 ]; then
@@ -116,18 +133,12 @@ retry_http_check "http://${QMS_BIND_IP:-127.0.0.1}:${QMS_NGINX_PORT:-8081}/api/v
 print_test $? "Captcha API endpoint is working through nginx"
 
 echo -e "${YELLOW}[12/15] Checking Celery worker...${NC}"
-if "${COMPOSE_CMD[@]}" exec -T celery-worker sh -lc "ps -ef | grep -q '[c]elery.*worker'"; then
-    print_test 0 "Celery worker is running"
-else
-    print_test 1 "Celery worker is running"
-fi
+retry_container_running "qms_celery_worker"
+print_test $? "Celery worker is running"
 
 echo -e "${YELLOW}[13/15] Checking Celery beat...${NC}"
-if "${COMPOSE_CMD[@]}" exec -T celery-beat sh -lc "ps -ef | grep -q '[c]elery.*beat'"; then
-    print_test 0 "Celery beat is running"
-else
-    print_test 1 "Celery beat is running"
-fi
+retry_container_running "qms_celery_beat"
+print_test $? "Celery beat is running"
 
 echo -e "${YELLOW}[14/15] Checking disk space...${NC}"
 DISK_USAGE=$(df -h / | awk 'NR==2 {print $5}' | sed 's/%//')

@@ -252,7 +252,10 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    command: celery -A app.core.celery_app beat --loglevel=info
+    command: >-
+      sh -c "rm -f /tmp/celerybeat-schedule* /tmp/celerybeat.pid &&
+      celery -A app.core.celery_app beat --loglevel=info
+      --pidfile=/tmp/celerybeat.pid --schedule /tmp/celerybeat-schedule"
     restart: unless-stopped
 
 networks:

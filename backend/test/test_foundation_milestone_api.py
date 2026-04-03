@@ -448,11 +448,15 @@ async def test_internal_workbench_returns_foundation_tasks_and_feature_blocks(
         "announcements": False,
         "notifications": False,
     }
+    assert data["todo_summary"] == {
+        "total": 2,
+        "overdue": 0,
+        "due_soon": 2,
+    }
     assert len(data["metrics"]) == 1
     assert {item["task_type"] for item in data["todos"]} == {
         "注册审批",
         "权限初始化",
-        "预览环境治理",
     }
 
 
@@ -487,6 +491,11 @@ async def test_supplier_workbench_returns_supplier_shape_and_safe_defaults(
     assert data["user_info"]["signature_image_path"] == "/uploads/signatures/supplier_dashboard_user.png"
     assert data["user_info"]["is_platform_admin"] is False
     assert [action["title"] for action in data["quick_actions"]] == ["个人中心"]
+    assert data["todo_summary"] == {
+        "total": 0,
+        "overdue": 0,
+        "due_soon": 0,
+    }
     assert data["performance_status"] is None
     assert data["action_required_tasks"] == []
     assert set(data["feature_blocks"].keys()) == {"metrics", "announcements", "notifications"}

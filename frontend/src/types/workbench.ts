@@ -24,6 +24,12 @@ export interface Metric {
   unit?: string
 }
 
+export interface TodoSummary {
+  total: number
+  overdue: number
+  due_soon: number
+}
+
 export interface PerformanceStatus {
   grade: 'A' | 'B' | 'C' | 'D'
   score: number
@@ -47,6 +53,7 @@ export interface DashboardBase {
   environment: 'stable' | 'preview'
   quick_actions: QuickAction[]
   feature_blocks: DashboardFeatureBlocks
+  todo_summary: TodoSummary
 }
 
 export interface InternalDashboard extends DashboardBase {

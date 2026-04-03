@@ -4,13 +4,12 @@ Foundation-aware task aggregation service.
 from __future__ import annotations
 
 from datetime import datetime, timedelta
-from typing import Any, Optional
+from typing import Optional
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.platform_admin import is_platform_admin
-from app.models.feature_flag import FeatureFlag, FeatureFlagEnvironment
 from app.models.permission import Permission
 from app.models.user import User, UserStatus
 
@@ -78,7 +77,7 @@ class TaskAggregator:
             deadline = user.created_at + timedelta(days=2)
             urgency, color = TaskAggregator._calculate_urgency(deadline)
             target_name = user.department or (
-                f"Supplier {user.supplier_id}" if user.supplier_id else "Unassigned"
+                f"供应商 {user.supplier_id}" if user.supplier_id else "未分配"
             )
             tasks.append(
                 TaskItem(
@@ -91,7 +90,10 @@ class TaskAggregator:
                     remaining_hours=TaskAggregator._calculate_remaining(deadline),
                     link="/admin/users",
                     title=f"审核注册申请：{user.full_name}",
-                    description=f"账号 {user.username} 待审核，用户类型为 {user.user_type}，归属对象：{target_name}",
+                    description=(
+                        f"账号 {user.username} 待审批，用户类型为 {user.user_type}，"
+                        f"归属对象：{target_name}"
+                    ),
                 )
             )
 
@@ -121,34 +123,6 @@ class TaskAggregator:
         ]
 
     @staticmethod
-    async def _load_preview_flag_review_task(db: AsyncSession) -> list[TaskItem]:
-        preview_count = await db.scalar(
-            select(func.count(FeatureFlag.id)).where(
-                FeatureFlag.environment == FeatureFlagEnvironment.PREVIEW,
-                FeatureFlag.is_enabled == True,
-            )
-        )
-        if not preview_count:
-            return []
-
-        deadline = datetime.utcnow() + timedelta(days=3)
-        urgency, color = TaskAggregator._calculate_urgency(deadline)
-        return [
-            TaskItem(
-                task_type="预览环境治理",
-                task_id=200002,
-                task_number="FLAG-PREVIEW",
-                deadline=deadline,
-                urgency=urgency,
-                color=color,
-                remaining_hours=TaskAggregator._calculate_remaining(deadline),
-                link="/admin/feature-flags",
-                title="复核预览环境功能开关",
-                description=f"当前共有 {preview_count} 个预览环境功能已启用，请确认灰度范围与发布节奏。",
-            )
-        ]
-
-    @staticmethod
     async def get_user_tasks(db: AsyncSession, user_id: int) -> list[TaskItem]:
         user = await db.get(User, user_id)
         if not user:
@@ -158,20 +132,22 @@ class TaskAggregator:
         if is_platform_admin(user):
             tasks.extend(await TaskAggregator._load_pending_user_tasks(db))
             tasks.extend(await TaskAggregator._load_permission_bootstrap_task(db))
-            tasks.extend(await TaskAggregator._load_preview_flag_review_task(db))
 
         tasks.sort(key=lambda item: item.remaining_hours)
         return tasks
 
     @staticmethod
-    async def get_task_statistics(db: AsyncSession, user_id: int) -> dict[str, Any]:
-        tasks = await TaskAggregator.get_user_tasks(db, user_id)
+    def summarize_tasks(tasks: list[TaskItem]) -> dict[str, int]:
         return {
             "total": len(tasks),
             "overdue": sum(1 for task in tasks if task.urgency == "overdue"),
-            "urgent": sum(1 for task in tasks if task.urgency == "urgent"),
-            "normal": sum(1 for task in tasks if task.urgency == "normal"),
+            "due_soon": sum(1 for task in tasks if task.urgency == "urgent"),
         }
+
+    @staticmethod
+    async def get_task_statistics(db: AsyncSession, user_id: int) -> dict[str, int]:
+        tasks = await TaskAggregator.get_user_tasks(db, user_id)
+        return TaskAggregator.summarize_tasks(tasks)
 
 
 task_aggregator = TaskAggregator()

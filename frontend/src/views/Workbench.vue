@@ -41,6 +41,24 @@
             </p>
           </div>
 
+          <button type="button" class="todo-summary-panel" @click="openTodoDialog">
+            <div class="todo-summary-panel__title">我的待办</div>
+            <div class="todo-summary-grid">
+              <div class="todo-summary-stat">
+                <strong class="todo-summary-stat__value">{{ todoSummary.total }}</strong>
+                <span class="todo-summary-stat__label">待办总数</span>
+              </div>
+              <div class="todo-summary-stat todo-summary-stat--danger">
+                <strong class="todo-summary-stat__value">{{ todoSummary.overdue }}</strong>
+                <span class="todo-summary-stat__label">超期事项</span>
+              </div>
+              <div class="todo-summary-stat todo-summary-stat--warning">
+                <strong class="todo-summary-stat__value">{{ todoSummary.due_soon }}</strong>
+                <span class="todo-summary-stat__label">临期事项</span>
+              </div>
+            </div>
+          </button>
+
           <div class="profile-actions">
             <el-button class="profile-main-button" type="primary" @click="openSettingsDialog()">
               <el-icon><Setting /></el-icon>
@@ -146,6 +164,63 @@
         </el-col>
       </el-row>
     </template>
+
+    <el-dialog
+      v-model="showTodoDialog"
+      title="个人待办事项"
+      width="760px"
+      :close-on-click-modal="false"
+    >
+      <div class="todo-dialog">
+        <div class="todo-dialog-summary">
+          <div class="todo-dialog-summary__item">
+            <span>待办总数</span>
+            <strong>{{ todoSummary.total }}</strong>
+          </div>
+          <div class="todo-dialog-summary__item todo-dialog-summary__item--danger">
+            <span>超期事项</span>
+            <strong>{{ todoSummary.overdue }}</strong>
+          </div>
+          <div class="todo-dialog-summary__item todo-dialog-summary__item--warning">
+            <span>临期事项</span>
+            <strong>{{ todoSummary.due_soon }}</strong>
+          </div>
+        </div>
+
+        <div v-if="taskList.length" class="todo-dialog-list">
+          <button
+            v-for="task in taskList"
+            :key="`dialog-${task.task_type}-${task.task_id}`"
+            type="button"
+            class="todo-dialog-item"
+            @click="handleTodoDialogTaskClick(task)"
+          >
+            <div class="todo-dialog-item__header">
+              <div class="todo-dialog-item__title">
+                {{ task.title || task.task_type }}
+              </div>
+              <el-tag :type="getTodoUrgencyTagType(task)" effect="plain">
+                {{ getTodoUrgencyLabel(task) }}
+              </el-tag>
+            </div>
+            <div class="todo-dialog-item__meta">
+              <span>{{ task.task_type }}</span>
+              <span>{{ task.task_id }}</span>
+              <span>{{ formatTodoDeadline(task.deadline) }}</span>
+            </div>
+            <p v-if="task.description" class="todo-dialog-item__description">
+              {{ task.description }}
+            </p>
+          </button>
+        </div>
+        <el-empty v-else description="暂无待办事项" :image-size="84" />
+      </div>
+      <template #footer>
+        <div class="settings-dialog-footer">
+          <el-button class="settings-dialog-footer__button" @click="showTodoDialog = false">关闭</el-button>
+        </div>
+      </template>
+    </el-dialog>
 
     <el-dialog
       v-model="showQuickActionDialog"
@@ -432,6 +507,7 @@ import type {
   InternalDashboard,
   ProfileUpdateRequest,
   SupplierDashboard,
+  TodoSummary,
   TodoTask
 } from '@/types/workbench'
 
@@ -451,6 +527,7 @@ const featureFlagStore = useFeatureFlagStore()
 
 const loading = ref(false)
 const dashboardData = ref<DashboardData | null>(null)
+const showTodoDialog = ref(false)
 const showQuickActionDialog = ref(false)
 const quickActionDraft = ref<string[]>([])
 const selectedQuickActionIds = ref<string[]>([])
@@ -595,6 +672,35 @@ const taskList = computed<TodoTask[]>(() => {
   }
   return supplierDashboard.value?.action_required_tasks || []
 })
+const todoSummary = computed<TodoSummary>(() => {
+  const fallback = taskList.value.reduce<TodoSummary>(
+    (summary, task) => {
+      summary.total += 1
+      if (task.urgency === 'overdue') {
+        summary.overdue += 1
+      }
+      if (task.urgency === 'urgent') {
+        summary.due_soon += 1
+      }
+      return summary
+    },
+    {
+      total: 0,
+      overdue: 0,
+      due_soon: 0
+    }
+  )
+
+  if (!dashboardData.value?.todo_summary) {
+    return fallback
+  }
+
+  return {
+    total: dashboardData.value.todo_summary.total ?? fallback.total,
+    overdue: dashboardData.value.todo_summary.overdue ?? fallback.overdue,
+    due_soon: dashboardData.value.todo_summary.due_soon ?? fallback.due_soon
+  }
+})
 
 const taskSectionTitle = computed(() => (authStore.isInternal ? '待办任务' : '待处理任务'))
 const taskEmptyDescription = computed(() =>
@@ -705,6 +811,10 @@ function openSettingsDialog(tab: SettingsTabName = 'profile') {
   activeSettingsTab.value = tab
   prepareSettingsDialog()
   showSettingsDialog.value = true
+}
+
+function openTodoDialog() {
+  showTodoDialog.value = true
 }
 
 function handleSettingsPrimaryAction() {
@@ -937,6 +1047,51 @@ function handleTaskClick(task: TodoTask) {
   router.push(task.link)
 }
 
+function handleTodoDialogTaskClick(task: TodoTask) {
+  showTodoDialog.value = false
+  handleTaskClick(task)
+}
+
+function formatTodoDeadline(deadline: string | null) {
+  if (!deadline) {
+    return '无截止时间'
+  }
+
+  const date = new Date(deadline)
+  if (Number.isNaN(date.getTime())) {
+    return '无截止时间'
+  }
+
+  return new Intl.DateTimeFormat('zh-CN', {
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  }).format(date)
+}
+
+function getTodoUrgencyLabel(task: TodoTask) {
+  switch (task.urgency) {
+    case 'overdue':
+      return '已超期'
+    case 'urgent':
+      return '临期'
+    default:
+      return '进行中'
+  }
+}
+
+function getTodoUrgencyTagType(task: TodoTask): 'danger' | 'warning' | 'success' {
+  switch (task.urgency) {
+    case 'overdue':
+      return 'danger'
+    case 'urgent':
+      return 'warning'
+    default:
+      return 'success'
+  }
+}
+
 async function handleChangePassword() {
   if (!passwordFormRef.value) {
     return
@@ -1028,7 +1183,7 @@ onMounted(async () => {
 }
 
 .profile-info {
-  flex: 1;
+  flex: 1 1 260px;
   min-width: 0;
 }
 
@@ -1056,6 +1211,7 @@ onMounted(async () => {
 
 .profile-actions {
   display: flex;
+  flex-shrink: 0;
   justify-content: flex-end;
 }
 
@@ -1065,6 +1221,73 @@ onMounted(async () => {
   padding: 0 18px;
   border-radius: 999px;
   box-shadow: 0 10px 24px rgba(64, 158, 255, 0.18);
+}
+
+.todo-summary-panel {
+  display: flex;
+  flex: 0 1 540px;
+  min-width: 320px;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px 20px;
+  border: 1px solid #dbe7f5;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #ffffff 0%, #f6faff 100%);
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s ease;
+}
+
+.todo-summary-panel:hover {
+  border-color: #bfd9ff;
+  box-shadow: 0 14px 30px rgba(64, 158, 255, 0.12);
+  transform: translateY(-1px);
+}
+
+.todo-summary-panel__title {
+  color: #1f2a37;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.todo-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.todo-summary-stat {
+  display: flex;
+  min-height: 92px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 14px;
+  background: #fff;
+  border: 1px solid #e8eef7;
+  text-align: center;
+}
+
+.todo-summary-stat--danger {
+  background: linear-gradient(180deg, #fff7f7 0%, #fffafa 100%);
+}
+
+.todo-summary-stat--warning {
+  background: linear-gradient(180deg, #fffaf2 0%, #fffcf7 100%);
+}
+
+.todo-summary-stat__value {
+  color: #1f2a37;
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.todo-summary-stat__label {
+  color: #6b7280;
+  font-size: 13px;
+  line-height: 1;
 }
 
 .cropper-container {
@@ -1421,6 +1644,108 @@ onMounted(async () => {
   gap: 16px;
 }
 
+.todo-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.todo-dialog-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.todo-dialog-summary__item {
+  display: flex;
+  min-height: 92px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 14px;
+  border: 1px solid #e6edf8;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+  text-align: center;
+}
+
+.todo-dialog-summary__item span {
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.todo-dialog-summary__item strong {
+  color: #1f2a37;
+  font-size: 26px;
+  line-height: 1;
+}
+
+.todo-dialog-summary__item--danger {
+  background: linear-gradient(180deg, #fff7f7 0%, #fffafa 100%);
+}
+
+.todo-dialog-summary__item--warning {
+  background: linear-gradient(180deg, #fffaf2 0%, #fffcf7 100%);
+}
+
+.todo-dialog-list {
+  display: flex;
+  max-height: 420px;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.todo-dialog-item {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 18px;
+  border: 1px solid #e4e7ed;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.todo-dialog-item:hover {
+  border-color: #bfd9ff;
+  box-shadow: 0 10px 24px rgba(64, 158, 255, 0.08);
+  transform: translateY(-1px);
+}
+
+.todo-dialog-item__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.todo-dialog-item__title {
+  color: #1f2a37;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.todo-dialog-item__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.todo-dialog-item__description {
+  margin: 0;
+  color: #4b5563;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
 .password-hint {
   margin-top: 4px;
   font-size: 12px;
@@ -1473,6 +1798,11 @@ onMounted(async () => {
     align-items: flex-start;
   }
 
+  .todo-summary-panel {
+    width: 100%;
+    min-width: 0;
+  }
+
   .profile-actions {
     width: 100%;
     justify-content: stretch;
@@ -1517,6 +1847,11 @@ onMounted(async () => {
 
   .todo-grid,
   .quick-action-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .todo-summary-grid,
+  .todo-dialog-summary {
     grid-template-columns: 1fr;
   }
 

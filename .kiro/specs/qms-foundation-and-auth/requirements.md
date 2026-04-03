@@ -165,10 +165,11 @@
 1. WHEN 用户登录系统 THEN THE QMS_System SHALL 将动态工作台设置为默认首页
 2. WHEN 用户访问工作台 THEN THE QMS_System SHALL 展示个人信息卡、环境标识和统一的系统设置入口
 3. WHEN 用户访问工作台 THEN THE QMS_System SHALL 支持在其可见功能范围内自定义快捷入口
-4. WHEN 内部员工访问工作台 THEN THE QMS_System SHALL 聚合展示底座域待办任务，并在功能开关启用时展示指标增强块
+4. WHEN 内部员工访问工作台 THEN THE QMS_System SHALL 聚合展示底座域待办任务，在页头展示待办总数/超期事项/临期事项统计窗，并在功能开关启用时展示指标增强块
 5. WHEN 供应商访问工作台 THEN THE QMS_System SHALL 优先展示需要其行动的任务卡片；绩效状态块仅在真实数据源可用时显示
 6. WHEN 公告或通知能力未启用 THEN THE QMS_System SHALL 允许隐藏对应区块或展示明确空态
 7. WHEN 用户点击待办任务 THEN THE QMS_System SHALL 跳转到对应模块的具体单据详情页
+8. WHEN 用户点击工作台待办统计窗 THEN THE QMS_System SHALL 打开个人待办事项清单弹窗，并展示真实待办列表
 
 ### Requirement 7: 待办任务聚合
 
@@ -177,12 +178,13 @@
 #### Acceptance Criteria
 
 1. WHEN 系统加载待办任务 THEN THE QMS_System SHALL 通过适配器注册式任务聚合器收集任务，并自动跳过不可用的数据源
-2. WHEN 第一里程碑加载工作台 THEN THE QMS_System SHALL 至少聚合注册审批、权限初始化、预览环境功能开关复核等底座域任务
-3. WHEN 系统展示待办任务 THEN THE QMS_System SHALL 显示任务类型、单据编号、紧急程度、剩余处理时间
+2. WHEN 第一里程碑加载工作台 THEN THE QMS_System SHALL 至少聚合注册审批、权限初始化等真实底座域任务，不得混入演示性质的伪待办
+3. WHEN 系统展示待办任务 THEN THE QMS_System SHALL 显示任务类型、单据编号、紧急程度、剩余处理时间，并支持在个人待办事项弹窗中统一查看
 4. WHEN 任务剩余时间小于 0 THEN THE QMS_System SHALL 标记为红色已超期状态
 5. WHEN 任务剩余时间小于等于 72 小时 THEN THE QMS_System SHALL 标记为黄色即将超期状态
 6. WHEN 任务剩余时间大于 72 小时 THEN THE QMS_System SHALL 标记为绿色正常状态
 7. WHEN 用户点击待办任务 THEN THE QMS_System SHALL 直接跳转到对应单据详情页进行处理
+8. WHEN 工作台展示待办统计 THEN THE QMS_System SHALL 同步给出待办总数、超期事项数与临期事项数
 
 ### Requirement 8: 站内信通知
 

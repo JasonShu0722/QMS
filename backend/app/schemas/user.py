@@ -6,6 +6,8 @@ from typing import Optional
 from datetime import datetime
 from pydantic import BaseModel, EmailStr, Field, field_validator
 
+from app.schemas.role_tag import RoleTagSummarySchema
+
 
 class UserRegisterSchema(BaseModel):
     """
@@ -123,6 +125,7 @@ class UserResponseSchema(BaseModel):
     digital_signature: Optional[str] = None
     allowed_environments: Optional[str]
     is_platform_admin: bool = False
+    role_tags: list[RoleTagSummarySchema] = Field(default_factory=list)
     last_login_at: Optional[datetime]
     created_at: datetime
     updated_at: datetime

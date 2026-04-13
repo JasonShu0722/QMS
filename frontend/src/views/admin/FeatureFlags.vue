@@ -1,22 +1,14 @@
 <template>
-  <div class="feature-flags-container p-4 md:p-6">
-    <el-card>
-      <template #header>
-        <div class="flex items-center justify-between">
-          <div>
-            <h2 class="text-xl font-bold">功能开关</h2>
-            <p class="mt-1 text-sm text-gray-500">环境先过滤，再按 global / whitelist 决定可见范围。</p>
-          </div>
-          <div class="flex gap-2">
-            <el-select v-model="environmentFilter" class="w-36" @change="loadFeatureFlags">
-              <el-option label="全部环境" value="" />
-              <el-option label="正式环境" value="stable" />
-              <el-option label="预览环境" value="preview" />
-            </el-select>
-            <el-button :icon="Refresh" circle @click="loadFeatureFlags" />
-          </div>
-        </div>
-      </template>
+  <div class="feature-flags-container page-stage--stack">
+    <section class="page-surface page-surface--table feature-flag-surface">
+      <div class="feature-flags-header">
+        <el-select v-model="environmentFilter" class="w-36" @change="loadFeatureFlags">
+          <el-option label="全部环境" value="" />
+          <el-option label="正式环境" value="stable" />
+          <el-option label="预览环境" value="preview" />
+        </el-select>
+        <el-button :icon="Refresh" circle @click="loadFeatureFlags" />
+      </div>
 
       <div v-loading="loading">
         <el-table :data="featureFlags" stripe class="w-full">
@@ -80,7 +72,7 @@
           当前没有功能开关数据。
         </div>
       </div>
-    </el-card>
+    </section>
 
     <el-dialog
       v-model="configDialogVisible"
@@ -178,7 +170,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Refresh } from '@element-plus/icons-vue'
 import { adminApi } from '@/api/admin'
-import type { FeatureFlag, FeatureFlagUpdateRequest, PermissionMatrixRow } from '@/types/admin'
+import type { FeatureFlag, FeatureFlagUpdateRequest } from '@/types/admin'
 import type { User } from '@/types/user'
 
 interface SupplierOption {
@@ -227,26 +219,26 @@ async function loadFeatureFlags() {
 
 async function loadWhitelistOptions() {
   try {
-    const matrix = await adminApi.getPermissionMatrix()
-    hydrateWhitelistOptions(matrix.rows)
+    const users = await adminApi.getUsers()
+    hydrateWhitelistOptions(users)
   } catch (error) {
     console.error('Failed to load whitelist options:', error)
   }
 }
 
-function hydrateWhitelistOptions(rows: PermissionMatrixRow[]) {
-  availableUsers.value = rows.map((row) => row.user)
+function hydrateWhitelistOptions(userList: User[]) {
+  availableUsers.value = userList
   const supplierOptions: SupplierOption[] = []
 
-  for (const row of rows) {
-    if (!row.user.supplier_id || !row.user.supplier_name) {
+  for (const user of userList) {
+    if (!user.supplier_id || !user.supplier_name) {
       continue
     }
 
-    if (!supplierMap.value.has(row.user.supplier_id)) {
+    if (!supplierMap.value.has(user.supplier_id)) {
       supplierOptions.push({
-        id: row.user.supplier_id,
-        name: row.user.supplier_name
+        id: user.supplier_id,
+        name: user.supplier_name
       })
     }
   }
@@ -353,7 +345,19 @@ onMounted(async () => {
 
 <style scoped>
 .feature-flags-container {
-  min-height: 100vh;
-  background-color: #f5f7fa;
+  min-height: 100%;
+}
+
+.feature-flags-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.feature-flag-surface {
+  overflow: hidden;
 }
 </style>

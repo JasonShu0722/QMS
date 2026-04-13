@@ -106,6 +106,34 @@ describe('auth store', () => {
     expect(loadFeatureFlagsMock).toHaveBeenCalledWith(true)
   })
 
+  it('keeps the selected entry environment when backend returns a runtime environment marker', async () => {
+    loginMock.mockResolvedValue({
+      access_token: 'token-dev',
+      token_type: 'bearer',
+      environment: 'dev',
+      allowed_environments: ['stable', 'preview'],
+      password_expired: false,
+      user_info: {
+        id: 9,
+        username: 'local-admin',
+        full_name: 'Local Admin',
+        email: 'local-admin@example.com',
+        user_type: 'internal',
+        status: 'active',
+        allowed_environments: 'stable,preview',
+        is_platform_admin: true,
+        created_at: '2026-03-31T00:00:00Z',
+        updated_at: '2026-03-31T00:00:00Z'
+      }
+    })
+
+    const store = useAuthStore()
+    await store.login('local-admin', 'Secret123!', 'internal', undefined, undefined, 'stable')
+
+    expect(store.currentEnvironment).toBe('stable')
+    expect(window.localStorage.setItem).toHaveBeenCalledWith('current_environment', 'stable')
+  })
+
   it('refreshes user info and preserves normalized payload fields', async () => {
     installStorage({
       access_token: 'token-abc',

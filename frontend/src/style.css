@@ -31,6 +31,76 @@ body {
   padding: 0;
 }
 
+.main-content--page-title-compact .page-title-compact-target {
+  margin-bottom: 10px !important;
+  padding-top: 0 !important;
+}
+
+.main-content--page-title-compact .page-title-compact-heading,
+.main-content--page-title-compact .page-title-compact-subcopy {
+  display: none !important;
+}
+
+.main-content > .page-stage {
+  min-height: 100%;
+  padding: 0 !important;
+}
+
+.page-stage--stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.page-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  min-height: 40px;
+}
+
+.surface-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.surface-toolbar--wrap {
+  flex-wrap: wrap;
+}
+
+.page-surface {
+  border: 1px solid rgba(226, 232, 240, 0.78);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.98);
+}
+
+.page-surface--padded {
+  padding: 14px 16px 16px;
+}
+
+.page-surface--table {
+  padding: 12px 16px 16px;
+}
+
+@media (max-width: 768px) {
+  .page-stage--stack {
+    gap: 10px;
+  }
+
+  .surface-toolbar {
+    margin-bottom: 10px;
+  }
+
+  .page-surface--padded,
+  .page-surface--table {
+    padding: 12px;
+  }
+}
+
 @media (prefers-color-scheme: light) {
   :root {
     color: #213547;

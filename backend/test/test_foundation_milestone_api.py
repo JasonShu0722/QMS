@@ -15,8 +15,11 @@ from app.core.auth_strategy import LocalAuthStrategy
 from app.core.config import settings
 from app.models.feature_flag import FeatureFlag, FeatureFlagEnvironment, FeatureFlagScope
 from app.models.permission import OperationType, Permission
+from app.models.role_permission import RolePermission
+from app.models.role_tag import RoleTag
 from app.models.supplier import Supplier, SupplierStatus
 from app.models.user import User, UserStatus, UserType
+from app.models.user_role_assignment import UserRoleAssignment
 
 pytestmark = pytest.mark.foundation_smoke
 
@@ -121,6 +124,26 @@ async def _create_feature_flag(
     await db_session.commit()
     await db_session.refresh(flag)
     return flag
+
+
+async def _create_role_tag(
+    db_session: AsyncSession,
+    *,
+    role_key: str,
+    role_name: str,
+    applicable_user_type: UserType | None = UserType.INTERNAL,
+    is_active: bool = True,
+) -> RoleTag:
+    role_tag = RoleTag(
+        role_key=role_key,
+        role_name=role_name,
+        applicable_user_type=applicable_user_type,
+        is_active=is_active,
+    )
+    db_session.add(role_tag)
+    await db_session.commit()
+    await db_session.refresh(role_tag)
+    return role_tag
 
 
 @pytest.mark.asyncio
@@ -317,9 +340,35 @@ async def test_permission_matrix_contract_and_mutations(
         supplier_id=supplier.id,
         full_name="Supplier Permission User",
     )
+    internal_role = await _create_role_tag(
+        db_session,
+        role_key="quality.process.engineer",
+        role_name="制程质量工程师",
+        applicable_user_type=UserType.INTERNAL,
+    )
+    supplier_role = await _create_role_tag(
+        db_session,
+        role_key="supplier.portal.responder",
+        role_name="供应商应答角色",
+        applicable_user_type=UserType.SUPPLIER,
+    )
 
-    seeded_permission = Permission(
-        user_id=target_user.id,
+    db_session.add_all(
+        [
+            UserRoleAssignment(
+                user_id=target_user.id,
+                role_tag_id=internal_role.id,
+                assigned_by=admin_user.id,
+            ),
+            UserRoleAssignment(
+                user_id=supplier_user.id,
+                role_tag_id=supplier_role.id,
+                assigned_by=admin_user.id,
+            ),
+        ]
+    )
+    seeded_permission = RolePermission(
+        role_tag_id=internal_role.id,
         module_path="supplier.management",
         operation_type=OperationType.READ,
         is_granted=True,
@@ -342,11 +391,16 @@ async def test_permission_matrix_contract_and_mutations(
         for module in matrix_data["modules"]
     )
 
-    target_row = next(row for row in matrix_data["rows"] if row["user"]["username"] == "permission_target")
-    supplier_row = next(row for row in matrix_data["rows"] if row["user"]["username"] == "supplier_permission_user")
+    target_row = next(
+        row for row in matrix_data["rows"] if row["role"]["role_key"] == "quality.process.engineer"
+    )
+    supplier_row = next(
+        row for row in matrix_data["rows"] if row["role"]["role_key"] == "supplier.portal.responder"
+    )
     assert target_row["permissions"]["supplier.management.read"] is True
-    assert supplier_row["user"]["supplier_name"] == "Permission Supplier"
-    assert supplier_row["user"]["is_platform_admin"] is False
+    assert target_row["role"]["assigned_user_count"] == 1
+    assert supplier_row["role"]["applicable_user_type"] == "supplier"
+    assert supplier_row["role"]["assigned_user_count"] == 1
 
     grant_response = await async_client.put(
         "/api/v1/admin/permissions/grant",

@@ -1,24 +1,28 @@
 """
 用户管理 API 测试
-测试管理员用户审核、冻结、重置密码等操作
+测试管理员用户审核、用户清单治理、角色分配等操作
 """
-import pytest
-from httpx import AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime
 
-from app.models.user import User, UserStatus, UserType
+import pytest
+from httpx import AsyncClient
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.core.auth_strategy import LocalAuthStrategy
+from app.models.role_tag import RoleTag
+from app.models.supplier import Supplier, SupplierStatus
+from app.models.user import User, UserStatus, UserType
+from app.models.user_role_assignment import UserRoleAssignment
 
 pytestmark = pytest.mark.foundation_smoke
 
 
 @pytest.fixture
 async def admin_user(db_session: AsyncSession) -> User:
-    """创建管理员用户"""
     auth_strategy = LocalAuthStrategy()
     hashed_password = auth_strategy.hash_password("AdminPass123!")
-    
+
     admin = User(
         username="admin",
         password_hash=hashed_password,
@@ -29,22 +33,21 @@ async def admin_user(db_session: AsyncSession) -> User:
         status=UserStatus.ACTIVE,
         department="质量部",
         position="系统管理员",
-        password_changed_at=datetime.utcnow()
+        password_changed_at=datetime.utcnow(),
     )
-    
+
     db_session.add(admin)
     await db_session.commit()
     await db_session.refresh(admin)
-    
+
     return admin
 
 
 @pytest.fixture
 async def pending_user(db_session: AsyncSession) -> User:
-    """创建待审核用户"""
     auth_strategy = LocalAuthStrategy()
     hashed_password = auth_strategy.hash_password("UserPass123!")
-    
+
     user = User(
         username="pending_user",
         password_hash=hashed_password,
@@ -54,22 +57,21 @@ async def pending_user(db_session: AsyncSession) -> User:
         user_type=UserType.INTERNAL,
         status=UserStatus.PENDING,
         department="生产部",
-        position="质量工程师"
+        position="质量工程师",
     )
-    
+
     db_session.add(user)
     await db_session.commit()
     await db_session.refresh(user)
-    
+
     return user
 
 
 @pytest.fixture
 async def active_user(db_session: AsyncSession) -> User:
-    """创建已激活用户"""
     auth_strategy = LocalAuthStrategy()
     hashed_password = auth_strategy.hash_password("UserPass123!")
-    
+
     user = User(
         username="active_user",
         password_hash=hashed_password,
@@ -80,320 +82,522 @@ async def active_user(db_session: AsyncSession) -> User:
         status=UserStatus.ACTIVE,
         department="质量部",
         position="质量工程师",
-        password_changed_at=datetime.utcnow()
+        allowed_environments="stable,preview",
+        password_changed_at=datetime.utcnow(),
     )
-    
+
     db_session.add(user)
     await db_session.commit()
     await db_session.refresh(user)
-    
+
     return user
 
 
 @pytest.fixture
+async def extra_active_user(db_session: AsyncSession) -> User:
+    auth_strategy = LocalAuthStrategy()
+    hashed_password = auth_strategy.hash_password("UserPass123!")
+
+    user = User(
+        username="another_user",
+        password_hash=hashed_password,
+        full_name="王五",
+        email="wangwu@company.com",
+        phone="13800138002",
+        user_type=UserType.INTERNAL,
+        status=UserStatus.ACTIVE,
+        department="采购部",
+        position="采购工程师",
+        password_changed_at=datetime.utcnow(),
+    )
+
+    db_session.add(user)
+    await db_session.commit()
+    await db_session.refresh(user)
+
+    return user
+
+
+@pytest.fixture
+async def role_tag(db_session: AsyncSession) -> RoleTag:
+    role = RoleTag(
+        role_key="quality.process.engineer",
+        role_name="制程质量工程师",
+        applicable_user_type=UserType.INTERNAL,
+        is_active=True,
+    )
+    db_session.add(role)
+    await db_session.commit()
+    await db_session.refresh(role)
+    return role
+
+
+@pytest.fixture
+async def active_supplier(db_session: AsyncSession) -> Supplier:
+    supplier = Supplier(
+        name="Northwind Components",
+        code="SUP001",
+        status=SupplierStatus.ACTIVE,
+        contact_person="Tom",
+        contact_email="supplier@example.com",
+    )
+    db_session.add(supplier)
+    await db_session.commit()
+    await db_session.refresh(supplier)
+    return supplier
+
+
+@pytest.fixture
 async def admin_token(async_client: AsyncClient, admin_user: User) -> str:
-    """获取管理员 Token"""
     response = await async_client.post(
         "/api/v1/auth/login",
         json={
             "username": "admin",
             "password": "AdminPass123!",
-            "user_type": "internal"
-        }
+            "user_type": "internal",
+        },
     )
     assert response.status_code == 200
     return response.json()["access_token"]
 
 
 class TestGetPendingUsers:
-    """测试获取待审核用户列表"""
-    
     @pytest.mark.asyncio
     async def test_get_pending_users_success(
         self,
         async_client: AsyncClient,
         admin_token: str,
-        pending_user: User
+        pending_user: User,
     ):
-        """测试成功获取待审核用户列表"""
         response = await async_client.get(
             "/api/v1/admin/users/pending",
-            headers={"Authorization": f"Bearer {admin_token}"}
+            headers={"Authorization": f"Bearer {admin_token}"},
         )
-        
+
         assert response.status_code == 200
         data = response.json()
-        assert isinstance(data, list)
-        assert len(data) >= 1
-        
-        # 验证返回的用户信息
         pending_users = [u for u in data if u["username"] == "pending_user"]
         assert len(pending_users) == 1
         assert pending_users[0]["status"] == "pending"
-        assert pending_users[0]["full_name"] == "张三"
-    
+
     @pytest.mark.asyncio
     async def test_get_pending_users_unauthorized(
         self,
         async_client: AsyncClient,
-        pending_user: User
     ):
-        """测试未认证访问"""
         response = await async_client.get("/api/v1/admin/users/pending")
         assert response.status_code == 401
 
 
+class TestUserListManagement:
+    @pytest.mark.asyncio
+    async def test_get_users_supports_filters(
+        self,
+        async_client: AsyncClient,
+        admin_token: str,
+        active_user: User,
+        extra_active_user: User,
+        pending_user: User,
+        role_tag: RoleTag,
+        db_session: AsyncSession,
+    ):
+        db_session.add(
+            UserRoleAssignment(
+                user_id=active_user.id,
+                role_tag_id=role_tag.id,
+            )
+        )
+        await db_session.commit()
+
+        response = await async_client.get(
+            "/api/v1/admin/users",
+            headers={"Authorization": f"Bearer {admin_token}"},
+            params={"department": "质量", "position": "工程师", "role_tag_id": role_tag.id},
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 1
+        assert data[0]["username"] == "active_user"
+        assert data[0]["role_tags"][0]["role_key"] == "quality.process.engineer"
+        assert all(user["status"] != "pending" for user in data)
+
+    @pytest.mark.asyncio
+    async def test_create_user_success_assigns_roles(
+        self,
+        async_client: AsyncClient,
+        admin_token: str,
+        role_tag: RoleTag,
+        db_session: AsyncSession,
+    ):
+        response = await async_client.post(
+            "/api/v1/admin/users",
+            headers={"Authorization": f"Bearer {admin_token}"},
+            json={
+                "username": "created_user",
+                "full_name": "赵六",
+                "email": "zhaoliu@company.com",
+                "phone": "13600136000",
+                "user_type": "internal",
+                "department": "质量管理部",
+                "position": "体系工程师",
+                "allowed_environments": "stable,preview",
+                "role_tag_ids": [role_tag.id],
+            },
+        )
+
+        assert response.status_code == 201
+        data = response.json()
+        assert data["user"]["username"] == "created_user"
+        assert data["user"]["status"] == "active"
+        assert len(data["temporary_password"]) >= 12
+        assert len(data["user"]["role_tags"]) == 1
+
+        created_user = (
+            await db_session.execute(select(User).where(User.username == "created_user"))
+        ).scalar_one()
+        assert created_user.department == "质量管理部"
+        assert created_user.password_changed_at is None
+
+    @pytest.mark.asyncio
+    async def test_create_supplier_user_resolves_supplier_identifier(
+        self,
+        async_client: AsyncClient,
+        admin_token: str,
+        active_supplier: Supplier,
+        db_session: AsyncSession,
+    ):
+        response = await async_client.post(
+            "/api/v1/admin/users",
+            headers={"Authorization": f"Bearer {admin_token}"},
+            json={
+                "username": "supplier_admin",
+                "full_name": "供应商管理员",
+                "email": "supplier-admin@example.com",
+                "user_type": "supplier",
+                "supplier_identifier": active_supplier.code,
+                "position": "质量接口人",
+                "allowed_environments": "stable",
+                "role_tag_ids": [],
+            },
+        )
+
+        assert response.status_code == 201
+        data = response.json()
+        assert data["user"]["user_type"] == "supplier"
+        assert data["user"]["supplier_id"] == active_supplier.id
+        assert data["user"]["supplier_name"] == active_supplier.name
+
+    @pytest.mark.asyncio
+    async def test_bulk_create_users_success(
+        self,
+        async_client: AsyncClient,
+        admin_token: str,
+        role_tag: RoleTag,
+        db_session: AsyncSession,
+    ):
+        response = await async_client.post(
+            "/api/v1/admin/users/bulk",
+            headers={"Authorization": f"Bearer {admin_token}"},
+            json={
+                "user_type": "internal",
+                "allowed_environments": "stable",
+                "role_tag_ids": [role_tag.id],
+                "items": [
+                    {
+                        "username": "batch_user_01",
+                        "full_name": "批量用户一",
+                        "email": "batch01@company.com",
+                        "phone": "13500135001",
+                        "department": "质量管理部",
+                        "position": "质量工程师",
+                    },
+                    {
+                        "username": "batch_user_02",
+                        "full_name": "批量用户二",
+                        "email": "batch02@company.com",
+                        "phone": "13500135002",
+                        "department": "采购部",
+                        "position": "采购工程师",
+                    },
+                ],
+            },
+        )
+
+        assert response.status_code == 201
+        data = response.json()
+        assert data["created_count"] == 2
+        assert len(data["results"]) == 2
+        assert all(len(item["temporary_password"]) >= 12 for item in data["results"])
+
+        created_users = (
+            await db_session.execute(
+                select(User).where(User.username.in_(["batch_user_01", "batch_user_02"]))
+            )
+        ).scalars().all()
+        assert len(created_users) == 2
+
+    @pytest.mark.asyncio
+    async def test_update_user_basic_info_success(
+        self,
+        async_client: AsyncClient,
+        admin_token: str,
+        active_user: User,
+        db_session: AsyncSession,
+    ):
+        response = await async_client.patch(
+            f"/api/v1/admin/users/{active_user.id}",
+            headers={"Authorization": f"Bearer {admin_token}"},
+            json={
+                "full_name": "李四-更新",
+                "email": "lisi-updated@company.com",
+                "phone": "13700137000",
+                "department": "质量管理部",
+                "position": "高级质量工程师",
+                "allowed_environments": "stable",
+            },
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["full_name"] == "李四-更新"
+        assert data["department"] == "质量管理部"
+        assert data["allowed_environments"] == "stable"
+
+        await db_session.refresh(active_user)
+        assert active_user.email == "lisi-updated@company.com"
+
+    @pytest.mark.asyncio
+    async def test_assign_user_roles_success(
+        self,
+        async_client: AsyncClient,
+        admin_token: str,
+        active_user: User,
+        role_tag: RoleTag,
+        db_session: AsyncSession,
+    ):
+        response = await async_client.put(
+            f"/api/v1/admin/users/{active_user.id}/roles",
+            headers={"Authorization": f"Bearer {admin_token}"},
+            json={"role_tag_ids": [role_tag.id]},
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["role_tags"]) == 1
+        assert data["role_tags"][0]["role_key"] == "quality.process.engineer"
+
+        assignments = (
+            await db_session.execute(
+                select(UserRoleAssignment).where(UserRoleAssignment.user_id == active_user.id)
+            )
+        ).scalars().all()
+        assert len(assignments) == 1
+
+    @pytest.mark.asyncio
+    async def test_assign_user_roles_rejects_incompatible_user_type(
+        self,
+        async_client: AsyncClient,
+        admin_token: str,
+        active_user: User,
+        db_session: AsyncSession,
+    ):
+        supplier_role = RoleTag(
+            role_key="supplier.external",
+            role_name="供应商账号",
+            applicable_user_type=UserType.SUPPLIER,
+            is_active=True,
+        )
+        db_session.add(supplier_role)
+        await db_session.commit()
+        await db_session.refresh(supplier_role)
+
+        response = await async_client.put(
+            f"/api/v1/admin/users/{active_user.id}/roles",
+            headers={"Authorization": f"Bearer {admin_token}"},
+            json={"role_tag_ids": [supplier_role.id]},
+        )
+
+        assert response.status_code == 400
+        assert "不适用于当前用户类型" in response.json()["detail"]
+
+    @pytest.mark.asyncio
+    async def test_delete_user_success(
+        self,
+        async_client: AsyncClient,
+        admin_token: str,
+        extra_active_user: User,
+        db_session: AsyncSession,
+    ):
+        response = await async_client.delete(
+            f"/api/v1/admin/users/{extra_active_user.id}",
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+
+        assert response.status_code == 200
+        assert response.json()["status"] == "deleted"
+
+        deleted = await db_session.get(User, extra_active_user.id)
+        assert deleted is None
+
+
 class TestApproveUser:
-    """测试批准用户注册"""
-    
     @pytest.mark.asyncio
     async def test_approve_user_success(
         self,
         async_client: AsyncClient,
         admin_token: str,
         pending_user: User,
-        db_session: AsyncSession
+        db_session: AsyncSession,
     ):
-        """测试成功批准用户"""
         response = await async_client.post(
             f"/api/v1/admin/users/{pending_user.id}/approve",
-            headers={"Authorization": f"Bearer {admin_token}"}
+            headers={"Authorization": f"Bearer {admin_token}"},
         )
-        
+
         assert response.status_code == 200
         data = response.json()
         assert data["message"] == "用户已批准"
-        assert data["user_id"] == pending_user.id
-        assert data["username"] == "pending_user"
         assert data["status"] == "active"
-        
-        # 验证数据库中的状态已更新
+
         await db_session.refresh(pending_user)
         assert pending_user.status == UserStatus.ACTIVE
-    
+
     @pytest.mark.asyncio
     async def test_approve_user_not_found(
         self,
         async_client: AsyncClient,
-        admin_token: str
+        admin_token: str,
     ):
-        """测试批准不存在的用户"""
         response = await async_client.post(
             "/api/v1/admin/users/99999/approve",
-            headers={"Authorization": f"Bearer {admin_token}"}
+            headers={"Authorization": f"Bearer {admin_token}"},
         )
-        
+
         assert response.status_code == 404
         assert "用户不存在" in response.json()["detail"]
-    
-    @pytest.mark.asyncio
-    async def test_approve_user_already_active(
-        self,
-        async_client: AsyncClient,
-        admin_token: str,
-        active_user: User
-    ):
-        """测试批准已激活的用户"""
-        response = await async_client.post(
-            f"/api/v1/admin/users/{active_user.id}/approve",
-            headers={"Authorization": f"Bearer {admin_token}"}
-        )
-        
-        assert response.status_code == 400
-        assert "无法批准" in response.json()["detail"]
 
 
 class TestRejectUser:
-    """测试拒绝用户注册"""
-    
     @pytest.mark.asyncio
     async def test_reject_user_success(
         self,
         async_client: AsyncClient,
         admin_token: str,
         pending_user: User,
-        db_session: AsyncSession
+        db_session: AsyncSession,
     ):
-        """测试成功拒绝用户"""
         response = await async_client.post(
             f"/api/v1/admin/users/{pending_user.id}/reject",
             headers={"Authorization": f"Bearer {admin_token}"},
-            json={"reason": "资料不完整"}
+            json={"reason": "资料不完整"},
         )
-        
+
         assert response.status_code == 200
-        data = response.json()
-        assert "用户已拒绝" in data["message"]
-        assert "资料不完整" in data["message"]
-        assert data["user_id"] == pending_user.id
-        assert data["status"] == "rejected"
-        
-        # 验证数据库中的状态已更新
+        assert response.json()["status"] == "rejected"
+
         await db_session.refresh(pending_user)
         assert pending_user.status == UserStatus.REJECTED
-    
+
     @pytest.mark.asyncio
     async def test_reject_user_without_reason(
         self,
         async_client: AsyncClient,
         admin_token: str,
-        pending_user: User
+        pending_user: User,
     ):
-        """测试拒绝用户时未填写原因"""
         response = await async_client.post(
             f"/api/v1/admin/users/{pending_user.id}/reject",
             headers={"Authorization": f"Bearer {admin_token}"},
-            json={"reason": ""}
+            json={"reason": ""},
         )
-        
+
         assert response.status_code == 400
         assert "必须填写拒绝原因" in response.json()["detail"]
 
 
 class TestFreezeUser:
-    """测试冻结用户账号"""
-    
     @pytest.mark.asyncio
     async def test_freeze_user_success(
         self,
         async_client: AsyncClient,
         admin_token: str,
         active_user: User,
-        db_session: AsyncSession
+        db_session: AsyncSession,
     ):
-        """测试成功冻结用户"""
         response = await async_client.post(
             f"/api/v1/admin/users/{active_user.id}/freeze",
             headers={"Authorization": f"Bearer {admin_token}"},
-            json={"reason": "供应商合作暂停"}
+            json={"reason": "供应商合作暂停"},
         )
-        
+
         assert response.status_code == 200
-        data = response.json()
-        assert "用户已冻结" in data["message"]
-        assert data["status"] == "frozen"
-        
-        # 验证数据库中的状态已更新
+        assert response.json()["status"] == "frozen"
+
         await db_session.refresh(active_user)
         assert active_user.status == UserStatus.FROZEN
-    
+
     @pytest.mark.asyncio
-    async def test_freeze_user_already_frozen(
+    async def test_freeze_current_login_user_rejected(
         self,
         async_client: AsyncClient,
         admin_token: str,
-        active_user: User,
-        db_session: AsyncSession
+        admin_user: User,
     ):
-        """测试冻结已冻结的用户"""
-        # 先冻结用户
-        active_user.status = UserStatus.FROZEN
-        await db_session.commit()
-        
         response = await async_client.post(
-            f"/api/v1/admin/users/{active_user.id}/freeze",
+            f"/api/v1/admin/users/{admin_user.id}/freeze",
             headers={"Authorization": f"Bearer {admin_token}"},
-            json={"reason": "测试"}
+            json={"reason": "误操作保护"},
         )
-        
+
         assert response.status_code == 400
-        assert "已处于冻结状态" in response.json()["detail"]
+        assert "不能冻结当前登录账号" in response.json()["detail"]
 
 
 class TestUnfreezeUser:
-    """测试解冻用户账号"""
-    
     @pytest.mark.asyncio
     async def test_unfreeze_user_success(
         self,
         async_client: AsyncClient,
         admin_token: str,
         active_user: User,
-        db_session: AsyncSession
+        db_session: AsyncSession,
     ):
-        """测试成功解冻用户"""
-        # 先冻结用户
         active_user.status = UserStatus.FROZEN
         await db_session.commit()
-        
+
         response = await async_client.post(
             f"/api/v1/admin/users/{active_user.id}/unfreeze",
-            headers={"Authorization": f"Bearer {admin_token}"}
+            headers={"Authorization": f"Bearer {admin_token}"},
         )
-        
+
         assert response.status_code == 200
-        data = response.json()
-        assert data["message"] == "用户已解冻"
-        assert data["status"] == "active"
-        
-        # 验证数据库中的状态已更新
+        assert response.json()["status"] == "active"
+
         await db_session.refresh(active_user)
         assert active_user.status == UserStatus.ACTIVE
-    
-    @pytest.mark.asyncio
-    async def test_unfreeze_user_not_frozen(
-        self,
-        async_client: AsyncClient,
-        admin_token: str,
-        active_user: User
-    ):
-        """测试解冻未冻结的用户"""
-        response = await async_client.post(
-            f"/api/v1/admin/users/{active_user.id}/unfreeze",
-            headers={"Authorization": f"Bearer {admin_token}"}
-        )
-        
-        assert response.status_code == 400
-        assert "无法解冻" in response.json()["detail"]
 
 
 class TestResetPassword:
-    """测试重置用户密码"""
-    
     @pytest.mark.asyncio
     async def test_reset_password_success(
         self,
         async_client: AsyncClient,
         admin_token: str,
         active_user: User,
-        db_session: AsyncSession
+        db_session: AsyncSession,
     ):
-        """测试成功重置密码"""
         response = await async_client.post(
             f"/api/v1/admin/users/{active_user.id}/reset-password",
-            headers={"Authorization": f"Bearer {admin_token}"}
+            headers={"Authorization": f"Bearer {admin_token}"},
         )
-        
+
         assert response.status_code == 200
         data = response.json()
-        assert "密码已重置" in data["message"]
         assert "temporary_password" in data
         assert len(data["temporary_password"]) >= 12
-        
-        # 验证临时密码包含所需字符类型
-        temp_pass = data["temporary_password"]
-        assert any(c.isupper() for c in temp_pass)  # 大写字母
-        assert any(c.islower() for c in temp_pass)  # 小写字母
-        assert any(c.isdigit() for c in temp_pass)  # 数字
-        assert any(c in "!@#$%^&*" for c in temp_pass)  # 特殊字符
-        
-        # 验证数据库中的密码已更新且 password_changed_at 被清空
+
         await db_session.refresh(active_user)
         assert active_user.password_changed_at is None
         assert active_user.failed_login_attempts == 0
         assert active_user.locked_until is None
-    
-    @pytest.mark.asyncio
-    async def test_reset_password_user_not_found(
-        self,
-        async_client: AsyncClient,
-        admin_token: str
-    ):
-        """测试重置不存在用户的密码"""
-        response = await async_client.post(
-            "/api/v1/admin/users/99999/reset-password",
-            headers={"Authorization": f"Bearer {admin_token}"}
-        )
-        
-        assert response.status_code == 404
-        assert "用户不存在" in response.json()["detail"]

@@ -8,6 +8,9 @@ from sqlalchemy import select
 
 from app.models.user import User, UserType, UserStatus
 from app.models.permission import Permission, OperationType
+from app.models.role_permission import RolePermission
+from app.models.role_tag import RoleTag
+from app.models.user_role_assignment import UserRoleAssignment
 from app.core.permissions import (
     PermissionChecker,
     require_permission,
@@ -374,3 +377,105 @@ async def test_permission_key_building(db_session: AsyncSession):
         is_granted=True
     )
     assert permission.permission_key == "quality.incoming.create"
+
+
+@pytest.mark.asyncio
+async def test_check_permission_granted_via_role_tag(db_session: AsyncSession):
+    """测试权限检查 - 通过角色标签授予权限"""
+    user = User(
+        username="role_permission_user",
+        password_hash="hashed_password",
+        full_name="Role Permission User",
+        email="roleperm@example.com",
+        user_type=UserType.INTERNAL,
+        status=UserStatus.ACTIVE
+    )
+    db_session.add(user)
+    await db_session.commit()
+    await db_session.refresh(user)
+
+    role_tag = RoleTag(
+        role_key="quality.process.engineer",
+        role_name="制程质量工程师",
+        applicable_user_type=UserType.INTERNAL,
+        is_active=True,
+    )
+    db_session.add(role_tag)
+    await db_session.commit()
+    await db_session.refresh(role_tag)
+
+    db_session.add(
+        UserRoleAssignment(
+            user_id=user.id,
+            role_tag_id=role_tag.id,
+        )
+    )
+    db_session.add(
+        RolePermission(
+            role_tag_id=role_tag.id,
+            module_path="quality.process",
+            operation_type=OperationType.UPDATE,
+            is_granted=True,
+        )
+    )
+    await db_session.commit()
+
+    has_perm = await PermissionChecker.check_permission(
+        user_id=user.id,
+        module_path="quality.process",
+        operation=OperationType.UPDATE,
+        db=db_session
+    )
+
+    assert has_perm is True
+
+
+@pytest.mark.asyncio
+async def test_inactive_role_tag_permissions_do_not_take_effect(db_session: AsyncSession):
+    """测试停用角色标签不会继续生效"""
+    user = User(
+        username="inactive_role_user",
+        password_hash="hashed_password",
+        full_name="Inactive Role User",
+        email="inactive-role@example.com",
+        user_type=UserType.INTERNAL,
+        status=UserStatus.ACTIVE
+    )
+    db_session.add(user)
+    await db_session.commit()
+    await db_session.refresh(user)
+
+    role_tag = RoleTag(
+        role_key="quality.customer.engineer",
+        role_name="客户质量工程师",
+        applicable_user_type=UserType.INTERNAL,
+        is_active=False,
+    )
+    db_session.add(role_tag)
+    await db_session.commit()
+    await db_session.refresh(role_tag)
+
+    db_session.add(
+        UserRoleAssignment(
+            user_id=user.id,
+            role_tag_id=role_tag.id,
+        )
+    )
+    db_session.add(
+        RolePermission(
+            role_tag_id=role_tag.id,
+            module_path="quality.customer",
+            operation_type=OperationType.READ,
+            is_granted=True,
+        )
+    )
+    await db_session.commit()
+
+    has_perm = await PermissionChecker.check_permission(
+        user_id=user.id,
+        module_path="quality.customer",
+        operation=OperationType.READ,
+        db=db_session
+    )
+
+    assert has_perm is False

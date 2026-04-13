@@ -46,6 +46,7 @@
   - `frontend/`：Vue 3 + Vite + Element Plus + Pinia
   - `deployment/`：Nginx / Docker / 部署配置
 - 系统设计目标是支持内部员工与外部供应商统一入口访问，并通过细粒度权限矩阵控制功能和操作权限。
+- 当前系统管理底座已把权限治理主模型收敛为“角色标签统一授权 + 账户分配角色标签”，并把用户管理拆为“用户审批”与“用户清单治理”两条主流程。
 - 需求面板已经承担项目级需求编排职责，当前支持 `总览`、`开发顺序`、`明细` 三类视图。
 - 后续无论开发哪个模块，都建议先在需求面板里确认所在批次、优先级和当前状态，再进入具体实现。
 - 当前需求状态基线已按保守口径回收：
@@ -89,13 +90,16 @@
 9. [`doc/FRONTEND_UI_COPY_REQUIREMENTS.md`](/E:/WorkSpace/QMS/doc/FRONTEND_UI_COPY_REQUIREMENTS.md)
    前端界面文案与解释性文本控制要求。后续页面开发与重构时，默认按这个口径控制按钮、卡片、页签、弹窗中的冗余说明文字。
 
-10. [`AGENTS.md`](/E:/WorkSpace/QMS/AGENTS.md)
+10. [`doc/QMS_ROLE_FUNCTION_MAPPING.md`](/E:/WorkSpace/QMS/doc/QMS_ROLE_FUNCTION_MAPPING.md)
+   面向用户分类、岗位层级、功能域、权限点与开发落点的映射草案。做系统管理、权限治理、菜单规划和跨部门流程设计时，建议先用它统一口径。
+
+11. [`AGENTS.md`](/E:/WorkSpace/QMS/AGENTS.md)
     项目级 Codex 协作契约。把当前仓库的技术栈、常用命令、开发原则、边界和渐进式阅读入口固化下来，适合新线程启动时优先加载。
 
-11. [`.agents/PLANS.md`](/E:/WorkSpace/QMS/.agents/PLANS.md)
+12. [`.agents/PLANS.md`](/E:/WorkSpace/QMS/.agents/PLANS.md)
     大型任务执行计划模板。跨模块开发、底座改造、长时间任务默认先按这个模板收敛目标、非目标、验证命令和风险，再进入实现。
 
-12. [`.codex/config.toml`](/E:/WorkSpace/QMS/.codex/config.toml)
+13. [`.codex/config.toml`](/E:/WorkSpace/QMS/.codex/config.toml)
     仓库级 Codex 默认配置，提供安全且偏工程化的默认运行方式，可被个人级配置覆盖。
 
 ### 第四层：按模块下钻时再查

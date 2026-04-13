@@ -34,8 +34,8 @@
                 <div class="profile-name-row">
                   <h2>{{ sessionUser?.full_name || authStore.userInfo?.full_name }}</h2>
                   <div class="profile-tag-list">
-                    <el-tag :type="environment === 'stable' ? 'primary' : 'warning'" size="small">
-                      {{ environment === 'stable' ? '正式环境' : '预览环境' }}
+                    <el-tag :type="environmentTagType" size="small">
+                      {{ environmentLabel }}
                     </el-tag>
                     <el-tag v-if="authStore.isPlatformAdmin" type="danger" size="small">平台管理员</el-tag>
                   </div>
@@ -499,6 +499,7 @@ import type {
   TodoSummary,
   TodoTask
 } from '@/types/workbench'
+import { getEnvironmentLabel, isPreviewEnvironment } from '@/utils/environment'
 
 interface ProfileFormState {
   full_name: string
@@ -619,7 +620,9 @@ const featureBlocks = computed(() => dashboardData.value?.feature_blocks || {
   notifications: false
 })
 const sessionUser = computed(() => dashboardData.value?.user_info || authStore.userInfo)
-const environment = computed(() => dashboardData.value?.environment || authStore.currentEnvironment)
+const entryEnvironment = computed(() => authStore.currentEnvironment)
+const environmentLabel = computed(() => getEnvironmentLabel(entryEnvironment.value))
+const environmentTagType = computed(() => (isPreviewEnvironment(entryEnvironment.value) ? 'warning' : 'primary'))
 const quickActionContext = computed<WorkbenchQuickActionContext>(() => ({
   isInternal: authStore.isInternal,
   isSupplier: authStore.isSupplier,

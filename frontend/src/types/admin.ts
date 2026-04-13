@@ -1,8 +1,7 @@
 /**
  * 管理后台相关类型定义
  */
-
-import type { User } from './user'
+import type { RoleTagSummary } from './role'
 
 // Re-export for external use
 export type { User, UserStatus } from './user'
@@ -29,7 +28,7 @@ export interface Permission {
  * 权限矩阵行（用户维度）
  */
 export interface PermissionMatrixRow {
-  user: User
+  role: RoleTagSummary
   permissions: Record<string, boolean> // key: "module_path.operation_type"
 }
 
@@ -39,6 +38,8 @@ export interface PermissionMatrixRow {
 export interface PermissionMatrixColumn {
   module_path: string
   module_name: string
+  group_key?: string | null
+  group_name?: string | null
   operations: OperationType[]
 }
 
@@ -148,4 +149,73 @@ export interface UserApprovalRequest {
   user_id: number
   action: 'approve' | 'reject'
   reason?: string
+}
+
+export interface UserListQuery {
+  keyword?: string
+  department?: string
+  position?: string
+  user_type?: 'internal' | 'supplier'
+  status?: 'active' | 'frozen' | 'rejected'
+  role_tag_id?: number
+}
+
+export interface UserUpdateRequest {
+  full_name: string
+  email: string
+  phone?: string
+  department?: string
+  position?: string
+  allowed_environments: string
+}
+
+export interface AdminUserCreateRequest {
+  username: string
+  full_name: string
+  email: string
+  phone?: string
+  department?: string
+  position?: string
+  supplier_identifier?: string
+  user_type: 'internal' | 'supplier'
+  allowed_environments: string
+  role_tag_ids: number[]
+}
+
+export interface AdminBulkUserCreateItem {
+  username: string
+  full_name: string
+  email: string
+  phone?: string
+  department?: string
+  position?: string
+  supplier_identifier?: string
+}
+
+export interface AdminUserCreateResponse {
+  message: string
+  user: import('./user').User
+  temporary_password: string
+  email_sent: boolean
+}
+
+export interface AdminBulkUserCreateItemResponse {
+  row_number: number
+  user: import('./user').User
+  temporary_password: string
+  email_sent: boolean
+}
+
+export interface AdminBulkUserCreateRequest {
+  user_type: 'internal' | 'supplier'
+  allowed_environments: string
+  role_tag_ids: number[]
+  items: AdminBulkUserCreateItem[]
+}
+
+export interface AdminBulkUserCreateResponse {
+  message: string
+  total_count: number
+  created_count: number
+  results: AdminBulkUserCreateItemResponse[]
 }

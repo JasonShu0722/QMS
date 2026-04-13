@@ -31,8 +31,8 @@ export const requirementsPanelCatalog: RequirementPanelCatalog = {
           priority: 'high',
           scope: '核心需求',
           phase: '一期核心',
-          status: 'todo',
-          acceptance: '支持按一级/二级/三级模块与录入/查阅/修改/删除/导出维度实时配置权限。'
+          status: 'verified',
+          acceptance: '支持按角色标签维护一级/二级/三级模块与录入/查阅/修改/删除/导出权限，并可按账户分配角色标签。'
         },
         {
           id: 'foundation-login-portal',
@@ -72,12 +72,12 @@ export const requirementsPanelCatalog: RequirementPanelCatalog = {
         },
         {
           id: 'foundation-account-governance',
-          title: '用户注册审批与账号冻结',
+          title: '用户审批、清单治理与角色分配',
           priority: 'medium',
           scope: '核心需求',
           phase: '一期核心',
-          status: 'todo',
-          acceptance: '支持内部/供应商注册审核、密码重置、冻结/解冻与用户状态维护。'
+          status: 'verified',
+          acceptance: '支持内部/供应商注册审核、用户清单筛选、资料维护、角色分配、密码重置、冻结/解冻与删除保护。'
         },
         {
           id: 'foundation-profile-signature',

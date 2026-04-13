@@ -1,15 +1,9 @@
 <template>
-  <div class="operation-logs-container p-4 md:p-6">
-    <el-card>
-      <template #header>
-        <div class="flex justify-between items-center">
-          <h2 class="text-xl font-bold">操作日志</h2>
-          <el-button @click="loadLogs" :icon="Refresh" circle />
-        </div>
-      </template>
+  <div class="operation-logs-container page-stage--stack">
+    <section class="page-surface page-surface--table log-surface">
 
       <!-- 筛选条件 -->
-      <el-form :inline="true" :model="queryForm" class="mb-4">
+      <el-form :inline="true" :model="queryForm" class="filter-toolbar">
         <el-form-item label="操作人">
           <el-select
             v-model="queryForm.user_id"
@@ -73,6 +67,7 @@
         </el-form-item>
 
         <el-form-item>
+          <el-button @click="loadLogs" :icon="Refresh" circle />
           <el-button type="primary" @click="handleSearch">查询</el-button>
           <el-button @click="handleReset">重置</el-button>
           <el-button @click="handleExport" :loading="exporting">导出</el-button>
@@ -132,7 +127,7 @@
           @current-change="handlePageChange"
         />
       </div>
-    </el-card>
+    </section>
 
     <!-- 日志详情对话框 -->
     <el-dialog
@@ -429,8 +424,25 @@ onMounted(() => {
 
 <style scoped>
 .operation-logs-container {
-  min-height: 100vh;
-  background-color: #f5f7fa;
+  min-height: 100%;
+}
+
+.log-surface {
+  overflow: hidden;
+}
+
+.filter-toolbar {
+  padding: 12px 14px;
+  margin-bottom: 14px;
+  border-radius: 14px;
+  background: #f8fafc;
+  border: 1px solid rgba(226, 232, 240, 0.82);
+}
+
+.filter-toolbar :deep(.el-form-item:last-child .el-form-item__content) {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .diff-panel {

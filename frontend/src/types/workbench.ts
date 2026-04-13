@@ -50,7 +50,7 @@ export interface DashboardFeatureBlocks {
 
 export interface DashboardBase {
   user_info: User
-  environment: 'stable' | 'preview'
+  environment: string
   quick_actions: QuickAction[]
   feature_blocks: DashboardFeatureBlocks
   todo_summary: TodoSummary

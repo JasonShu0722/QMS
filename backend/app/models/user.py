@@ -97,6 +97,11 @@ class User(Base):
     # 关系映射
     # supplier: Mapped[Optional["Supplier"]] = relationship("Supplier", back_populates="users")
     # permissions: Mapped[list["Permission"]] = relationship("Permission", back_populates="user", cascade="all, delete-orphan")
+    role_assignments: Mapped[list["UserRoleAssignment"]] = relationship(
+        "UserRoleAssignment",
+        back_populates="user",
+        cascade="all, delete-orphan"
+    )
     operation_logs: Mapped[list["OperationLog"]] = relationship("OperationLog", back_populates="user")
     notifications: Mapped[list["Notification"]] = relationship("Notification", back_populates="user", cascade="all, delete-orphan")
     

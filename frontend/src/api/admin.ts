@@ -10,8 +10,21 @@ import type {
   TaskStatistics,
   TaskReassignRequest,
   FeatureFlag,
-  FeatureFlagUpdateRequest
+  FeatureFlagUpdateRequest,
+  AdminBulkUserCreateRequest,
+  AdminBulkUserCreateResponse,
+  AdminUserCreateRequest,
+  AdminUserCreateResponse,
+  UserListQuery,
+  UserUpdateRequest
 } from '@/types/admin'
+import type {
+  RolePermissionChange,
+  RoleTagCreateRequest,
+  RoleTemplateInitializationResponse,
+  RoleTagSummary,
+  RoleTagUpdateRequest
+} from '@/types/role'
 
 /**
  * 管理后台相关 API
@@ -24,6 +37,21 @@ export const adminApi = {
    */
   getPendingUsers(): Promise<User[]> {
     return request.get('/v1/admin/users/pending')
+  },
+
+  /**
+   * 获取用户清单
+   */
+  getUsers(params?: UserListQuery): Promise<User[]> {
+    return request.get('/v1/admin/users', { params })
+  },
+
+  createUser(data: AdminUserCreateRequest): Promise<AdminUserCreateResponse> {
+    return request.post('/v1/admin/users', data)
+  },
+
+  bulkCreateUsers(data: AdminBulkUserCreateRequest): Promise<AdminBulkUserCreateResponse> {
+    return request.post('/v1/admin/users/bulk', data)
   },
 
   /**
@@ -41,10 +69,24 @@ export const adminApi = {
   },
 
   /**
+   * 更新用户基本信息
+   */
+  updateUser(userId: number, data: UserUpdateRequest): Promise<User> {
+    return request.patch(`/v1/admin/users/${userId}`, data)
+  },
+
+  /**
+   * 分配角色标签
+   */
+  assignUserRoles(userId: number, roleTagIds: number[]): Promise<User> {
+    return request.put(`/v1/admin/users/${userId}/roles`, { role_tag_ids: roleTagIds })
+  },
+
+  /**
    * 冻结用户账号
    */
-  freezeUser(userId: number): Promise<void> {
-    return request.post(`/v1/admin/users/${userId}/freeze`)
+  freezeUser(userId: number, reason?: string): Promise<void> {
+    return request.post(`/v1/admin/users/${userId}/freeze`, reason ? { reason } : {})
   },
 
   /**
@@ -61,7 +103,58 @@ export const adminApi = {
     return request.post(`/v1/admin/users/${userId}/reset-password`)
   },
 
+  /**
+   * 删除用户
+   */
+  deleteUser(userId: number): Promise<void> {
+    return request.delete(`/v1/admin/users/${userId}`)
+  },
+
   // ==================== 权限管理 ====================
+
+  /**
+   * 获取角色标签列表
+   */
+  getRoleTags(params?: {
+    include_inactive?: boolean
+    applicable_user_type?: 'internal' | 'supplier'
+  }): Promise<RoleTagSummary[]> {
+    return request.get('/v1/admin/permissions/roles', { params })
+  },
+
+  /**
+   * 创建角色标签
+   */
+  createRoleTag(data: RoleTagCreateRequest): Promise<RoleTagSummary> {
+    return request.post('/v1/admin/permissions/roles', data)
+  },
+
+  /**
+   * 更新角色标签
+   */
+  updateRoleTag(roleId: number, data: RoleTagUpdateRequest): Promise<RoleTagSummary> {
+    return request.put(`/v1/admin/permissions/roles/${roleId}`, data)
+  },
+
+  /**
+   * 删除角色标签
+   */
+  deleteRoleTag(roleId: number): Promise<void> {
+    return request.delete(`/v1/admin/permissions/roles/${roleId}`)
+  },
+
+  /**
+   * 更新角色标签权限
+   */
+  updateRolePermissions(roleId: number, permissions: RolePermissionChange[]): Promise<void> {
+    return request.put(`/v1/admin/permissions/roles/${roleId}/permissions`, {
+      permissions
+    })
+  },
+
+  initializeRoleTemplates(): Promise<RoleTemplateInitializationResponse> {
+    return request.post('/v1/admin/permissions/initialize-role-templates')
+  },
 
   /**
    * 获取权限矩阵

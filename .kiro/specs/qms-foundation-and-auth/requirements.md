@@ -35,12 +35,12 @@
 
 | 范围 | 当前状态 | 说明 |
 | --- | --- | --- |
-| Requirement 1-3 | 已落地 | 注册审核、统一登录、环境准入、平台管理员引导、权限矩阵已形成可联调闭环 |
+| Requirement 1-3 | 已落地 | 注册审核、统一登录、环境准入、平台管理员引导、角色标签权限矩阵已形成可联调闭环 |
 | Requirement 4 | 预留 | 操作日志管理入口保留，但不作为第一里程碑阻塞项 |
 | Requirement 5 | 部分落地 | 资料读取、头像、密码、签名已落地；账户信息自助修改仅限平台管理员 |
 | Requirement 6-7 | 基础版已落地 | 工作台、快捷入口、底座域待办聚合已落地；增强指标与跨全部业务任务聚合继续扩展 |
 | Requirement 8-11 | 预留/非阻塞 | 通知中心、公告管理、全局任务监控、通知规则配置保留兼容位，不作为第一里程碑主交付 |
-| Requirement 12 | 已落地 | 审批注册、冻结/解冻、重置密码、权限矩阵治理已可用 |
+| Requirement 12 | 已落地 | 审批注册、用户清单治理、角色标签分配、冻结/解冻、重置密码、权限矩阵治理已可用 |
 | Requirement 13 | 部分落地 | 基础响应式已跟随前端布局实现；离线暂存等场景未落地 |
 | Requirement 14-16 | 已落地 | 双环境、非破坏性迁移约束、功能特性开关已纳入正式交付 |
 | Requirement 17-20 | 预留/按阶段推进 | 系统配置大面板、预留模块、DMZ 部署细节不作为当前验收阻塞 |
@@ -52,6 +52,7 @@
 - **Internal_User**: 公司内部员工用户
 - **Supplier_User**: 外部供应商用户
 - **Permission_Matrix**: 权限矩阵，基于"功能模块-操作类型"的二维权限配置表
+- **Role_Tag**: 角色标签，用于承载一组标准化权限，再由管理员批量分配给账户
 - **Operation_Type**: 操作类型，包括录入、查阅、修改、删除、导出五种基本操作
 - **Feature_Module**: 功能模块，系统的一级/二级/三级菜单功能点
 - **Audit_Log**: 操作日志，记录用户关键操作的审计记录
@@ -113,20 +114,22 @@
 
 ### Requirement 3: 细粒度权限控制
 
-**User Story:** 作为系统管理员，我希望能够为每个用户配置细粒度的权限，精确控制其对不同功能模块的操作能力，以实现灵活的权限管理。
+**User Story:** 作为系统管理员，我希望能够按角色标签统一配置细粒度权限，并将角色标签分配给用户，以降低逐人维护权限的成本并保持权限口径一致。
 
 #### Acceptance Criteria
 
 1. WHEN 平台管理员访问权限配置界面 THEN THE QMS_System SHALL 允许其进入系统管理后台，而不依赖业务权限矩阵自举
 2. WHEN 管理员访问权限配置界面 THEN THE QMS_System SHALL 展示网格化的权限矩阵配置界面
 3. WHEN 前端读取权限矩阵 THEN THE QMS_System SHALL 返回统一的 `modules + rows` 契约
-4. WHEN 管理员选择用户 THEN THE QMS_System SHALL 展示该用户当前的权限配置状态
-5. WHEN 管理员为用户配置功能模块权限 THEN THE QMS_System SHALL 支持配置一级、二级、三级菜单的访问权限
-6. WHEN 管理员为用户配置操作权限 THEN THE QMS_System SHALL 支持独立配置录入、查阅、修改、删除、导出五种操作权限
-7. WHEN 供应商用户查阅数据 THEN THE QMS_System SHALL 仅返回关联到该供应商名称的数据记录
-8. WHEN 管理员保存权限配置 THEN THE QMS_System SHALL 立即生效无需重启后端服务
-9. WHEN 用户访问功能模块 THEN THE QMS_System SHALL 根据权限配置动态渲染可用的操作按钮
-10. WHEN 用户尝试执行无权限的操作 THEN THE QMS_System SHALL 拒绝请求并返回权限不足提示
+4. WHEN 管理员访问权限管理界面 THEN THE QMS_System SHALL 展示可维护的角色标签列表及其适用用户类型、启停状态和已分配账户数量
+5. WHEN 管理员为角色标签配置功能模块权限 THEN THE QMS_System SHALL 支持配置一级、二级、三级菜单的访问权限
+6. WHEN 管理员为角色标签配置操作权限 THEN THE QMS_System SHALL 支持独立配置录入、查阅、修改、删除、导出五种操作权限
+7. WHEN 管理员将角色标签分配给账户 THEN THE QMS_System SHALL 使该账户立即继承角色标签对应的权限集合
+8. WHEN 系统保留用户级直连授权能力 THEN THE QMS_System SHALL 将其视为兼容性补充通道，而不是权限治理的主入口
+9. WHEN 供应商用户查阅数据 THEN THE QMS_System SHALL 仅返回关联到该供应商名称的数据记录
+10. WHEN 管理员保存权限配置 THEN THE QMS_System SHALL 立即生效无需重启后端服务
+11. WHEN 用户访问功能模块 THEN THE QMS_System SHALL 根据权限配置动态渲染可用的操作按钮
+12. WHEN 用户尝试执行无权限的操作 THEN THE QMS_System SHALL 拒绝请求并返回权限不足提示
 
 ### Requirement 4: 操作日志审计
 
@@ -237,17 +240,22 @@
 
 ### Requirement 12: 用户信息与权限管理
 
-**User Story:** 作为系统管理员，我希望能够管理用户账号的生命周期，包括审批注册、重置密码、冻结账号和配置权限，以维护系统安全。
+**User Story:** 作为系统管理员，我希望能够分别处理用户审批和用户清单治理，并在清单中维护账户资料、角色标签和账号状态，以维护系统安全并降低日常管理成本。
 
 #### Acceptance Criteria
 
 1. WHEN 管理员查看待审核用户 THEN THE QMS_System SHALL 展示所有状态为"待审核"的注册申请
 2. WHEN 管理员审批注册申请 THEN THE QMS_System SHALL 支持通过或驳回操作并记录审批意见
-3. WHEN 管理员重置用户密码 THEN THE QMS_System SHALL 生成临时密码并强制用户下次登录修改
-4. WHEN 管理员冻结用户账号 THEN THE QMS_System SHALL 将用户状态设置为"已冻结"并阻止其登录
-5. WHEN 管理员解冻用户账号 THEN THE QMS_System SHALL 将用户状态恢复为"已激活"并允许其登录
-6. WHEN 管理员调整普通用户账户资料 THEN THE QMS_System SHALL 在用户管理能力中统一完成治理，而不是依赖普通用户自助修改
-7. WHEN 管理员配置用户权限 THEN THE QMS_System SHALL 展示 Permission_Matrix 配置界面并支持实时保存
+3. WHEN 管理员访问用户管理界面 THEN THE QMS_System SHALL 将"用户审批"与"用户清单管理"作为两个明确的子版块区分展示
+4. WHEN 管理员查看用户清单 THEN THE QMS_System SHALL 展示非待审核账户的姓名、用户名、部门、岗位、用户类型、角色标签和账号状态
+5. WHEN 管理员筛选用户清单 THEN THE QMS_System SHALL 支持按姓名或用户名关键字、部门、岗位、用户类型、账号状态和角色标签进行搜索与筛选
+6. WHEN 管理员调整普通用户账户资料 THEN THE QMS_System SHALL 在用户清单管理中统一完成治理，而不是依赖普通用户自助修改
+7. WHEN 管理员为账户分配角色标签 THEN THE QMS_System SHALL 支持绑定一个或多个角色标签并立即生效
+8. WHEN 管理员重置用户密码 THEN THE QMS_System SHALL 生成临时密码并强制用户下次登录修改
+9. WHEN 管理员冻结用户账号 THEN THE QMS_System SHALL 将用户状态设置为"已冻结"并阻止其登录
+10. WHEN 管理员解冻用户账号 THEN THE QMS_System SHALL 将用户状态恢复为"已激活"并允许其登录
+11. WHEN 管理员删除普通账户 THEN THE QMS_System SHALL 阻止删除超级管理员 bootstrap 账户和已关联关键业务数据的账户
+12. WHEN 管理员配置角色标签权限 THEN THE QMS_System SHALL 展示 Permission_Matrix 配置界面并支持实时保存
 
 ### Requirement 13: 移动端响应式适配
 

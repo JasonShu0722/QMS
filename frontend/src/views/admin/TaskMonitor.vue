@@ -41,7 +41,7 @@
       <el-col :xs="24" :md="12">
         <el-card>
           <template #header>
-            <h3 class="text-lg font-bold">按部门统计</h3>
+            <span class="section-caption">按部门统计</span>
           </template>
           <div ref="departmentChartRef" style="height: 300px"></div>
         </el-card>
@@ -49,7 +49,7 @@
       <el-col :xs="24" :md="12">
         <el-card>
           <template #header>
-            <h3 class="text-lg font-bold">按人员统计（Top 10）</h3>
+            <span class="section-caption">按人员统计（Top 10）</span>
           </template>
           <div ref="userChartRef" style="height: 300px"></div>
         </el-card>
@@ -60,7 +60,7 @@
     <el-card>
       <template #header>
         <div class="flex justify-between items-center flex-wrap gap-2">
-          <h2 class="text-xl font-bold">任务清单</h2>
+          <span class="section-caption section-caption--strong">任务清单</span>
           <div class="flex gap-2 flex-wrap">
             <el-select
               v-model="filters.urgency"
@@ -438,5 +438,16 @@ onMounted(() => {
 .stat-label {
   font-size: 14px;
   color: #909399;
+}
+
+.section-caption {
+  color: #1f2a37;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.section-caption--strong {
+  font-size: 15px;
 }
 </style>

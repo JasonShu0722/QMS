@@ -43,9 +43,12 @@ QMS/
 └─ README.md
 ```
 
-## 推荐启动方式：本地调试
+## 推荐启动方式：日常开发模式
 
-这是当前最适合开发和排查问题的方式。
+这是当前最适合开发、联调和排查问题的方式。推荐约定如下：
+
+- 日常开发模式：只保留 `postgres` / `redis` 容器，后端本地运行在 `8000`，前端本地运行在 `5173`
+- 容器验收模式：需要验证 `stable / preview` 双环境行为时，再启动或重启 `qms_backend_stable` / `qms_backend_preview`
 
 ### 1. 环境要求
 
@@ -101,6 +104,54 @@ http://localhost:8000/health
 http://localhost:8000/api/docs
 ```
 
+### 3.1 本地调试时重启 8000 后端
+
+本地联调统一约定后端固定使用 `8000`，前端开发代理默认也指向这个端口。日常改完后端代码、数据库迁移或系统管理相关设计后，需要把本机 `8000` 切换到“当前工作区最新后端”，不要临时改成其他端口。
+
+如果 `8000` 仍被 Docker 稳定后端占用，请按下面步骤处理：
+
+```powershell
+# 1. 释放 8000（只停 stable 后端，保留 postgres / redis / preview）
+Set-Location E:\WorkSpace\QMS
+docker compose stop backend-stable
+
+# 1.1 如果 8000 已被旧的本地后端占用，先确认 PID 再结束旧进程
+Get-NetTCPConnection -LocalPort 8000 -State Listen
+Get-Process -Id <PID>
+Stop-Process -Id <PID>
+
+# 2. 升级数据库到最新迁移
+Set-Location E:\WorkSpace\QMS\backend
+.venv\Scripts\python.exe -m alembic upgrade head
+
+# 3. 用 backend/.venv 在 8000 启动当前工作区后端
+Start-Process `
+  -FilePath E:\WorkSpace\QMS\backend\.venv\Scripts\python.exe `
+  -ArgumentList '-m','uvicorn','app.main:app','--host','0.0.0.0','--port','8000','--reload' `
+  -WorkingDirectory E:\WorkSpace\QMS\backend `
+  -RedirectStandardOutput E:\WorkSpace\QMS\backend-dev-8000.log `
+  -RedirectStandardError E:\WorkSpace\QMS\backend-dev-8000.err.log
+```
+
+启动后建议立即验证：
+
+```powershell
+Invoke-WebRequest http://127.0.0.1:8000/health -UseBasicParsing
+Get-NetTCPConnection -LocalPort 8000 -State Listen
+```
+
+期望结果：
+
+- `/health` 返回 `{"status":"healthy"}`
+- `8000` 监听进程为本地 Python / Uvicorn，而不是 Docker `backend-stable` 端口映射
+
+如果之后要切回容器版稳定后端：
+
+```powershell
+Set-Location E:\WorkSpace\QMS
+docker compose up -d backend-stable
+```
+
 ### 4. 启动前端
 
 在 `frontend` 目录执行：
@@ -138,6 +189,51 @@ VITE_API_BASE_URL=/api
 - 用户类型：内部员工
 
 如密码忘记，需要在数据库或脚本中重置，不建议只依赖历史文档中的默认密码。
+
+## 代码变更后的处理规则
+
+当前 `backend-stable` 和 `backend-preview` 共享同一份后端代码挂载、同一个数据库，只是 `ENVIRONMENT` 不同。因此：
+
+- 数据库迁移只需要执行一次，不需要对 stable / preview 各跑一遍
+- 后端代码变更后，如果你在用容器验收模式，需要同时让两个后端服务吃到新代码
+
+### 1. 纯 Python / FastAPI 代码改动
+
+- 本地日常开发模式：本地 `uvicorn --reload` 会自动生效，通常不需要手工重启
+- 容器验收模式：重启两个后端容器
+
+```bash
+docker compose restart backend-stable backend-preview
+```
+
+### 2. 数据库模型 / Alembic 迁移改动
+
+- 先执行一次迁移
+- 再重启两个后端容器
+
+```bash
+cd backend
+.venv\Scripts\python.exe -m alembic upgrade head
+
+cd ..
+docker compose restart backend-stable backend-preview
+```
+
+### 3. 依赖、Dockerfile、镜像层改动
+
+- 仅重启不够，需要重新构建镜像
+
+```bash
+docker compose up -d --build backend-stable backend-preview
+```
+
+### 4. Celery 任务、通知、定时任务相关改动
+
+- 除后端外，还要同步重启 worker / beat
+
+```bash
+docker compose restart backend-stable backend-preview celery-worker celery-beat
+```
 
 ## 容器模式启动
 

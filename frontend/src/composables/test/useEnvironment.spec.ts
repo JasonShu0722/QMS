@@ -63,6 +63,16 @@ describe('useEnvironment', () => {
     expect(environment.switchButtonText.value).toContain('正式')
   })
 
+  it('normalizes unsupported local environment markers back to stable entry mode', () => {
+    installStorage({ current_environment: 'dev' })
+    installLocation('localhost', 'http://localhost:5173/workbench')
+
+    const environment = useEnvironment()
+
+    expect(environment.currentEnvironment.value).toBe('stable')
+    expect(environment.environmentName.value).toContain('正式')
+  })
+
   it('switches local development environment by updating storage and reloading', () => {
     installStorage({ current_environment: 'stable' })
     const reloadMock = installLocation('localhost', 'http://localhost:5173/workbench')

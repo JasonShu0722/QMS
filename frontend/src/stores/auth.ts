@@ -1,20 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { User } from '@/types/user'
-
-function detectRuntimeEnvironment(): 'stable' | 'preview' {
-  const hostname = window.location.hostname
-
-  if (hostname.includes('preview')) {
-    return 'preview'
-  }
-
-  if (hostname === 'localhost' || hostname.startsWith('127.0.0.1')) {
-    return localStorage.getItem('current_environment') === 'preview' ? 'preview' : 'stable'
-  }
-
-  return 'stable'
-}
+import { detectEntryEnvironment, normalizeEntryEnvironment, type EntryEnvironment } from '@/utils/environment'
 
 /**
  * Authentication store
@@ -27,7 +14,7 @@ function detectRuntimeEnvironment(): 'stable' | 'preview' {
 export const useAuthStore = defineStore('auth', () => {
   const token = ref<string | null>(localStorage.getItem('access_token'))
   const userInfo = ref<User | null>(null)
-  const currentEnvironment = ref<'stable' | 'preview'>(detectRuntimeEnvironment())
+  const currentEnvironment = ref<EntryEnvironment>(detectEntryEnvironment())
 
   const isAuthenticated = computed(() => !!token.value)
   const isSupplier = computed(() => userInfo.value?.user_type === 'supplier')
@@ -59,7 +46,7 @@ export const useAuthStore = defineStore('auth', () => {
     userType: 'internal' | 'supplier',
     captcha?: string,
     captchaId?: string,
-    environment: 'stable' | 'preview' = 'stable'
+    environment: EntryEnvironment = 'stable'
   ): Promise<void> {
     const { authApi } = await import('@/api/auth')
 
@@ -74,7 +61,7 @@ export const useAuthStore = defineStore('auth', () => {
 
     token.value = response.access_token
     userInfo.value = response.user_info
-    currentEnvironment.value = (response.environment || environment) as 'stable' | 'preview'
+    currentEnvironment.value = normalizeEntryEnvironment(environment)
 
     localStorage.setItem('access_token', response.access_token)
     localStorage.setItem(
@@ -94,7 +81,7 @@ export const useAuthStore = defineStore('auth', () => {
   function logout() {
     token.value = null
     userInfo.value = null
-    currentEnvironment.value = detectRuntimeEnvironment()
+    currentEnvironment.value = detectEntryEnvironment()
     localStorage.removeItem('access_token')
     localStorage.removeItem('user_info')
     localStorage.removeItem('current_environment')

@@ -1,3 +1,5 @@
+import type { RoleTagSummary } from './role'
+
 /**
  * 用户类型定义
  */
@@ -39,6 +41,7 @@ export interface User {
   // 环境权限（逗号分隔："stable", "preview", "stable,preview"）
   allowed_environments?: string
   is_platform_admin?: boolean
+  role_tags?: RoleTagSummary[]
 
   // 审计字段
   created_at: string

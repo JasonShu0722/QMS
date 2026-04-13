@@ -125,6 +125,9 @@
               <Fold v-if="!isCollapse" />
               <Expand v-else />
             </el-icon>
+            <div v-if="currentPageTitle" class="page-context">
+              <strong class="page-context__title">{{ currentPageTitle }}</strong>
+            </div>
           </div>
 
           <div class="header-right">
@@ -154,7 +157,10 @@
           </div>
         </el-header>
 
-        <el-main class="main-content">
+        <el-main
+          ref="mainContentRef"
+          :class="['main-content', shouldCompactContentTitle ? 'main-content--page-title-compact' : '']"
+        >
           <router-view />
         </el-main>
       </el-container>
@@ -167,7 +173,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   DataLine,
@@ -188,6 +194,7 @@ import MobileLayout from './MobileLayout.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useEnvironment } from '@/composables/useEnvironment'
 import { useFeatureFlagStore } from '@/stores/featureFlag'
+import { getEnvironmentLabel, isPreviewEnvironment } from '@/utils/environment'
 
 const router = useRouter()
 const route = useRoute()
@@ -197,14 +204,95 @@ const { currentEnvironment, switchButtonText, switchEnvironment, syncEnvironment
 
 const isCollapse = ref(false)
 const isMobile = ref(false)
+const mainContentRef = ref<any>(null)
 
 const activeMenu = computed(() => route.path)
-const isPreviewEnv = computed(() => currentEnvironment.value === 'preview')
-const currentEnvLabel = computed(() => (isPreviewEnv.value ? '预览环境' : '正式环境'))
+const isPreviewEnv = computed(() => isPreviewEnvironment(currentEnvironment.value))
+const currentEnvLabel = computed(() => getEnvironmentLabel(currentEnvironment.value))
 const canSwitchEnvironment = computed(() => authStore.allowedEnvironments.length > 1)
+const currentPageTitle = computed(() => String(route.meta.title || ''))
+const shouldCompactContentTitle = computed(() => Boolean(currentPageTitle.value))
 
 const isInstrumentsEnabled = computed(() => featureFlagStore.isFeatureEnabled('instruments.management'))
 const isQualityCostsEnabled = computed(() => featureFlagStore.isFeatureEnabled('quality_costs.management'))
+
+function resolveMainContentElement() {
+  return mainContentRef.value?.$el ?? mainContentRef.value ?? null
+}
+
+function clearCompactTitleState(root: ParentNode | null) {
+  if (!root) {
+    return
+  }
+
+  root.querySelectorAll('.page-stage').forEach((element) => {
+    element.classList.remove('page-stage')
+  })
+  root.querySelectorAll('.page-title-compact-target').forEach((element) => {
+    element.classList.remove('page-title-compact-target')
+  })
+  root.querySelectorAll('.page-title-compact-heading').forEach((element) => {
+    element.classList.remove('page-title-compact-heading')
+  })
+  root.querySelectorAll('.page-title-compact-subcopy').forEach((element) => {
+    element.classList.remove('page-title-compact-subcopy')
+  })
+}
+
+function markCompactTitleCandidate(pageRoot: Element | null) {
+  if (!pageRoot) {
+    return
+  }
+
+  const directChildren = Array.from(pageRoot.children)
+  const candidate = directChildren.find((child) => {
+    if (!(child instanceof HTMLElement)) {
+      return false
+    }
+
+    if (child.classList.contains('page-header')) {
+      return true
+    }
+
+    return Boolean(child.querySelector(':scope > h1, :scope > h2, :scope > div > h1, :scope > div > h2'))
+  })
+
+  if (!(candidate instanceof HTMLElement)) {
+    return
+  }
+
+  const heading =
+    candidate.querySelector(':scope > h1, :scope > h2') ?? candidate.querySelector('h1, h2')
+  if (heading instanceof HTMLElement) {
+    candidate.classList.add('page-title-compact-target')
+    heading.classList.add('page-title-compact-heading')
+  }
+
+  const subcopy =
+    candidate.querySelector(':scope > p') ?? candidate.querySelector('p')
+  if (subcopy instanceof HTMLElement) {
+    subcopy.classList.add('page-title-compact-subcopy')
+  }
+}
+
+async function syncCompactPageTitle() {
+  await nextTick()
+  const mainContent = resolveMainContentElement()
+  clearCompactTitleState(mainContent)
+
+  const pageRoot = mainContent?.querySelector(':scope > *')
+  if (!(pageRoot instanceof Element)) {
+    return
+  }
+
+  pageRoot.classList.add('page-stage')
+
+  if (!shouldCompactContentTitle.value) {
+    return
+  }
+
+  markCompactTitleCandidate(pageRoot)
+}
 
 function toggleCollapse() {
   isCollapse.value = !isCollapse.value
@@ -242,11 +330,20 @@ onMounted(async () => {
   if (authStore.isAuthenticated) {
     await featureFlagStore.loadFeatureFlags()
   }
+
+  await syncCompactPageTitle()
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener('resize', updateIsMobile)
 })
+
+watch(
+  () => route.fullPath,
+  async () => {
+    await syncCompactPageTitle()
+  }
+)
 </script>
 
 <style scoped>
@@ -331,9 +428,31 @@ onBeforeUnmount(() => {
   gap: 16px;
 }
 
+.header-left {
+  min-width: 0;
+}
+
 .collapse-icon {
   cursor: pointer;
   font-size: 20px;
+  flex-shrink: 0;
+}
+
+.page-context {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+}
+
+.page-context__title {
+  color: #1f2a37;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .env-badge {
@@ -387,7 +506,19 @@ onBeforeUnmount(() => {
 }
 
 .main-content {
-  background-color: #f0f2f5;
-  padding: 20px;
+  background-color: #f3f6fb;
+  padding: 14px 16px 18px;
+}
+
+@media (max-width: 992px) {
+  .page-context__title {
+    font-size: 16px;
+  }
+}
+
+@media (max-width: 768px) {
+  .main-content {
+    padding: 10px 12px 14px;
+  }
 }
 </style>

@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field, validator
 from datetime import datetime
 
 from app.models.permission import OperationType
+from app.schemas.role_tag import RoleTagSummarySchema
 
 
 class PermissionBase(BaseModel):
@@ -99,12 +100,14 @@ class PermissionMatrixModule(BaseModel):
     """权限矩阵列定义"""
     module_path: str
     module_name: str
+    group_key: str | None = None
+    group_name: str | None = None
     operations: List[str]
 
 
 class PermissionMatrixRow(BaseModel):
     """权限矩阵行定义"""
-    user: Dict[str, Any]
+    role: RoleTagSummarySchema
     permissions: Dict[str, bool]
 
 
@@ -116,14 +119,16 @@ class PermissionMatrixResponse(BaseModel):
     class Config:
         json_schema_extra = {
             "example": {
-                "users": [
+                "rows": [
                     {
-                        "user_id": 1,
-                        "username": "john_doe",
-                        "full_name": "John Doe",
-                        "user_type": "internal",
-                        "department": "Quality",
-                        "position": "SQE",
+                        "role": {
+                            "id": 1,
+                            "role_key": "quality.process.engineer",
+                            "role_name": "制程质量工程师",
+                            "applicable_user_type": "internal",
+                            "is_active": True,
+                            "assigned_user_count": 12
+                        },
                         "permissions": {
                             "supplier.performance": {
                                 "read": True,
@@ -135,12 +140,13 @@ class PermissionMatrixResponse(BaseModel):
                         }
                     }
                 ],
-                "available_modules": [
-                    "supplier.performance",
-                    "supplier.audit",
-                    "quality.incoming"
-                ],
-                "available_operations": ["create", "read", "update", "delete", "export"]
+                "modules": [
+                    {
+                        "module_path": "supplier.performance",
+                        "module_name": "供应商绩效",
+                        "operations": ["create", "read", "update", "delete", "export"]
+                    }
+                ]
             }
         }
 

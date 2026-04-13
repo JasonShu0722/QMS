@@ -3,6 +3,9 @@ from app.models.base import Base
 from app.models.supplier import Supplier, SupplierStatus
 from app.models.user import User, UserType, UserStatus
 from app.models.permission import Permission, OperationType
+from app.models.role_tag import RoleTag
+from app.models.role_permission import RolePermission
+from app.models.user_role_assignment import UserRoleAssignment
 from app.models.feature_flag import FeatureFlag, FeatureFlagScope, FeatureFlagEnvironment
 from app.models.system_config import SystemConfig, ConfigCategory
 from app.models.notification import Notification, MessageType
@@ -65,6 +68,9 @@ __all__ = [
     "UserStatus",
     "Permission",
     "OperationType",
+    "RoleTag",
+    "RolePermission",
+    "UserRoleAssignment",
     "FeatureFlag",
     "FeatureFlagScope",
     "FeatureFlagEnvironment",

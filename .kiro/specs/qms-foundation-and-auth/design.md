@@ -34,19 +34,20 @@
 当前仓库已经落地的底座能力如下：
 
 1. **统一认证闭环**：内部员工与供应商共用统一登录页；供应商保留验证码；登录时显式选择 `stable / preview` 环境；`allowed_environments` 成为唯一环境准入规则。
-2. **稳定会话契约**：登录成功后除 Token 外，统一返回 `user_info`、`environment`、`allowed_environments`、平台管理员标识、头像/签名路径和供应商名称。
+2. **稳定会话契约**：登录成功后除 Token 外，统一返回 `user_info`、`environment`、`allowed_environments`、平台管理员标识、头像/签名路径和供应商名称；其中当前 `is_platform_admin` 语义应解释为超级管理员（SuperAdmin）bootstrap 标识。
 3. **平台管理员 bootstrap**：系统管理后台入口通过独立平台管理员标识引导，不依赖业务权限矩阵先完成自举。
-4. **权限矩阵闭环**：管理员后台已落地 `modules + rows` 契约的权限矩阵读取、授权、撤权能力。
-5. **账号治理与个人中心基础**：注册审批、冻结/解冻、重置密码、资料读取、头像上传、密码修改、电子签名上传已可联调；账户信息自助修改仅开放给平台管理员。
-6. **基础工作台**：工作台已具备个人信息卡、环境标识、统一系统设置弹窗、可配置快捷入口、页头待办统计窗、个人待办事项弹窗、底座域待办任务聚合与公告/通知占位区，且待办只展示真实可处理事项。
-7. **双环境与功能开关**：`stable / preview` 双环境已纳入正式设计，功能开关按“环境优先，再按 global / whitelist 判定”的规则生效。
-8. **当前非阻塞项**：通知中心、公告管理大面板、操作日志总览、系统配置大面板仍属于后续阶段，不构成第一里程碑阻塞。
+4. **管理员分层与角色标签基础**：除 SuperAdmin 外，业务管理员（Admin）仍作为后续正式分层目标存在；当前权限治理基础已先通过 `role_tags / role_permissions / user_role_assignments` 三张表落地。
+5. **权限矩阵闭环**：管理员后台已落地 `modules + rows` 契约的权限矩阵读取能力，且当前 `rows` 以角色标签为行维度；用户级直连授权保留为兼容通道。
+6. **账号治理与个人中心基础**：注册审批、用户清单治理、角色标签分配、冻结/解冻、删除保护、重置密码、资料读取、头像上传、密码修改、电子签名上传已可联调；账户信息自助修改仅开放给平台管理员。
+7. **基础工作台**：工作台已具备个人信息卡、环境标识、统一系统设置弹窗、可配置快捷入口、页头待办统计窗、个人待办事项弹窗、底座域待办任务聚合与公告/通知占位区，且待办只展示真实可处理事项。
+8. **双环境与功能开关**：`stable / preview` 双环境已纳入正式设计，功能开关按“环境优先，再按 global / whitelist 判定”的规则生效。
+9. **当前非阻塞项**：通知中心、公告管理大面板、操作日志总览、系统配置大面板仍属于后续阶段，不构成第一里程碑阻塞。
 
 ### 核心设计目标
 
 1. **统一认证入口与环境准入**：支持内部员工（Phase 1: 账号密码，预留 LDAP/AD）和外部供应商（账号密码 + 图形验证码）的统一登录，并返回稳定会话对象。
 2. **细粒度权限控制**：基于“功能模块-操作类型”的二维权限矩阵，支持录入/查阅/修改/删除/导出五种操作的独立配置。
-3. **平台管理自举**：在权限矩阵完全配置前，通过平台管理员引导机制保障用户管理、权限矩阵、功能开关等后台能力可进入。
+3. **平台管理自举与分层**：在权限矩阵完全配置前，通过超级管理员引导机制保障用户管理、权限矩阵、功能开关等后台能力可进入；后续再把日常运维能力下沉给业务管理员角色。
 4. **基础工作台优先**：先交付可联调、可验证的工作台基础版，再逐步补齐指标增强块、公告中心和跨业务任务聚合。
 5. **双轨发布机制**：通过 Nginx 域名路由分发，实现新功能在预览环境验证后平滑发布到正式环境。
 6. **数据库兼容性**：遵循 Alembic 非破坏性迁移原则，确保双轨环境数据一致性。
@@ -158,16 +159,29 @@ server {
 - `PUT /api/v1/profile/password`
 - `POST /api/v1/profile/signature`
 - `GET /api/v1/workbench/dashboard`
+- `GET /api/v1/admin/users`
 - `GET /api/v1/admin/permissions/matrix`
+- `GET /api/v1/admin/permissions/roles`
+- `POST /api/v1/admin/permissions/roles`
+- `PUT /api/v1/admin/permissions/roles/{role_id}`
+- `DELETE /api/v1/admin/permissions/roles/{role_id}`
+- `PUT /api/v1/admin/permissions/roles/{role_id}/permissions`
 - `PUT /api/v1/admin/permissions/grant`
 - `PUT /api/v1/admin/permissions/revoke`
 - `GET/POST/PUT/DELETE /api/v1/admin/feature-flags`
 - `GET /api/v1/admin/users/pending`
+- `PATCH /api/v1/admin/users/{user_id}`
+- `PUT /api/v1/admin/users/{user_id}/roles`
+- `DELETE /api/v1/admin/users/{user_id}`
 - `POST /api/v1/admin/users/{user_id}/approve`
 - `POST /api/v1/admin/users/{user_id}/reject`
 - `POST /api/v1/admin/users/{user_id}/freeze`
 - `POST /api/v1/admin/users/{user_id}/unfreeze`
 - `POST /api/v1/admin/users/{user_id}/reset-password`
+
+其中：
+- 用户管理已拆分为“用户审批”与“用户清单管理”两条主流程。
+- 权限治理主路径已切换为“角色标签授权 -> 账户分配角色标签”，用户级授权仅保留兼容性补充能力。
 
 ### 认证架构设计
 
@@ -307,7 +321,7 @@ class AuthService:
 
 ```python
 from enum import Enum
-from typing import List, Set
+from typing import Set
 
 class OperationType(str, Enum):
     CREATE = "create"      # 录入/新建
@@ -318,53 +332,35 @@ class OperationType(str, Enum):
 
 class PermissionChecker:
     """细粒度权限检查器"""
-    
+
     @staticmethod
-    async def check_permission(
-        user_id: int,
-        module_path: str,  # 例如: "supplier.performance.monthly_score"
-        operation: OperationType
-    ) -> bool:
-        """检查用户是否有权限执行指定操作"""
-        permissions = await PermissionRepository.get_user_permissions(user_id)
-        
-        # 构建权限键
+    async def get_user_permissions(user_id: int) -> Set[str]:
+        """返回用户生效中的权限集合。
+
+        当前实现会合并两类来源：
+        1. 用户直连权限（兼容历史）
+        2. 用户已分配且处于启用状态的角色标签权限
+        """
+        direct_permissions = await PermissionRepository.get_user_permissions(user_id)
+        role_permissions = await RolePermissionRepository.get_permissions_by_user_roles(user_id)
+        return set(direct_permissions) | set(role_permissions)
+
+    @staticmethod
+    async def check_permission(user_id: int, module_path: str, operation: OperationType) -> bool:
         permission_key = f"{module_path}.{operation.value}"
-        
+        permissions = await PermissionChecker.get_user_permissions(user_id)
         return permission_key in permissions
-    
+
     @staticmethod
     async def filter_data_by_supplier(user_id: int, queryset):
         """供应商用户数据过滤"""
         user = await UserRepository.get_by_id(user_id)
-        
+
         if user.user_type == UserType.SUPPLIER:
             # 仅返回关联到该供应商的数据
             return queryset.filter(supplier_id=user.supplier_id)
-        
-        return queryset
 
-# FastAPI 依赖注入装饰器
-def require_permission(module_path: str, operation: OperationType):
-    """权限检查装饰器"""
-    async def permission_dependency(
-        current_user: User = Depends(get_current_user)
-    ):
-        has_permission = await PermissionChecker.check_permission(
-            current_user.id,
-            module_path,
-            operation
-        )
-        
-        if not has_permission:
-            raise HTTPException(
-                status_code=403,
-                detail=f"No permission for {operation.value} on {module_path}"
-            )
-        
-        return current_user
-    
-    return permission_dependency
+        return queryset
 ```
 
 
@@ -918,7 +914,7 @@ onMounted(async () => {
 CREATE TABLE users (
     id SERIAL PRIMARY KEY,
     username VARCHAR(50) UNIQUE NOT NULL,
-    hashed_password VARCHAR(255) NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
     full_name VARCHAR(100) NOT NULL,
     email VARCHAR(100) NOT NULL,
     phone VARCHAR(20),
@@ -928,20 +924,21 @@ CREATE TABLE users (
     -- 内部员工字段
     department VARCHAR(100),
     position VARCHAR(100),
-    role_id INTEGER REFERENCES roles(id),
     
     -- 供应商字段
-    supplier_id INTEGER REFERENCES suppliers(id),
+    supplier_id INTEGER REFERENCES suppliers(id) ON DELETE SET NULL,
+
+    -- 展示与环境字段
+    avatar_image_path VARCHAR(255),
+    allowed_environments VARCHAR(50) NOT NULL DEFAULT 'stable',
+    digital_signature VARCHAR(255),
     
     -- 安全字段
     failed_login_attempts INTEGER DEFAULT 0,
     locked_until TIMESTAMP,
     password_changed_at TIMESTAMP,
     last_login_at TIMESTAMP,
-    
-    -- 电子签名
-    signature_image_path VARCHAR(255),
-    
+
     -- 审计字段
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -955,6 +952,8 @@ CREATE INDEX idx_users_username ON users(username);
 CREATE INDEX idx_users_supplier_id ON users(supplier_id);
 CREATE INDEX idx_users_status ON users(status);
 ```
+
+> 当前实现不在 `users` 表中直接保存固定角色字段，而是通过角色标签关系表维护一个账户可绑定多个角色标签。
 
 
 #### 2. Permission（权限表）
@@ -981,7 +980,69 @@ CREATE INDEX idx_permissions_user_id ON permissions(user_id);
 CREATE INDEX idx_permissions_module_path ON permissions(module_path);
 ```
 
-#### 3. AuditLog（操作日志表）
+#### 3. RoleTag（角色标签表）
+
+```sql
+CREATE TABLE role_tags (
+    id SERIAL PRIMARY KEY,
+    role_key VARCHAR(100) UNIQUE NOT NULL,
+    role_name VARCHAR(100) NOT NULL,
+    description VARCHAR(255),
+    applicable_user_type VARCHAR(20),
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by INTEGER,
+    updated_by INTEGER
+);
+
+CREATE INDEX idx_role_tags_role_key ON role_tags(role_key);
+CREATE INDEX idx_role_tags_user_type ON role_tags(applicable_user_type);
+CREATE INDEX idx_role_tags_is_active ON role_tags(is_active);
+```
+
+#### 4. RolePermission（角色标签权限表）
+
+```sql
+CREATE TABLE role_permissions (
+    id SERIAL PRIMARY KEY,
+    role_tag_id INTEGER NOT NULL REFERENCES role_tags(id) ON DELETE CASCADE,
+    module_path VARCHAR(255) NOT NULL,
+    operation_type VARCHAR(20) NOT NULL,
+    is_granted BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by INTEGER,
+    updated_by INTEGER,
+
+    CONSTRAINT check_role_permission_operation_type CHECK (
+        operation_type IN ('create', 'read', 'update', 'delete', 'export')
+    ),
+    UNIQUE(role_tag_id, module_path, operation_type)
+);
+
+CREATE INDEX idx_role_permissions_role_tag_id ON role_permissions(role_tag_id);
+CREATE INDEX idx_role_permissions_module_path ON role_permissions(module_path);
+```
+
+#### 5. UserRoleAssignment（用户角色分配表）
+
+```sql
+CREATE TABLE user_role_assignments (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    role_tag_id INTEGER NOT NULL REFERENCES role_tags(id) ON DELETE CASCADE,
+    assigned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    assigned_by INTEGER,
+
+    UNIQUE(user_id, role_tag_id)
+);
+
+CREATE INDEX idx_user_role_assignments_user_id ON user_role_assignments(user_id);
+CREATE INDEX idx_user_role_assignments_role_tag_id ON user_role_assignments(role_tag_id);
+```
+
+#### 6. AuditLog（操作日志表）
 
 ```sql
 CREATE TABLE audit_logs (

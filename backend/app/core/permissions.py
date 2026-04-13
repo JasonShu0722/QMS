@@ -2,7 +2,7 @@
 权限引擎核心逻辑
 Permission Engine - 细粒度权限检查、缓存管理、数据隔离
 """
-from typing import Optional, Dict, Set, Any
+from typing import Optional, Dict, Set, Any, Iterable
 from fastapi import Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -14,6 +14,9 @@ from app.core.database import get_db
 from app.core.dependencies import get_current_active_user
 from app.models.user import User, UserType
 from app.models.permission import Permission, OperationType
+from app.models.role_permission import RolePermission
+from app.models.role_tag import RoleTag
+from app.models.user_role_assignment import UserRoleAssignment
 
 
 # Redis 客户端（用于权限缓存）
@@ -196,6 +199,11 @@ class PermissionChecker:
         except Exception as e:
             # Redis 连接失败不应阻塞业务，仅记录日志
             print(f"Warning: Failed to clear permission cache for user {user_id}: {e}")
+
+    @staticmethod
+    async def clear_users_cache(user_ids: Iterable[int]) -> None:
+        for user_id in set(user_ids):
+            await PermissionChecker.clear_user_cache(user_id)
     
     # ========== 私有方法：缓存管理 ==========
     
@@ -266,11 +274,25 @@ class PermissionChecker:
             Permission.is_granted == True
         )
         result = await db.execute(stmt)
-        permissions = result.scalars().all()
-        
+        direct_permissions = result.scalars().all()
+
+        role_stmt = (
+            select(RolePermission)
+            .join(UserRoleAssignment, UserRoleAssignment.role_tag_id == RolePermission.role_tag_id)
+            .join(RoleTag, RoleTag.id == RolePermission.role_tag_id)
+            .where(
+                UserRoleAssignment.user_id == user_id,
+                RoleTag.is_active == True,
+                RolePermission.is_granted == True,
+            )
+        )
+        role_result = await db.execute(role_stmt)
+        role_permissions = role_result.scalars().all()
+
         # 构建权限键集合
-        permission_keys = {perm.permission_key for perm in permissions}
-        
+        permission_keys = {perm.permission_key for perm in direct_permissions}
+        permission_keys.update({perm.permission_key for perm in role_permissions})
+
         return permission_keys
 
 

@@ -564,6 +564,8 @@ docker compose exec redis redis-cli -a "$REDIS_PASSWORD" -n 1 FLUSHDB  # Preview
 
 ```bash
 # 1. 拉取最新代码
+# 私有仓库场景下，服务器需要已有 GitHub 访问凭据；
+# 如果走 GitHub Actions 自动部署，则由 workflow 临时注入令牌，不需要在服务器上手工保存账号密码
 git pull origin main
 
 # 2. 备份数据库

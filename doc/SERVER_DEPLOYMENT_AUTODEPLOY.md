@@ -118,8 +118,8 @@ Nginx 模板文件为：
 1. 检出代码
 2. 通过 SSH 连接服务器
 3. 进入部署目录
-4. `git pull`
-5. 执行部署脚本，例如：
+4. 先用本次 workflow 注入的临时仓库令牌做一次引导式 `git fetch` / `git merge --ff-only`
+5. 再执行部署脚本，例如：
 
 ```bash
 cd /www/qms/QMS
@@ -140,6 +140,12 @@ bash deployment/auto_deploy.sh main
 
 - `SERVER_KNOWN_HOSTS`
 
+说明：
+
+- 当前自动部署不需要额外新增 GitHub PAT Secret。
+- workflow 会把本次运行的 `GITHUB_TOKEN` 临时注入远端 shell，先完成一次引导式更新，再供 [deployment/auto_deploy.sh](/E:/WorkSpace/QMS/deployment/auto_deploy.sh) 拉取私有仓库代码使用。
+- 因此服务器上的仓库可以继续保持 `https://github.com/...` 形式的 `origin`，不需要手工保存 GitHub 用户名密码。
+
 你当前服务器建议这样填写：
 
 - `SERVER_HOST`: 你的云服务器公网 IP 或 SSH 域名
@@ -156,7 +162,7 @@ bash deployment/auto_deploy.sh main
 
 - [deployment/auto_deploy.sh](/E:/WorkSpace/QMS/deployment/auto_deploy.sh)
 
-这个脚本会先备份服务器本地的 `.env.production`，再 `git pull`，最后恢复该文件，避免生产配置被仓库模板覆盖。
+这个脚本会先备份服务器本地的 `.env.production`，再用 workflow 注入的临时令牌执行拉取和快进合并，最后恢复该文件，避免生产配置被仓库模板覆盖。
 
 ## 八、推荐的服务器部署目录初始化
 
@@ -169,6 +175,12 @@ git clone https://github.com/JasonShu0722/QMS.git
 cd QMS
 cp .env.example .env.production
 ```
+
+如果你是在服务器上手工执行 [deployment/auto_deploy.sh](/E:/WorkSpace/QMS/deployment/auto_deploy.sh)，而仓库又是私有仓库，则需要满足下面任一条件：
+
+- 服务器上的 `origin` 已经改成可直接访问的 SSH remote
+- 先导出 `DEPLOY_REMOTE_URL`，例如带 token 的只读 HTTPS 地址
+- 或者改用 GitHub Actions 触发自动部署，由 workflow 临时注入访问令牌
 
 然后根据服务器实际情况补齐：
 

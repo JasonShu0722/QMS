@@ -6,6 +6,9 @@ on:
       - main
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 concurrency:
   group: deploy-production
   cancel-in-progress: false
@@ -29,5 +32,32 @@ jobs:
           command_timeout: 60m
           script: |
             set -euo pipefail
+            export GITHUB_DEPLOY_TOKEN='${{ github.token }}'
+            export GITHUB_REPOSITORY='${{ github.repository }}'
             cd "${{ secrets.SERVER_DEPLOY_PATH }}"
+            ENV_FILE=".env.production"
+            ENV_BACKUP="$(mktemp)"
+            ENV_PRESENT=0
+            AUTH_REMOTE="https://x-access-token:${GITHUB_DEPLOY_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+
+            if [ -f "$ENV_FILE" ]; then
+              cp "$ENV_FILE" "$ENV_BACKUP"
+              ENV_PRESENT=1
+            fi
+
+            git checkout -- .env.production || true
+            git fetch "$AUTH_REMOTE" main --prune
+
+            if git show-ref --verify --quiet "refs/heads/main"; then
+              git checkout main
+              git merge --ff-only FETCH_HEAD
+            else
+              git checkout -b main FETCH_HEAD
+            fi
+
+            if [ "$ENV_PRESENT" -eq 1 ]; then
+              cp "$ENV_BACKUP" "$ENV_FILE"
+            fi
+
+            rm -f "$ENV_BACKUP"
             bash deployment/auto_deploy.sh main

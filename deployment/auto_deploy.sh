@@ -10,6 +10,7 @@ ENV_FILE="${PROJECT_ROOT}/.env.production"
 ENV_BACKUP="$(mktemp)"
 ENV_RESTORE_PENDING=0
 COMPOSE_CMD=(docker compose --env-file "$ENV_FILE")
+DEPLOY_REMOTE="origin"
 
 cleanup() {
     if [ "${ENV_RESTORE_PENDING:-0}" -eq 1 ] && [ -f "$ENV_BACKUP" ]; then
@@ -19,6 +20,19 @@ cleanup() {
 }
 
 trap cleanup EXIT
+
+resolve_deploy_remote() {
+    if [ -n "${DEPLOY_REMOTE_URL:-}" ]; then
+        DEPLOY_REMOTE="${DEPLOY_REMOTE_URL}"
+        echo "[INFO] Using explicit deploy remote URL"
+        return
+    fi
+
+    if [ -n "${GITHUB_DEPLOY_TOKEN:-}" ] && [ -n "${GITHUB_REPOSITORY:-}" ]; then
+        DEPLOY_REMOTE="https://x-access-token:${GITHUB_DEPLOY_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+        echo "[INFO] Using GitHub Actions token for authenticated fetch"
+    fi
+}
 
 check_database_auth() {
     echo "[INFO] Validating database credentials before migrations"
@@ -58,13 +72,19 @@ echo "[INFO] Backing up local .env.production"
 cp "$ENV_FILE" "$ENV_BACKUP"
 ENV_RESTORE_PENDING=1
 
+resolve_deploy_remote
+
 echo "[INFO] Fetching latest code"
-git fetch origin "$DEPLOY_BRANCH" --prune
+git fetch "$DEPLOY_REMOTE" "$DEPLOY_BRANCH" --prune
 
 echo "[INFO] Updating working tree"
 git checkout -- .env.production
-git checkout "$DEPLOY_BRANCH"
-git pull --ff-only origin "$DEPLOY_BRANCH"
+if git show-ref --verify --quiet "refs/heads/${DEPLOY_BRANCH}"; then
+    git checkout "$DEPLOY_BRANCH"
+    git merge --ff-only FETCH_HEAD
+else
+    git checkout -b "$DEPLOY_BRANCH" FETCH_HEAD
+fi
 
 echo "[INFO] Restoring server-specific .env.production"
 cp "$ENV_BACKUP" "$ENV_FILE"

@@ -45,6 +45,15 @@
 | Requirement 14-16 | 已落地 | 双环境、非破坏性迁移约束、功能特性开关已纳入正式交付 |
 | Requirement 17-20 | 预留/按阶段推进 | 系统配置大面板、预留模块、DMZ 部署细节不作为当前验收阻塞 |
 
+## 跨模块问题管理共享约束（2026-04 增补）
+
+虽然问题管理的业务细节归属 2.5-2.9 各模块，但基础架构层已明确以下共享约束：
+
+1. 系统需要支持跨模块统一问题主模型，以承接问题主单号、责任人、当前阶段、回复形式、待办、通知和数据范围控制。
+2. 系统需要同时支持“问题简报（brief）”和“8D报告（eight_d）”两种回复形式，并允许在流转中按规则切换。
+3. 系统需要对跨模块问题统一执行数据范围控制：内部人员默认可查看全量业务问题，外部供应商仅可查看本供应商被分派的问题。
+4. 系统工作台、待办聚合和通知中心需要复用统一问题主单号 / 8D 报告号与统一流转事件，而不是由各模块各自维护不同口径。
+
 ## Glossary
 
 - **QMS_System**: 质量管理系统，本文档所描述的整体应用系统
@@ -58,6 +67,8 @@
 - **Audit_Log**: 操作日志，记录用户关键操作的审计记录
 - **Workbench**: 动态工作台，用户登录后的首页，展示个性化看板和待办任务
 - **Todo_Task**: 待办任务，需要当前用户处理的业务单据或审批事项
+- **Issue_Case**: 问题主单，跨模块统一承接问题生命周期、责任人、回复形式和编号规则的主模型
+- **Response_Mode**: 回复形式，包含 `brief`（问题简报）和 `eight_d`（8D 报告）
 - **Notification**: 站内信通知，系统推送给用户的消息
 - **Announcement**: 公告，系统级或质量预警类的全员通知
 - **Feature_Flag**: 功能特性开关，用于灰度发布和功能控制的配置项
@@ -130,6 +141,9 @@
 10. WHEN 管理员保存权限配置 THEN THE QMS_System SHALL 立即生效无需重启后端服务
 11. WHEN 用户访问功能模块 THEN THE QMS_System SHALL 根据权限配置动态渲染可用的操作按钮
 12. WHEN 用户尝试执行无权限的操作 THEN THE QMS_System SHALL 拒绝请求并返回权限不足提示
+13. WHEN 内部人员访问跨模块问题列表 THEN THE QMS_System SHALL 默认允许其查看全量业务问题，而不是仅限本人创建或本人处理的问题
+14. WHEN 外部供应商访问问题数据 THEN THE QMS_System SHALL 仅返回绑定到其 `supplier_id` 且分派给本供应商的问题记录
+15. WHEN 用户被分派跨模块问题应答任务 THEN THE QMS_System SHALL 将“模块浏览权限”和“被分派后可应答权限”作为可组合但不完全等价的权限能力处理
 
 ### Requirement 4: 操作日志审计
 
@@ -173,6 +187,7 @@
 6. WHEN 公告或通知能力未启用 THEN THE QMS_System SHALL 允许隐藏对应区块或展示明确空态
 7. WHEN 用户点击待办任务 THEN THE QMS_System SHALL 跳转到对应模块的具体单据详情页
 8. WHEN 用户点击工作台待办统计窗 THEN THE QMS_System SHALL 打开个人待办事项清单弹窗，并展示真实待办列表
+9. WHEN 业务问题待办适配器启用 THEN THE QMS_System SHALL 在工作台中统一展示跨模块问题卡片，并显示问题主单号或 8D 报告号
 
 ### Requirement 7: 待办任务聚合
 
@@ -188,6 +203,9 @@
 6. WHEN 任务剩余时间大于 72 小时 THEN THE QMS_System SHALL 标记为绿色正常状态
 7. WHEN 用户点击待办任务 THEN THE QMS_System SHALL 直接跳转到对应单据详情页进行处理
 8. WHEN 工作台展示待办统计 THEN THE QMS_System SHALL 同步给出待办总数、超期事项数与临期事项数
+9. WHEN 跨模块问题适配器启用 THEN THE QMS_System SHALL 聚合供应商质量、制程质量、客户质量、新品质量、审核管理的问题待办
+10. WHEN 问题回复形式在流转中切换 THEN THE QMS_System SHALL 同步刷新待办卡片上的当前动作、目标页面和单据编号展示
+11. WHEN 待办任务来自统一问题中心 THEN THE QMS_System SHALL 优先展示统一问题主单号；若为 8D 环节则同时支持展示 8D 报告号
 
 ### Requirement 8: 站内信通知
 
@@ -201,6 +219,8 @@
 4. WHEN 用户访问通知中心 THEN THE QMS_System SHALL 展示所有通知消息并标识已读未读状态
 5. WHEN 用户标记通知为已读 THEN THE QMS_System SHALL 更新通知状态并移除未读标识
 6. WHEN 用户有未读消息 THEN THE QMS_System SHALL 在右上角铃铛图标显示红点数字
+7. WHEN 问题被分派、驳回、重开、升级、关闭或回复形式切换 THEN THE QMS_System SHALL 向相关责任人、审核人和关注人发送流程通知
+8. WHEN 供应商侧问题通知发送给外部账号 THEN THE QMS_System SHALL 仅通知绑定同一 `supplier_id` 的供应商用户
 
 ### Requirement 9: 公告管理
 

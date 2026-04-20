@@ -177,18 +177,18 @@
 | `quality.minister` | 质量管理部部长 | 全局质量监控与管理；对重大质量问题、审核结果、索赔与供应商绩效具备最终审批或查阅权 | 质量数据面板、客户质量、供应商质量、审核管理、索赔管理 | `internal` |
 | `quality.system.engineer` | 体系工程师 | 内部过程审核、分层审核的计划制定、结果录入、问题闭环；经验教训沉淀与知识库维护 | 审核管理、经验教训库、公告与通知配置候选 | `internal` |
 | `quality.process.manager` | 制程质量室经理 | 监控制程质量状况，审批制程重大质量问题及跟进节点 | 制程质量、质量数据面板、流程督办 | `internal` |
-| `quality.process.engineer` | 制程质量工程师 | 主导制程质量问题跟进、统计分析、超标报警闭环，使用 AI 做趋势与回复诊断 | 制程质量、质量数据面板、AI诊断 | `internal` |
+| `quality.process.engineer` | 制程质量工程师 | 主导制程质量问题跟进、统计分析、超标报警闭环，使用 AI 做趋势与回复诊断；对被分派的跨模块问题可执行应答 | 制程质量、质量数据面板、AI诊断 | `internal` |
 | `quality.process.pqc.lead` | 检验班长 | 审核检验员录入数据和问题，统筹现场检验，查阅负责工段质量数据 | 制程质量、待办、移动端/PDA | `internal` |
 | `quality.process.pqc.inspector` | 检验员（PQC） | 过程质量数据与问题录入，不具备已归档数据修改权 | 制程质量、扫码/PDA | `internal` |
 | `quality.customer.manager` | 客户质量室经理 | 查阅客户质量数据和趋势预警，把关客户审核结果及客户索赔审批 | 客户质量、客户审核、客户索赔、质量数据面板 | `internal` |
-| `quality.customer.engineer` | 客户质量工程师 | 主导客诉跟进、数据统计、客户审核问题闭环、发起客户索赔，利用 AI 诊断辅助回复 | 客户质量、客户审核、客户索赔、AI诊断 | `internal` |
+| `quality.customer.engineer` | 客户质量工程师 | 主导客诉跟进、数据统计、客户审核问题闭环、发起客户索赔，利用 AI 诊断辅助回复；对被分派的跨模块问题可执行应答 | 客户质量、客户审核、客户索赔、AI诊断 | `internal` |
 | `quality.customer.failure_analyst` | 失效分析工程师 | 配合客户质量工程师进行专项技术分析，录入检测和分析数据 | 客户质量、经验教训 | `internal` |
 | `quality.customer.field_support` | 市场技术支持工程师（售后工程师） | 负责客户端现场问题登录和初步数据录入 | 客户质量、移动端/PDA 候选 | `internal` |
 | `quality.project.manager` | 项目质量室经理 | 统筹新品质量，查看试产与初期流动数据，审批新品阶段重大质量问题 | 新品质量、质量数据面板 | `internal` |
-| `quality.project.engineer` | 项目质量工程师 | 负责新品试产和初期流动生产数据汇总与录入，执行经验教训点检，跟进新品超标问题 | 新品质量、经验教训、试产管理 | `internal` |
-| `quality.supplier.manager` | 供应商质量室经理 | 查阅分供方绩效和来料趋势，审批供应商准入/年度审核、供应商索赔和供应商变更 | 供应商质量、供应商审核、供应商索赔、供应商变更、质量数据面板 | `internal` |
-| `quality.supplier.engineer` | 供应商质量工程师 | 负责供应商绩效维护与分析、执行审核、问题清单闭环、发起和跟进供应商索赔、处理供应商变更 | 供应商质量、SCAR/8D、审核、索赔、变更 | `internal` |
-| `quality.supplier.iqc.lead` | 来料检验班长 | 审核 IQC 录入的来料数据和问题，统筹来料检验现场 | 来料质量、供应商质量、待办 | `internal` |
+| `quality.project.engineer` | 项目质量工程师 | 负责新品试产和初期流动生产数据汇总与录入，执行经验教训点检，跟进新品超标问题；对被分派的跨模块问题可执行应答 | 新品质量、经验教训、试产管理 | `internal` |
+| `quality.supplier.manager` | 供应商质量室经理 | 查阅分供方绩效和来料趋势，审批供应商准入/年度审核、供应商索赔和供应商变更；对跨模块分派至本室的问题具备督办、驳回、关闭和重开候选权限 | 供应商质量、供应商审核、供应商索赔、供应商变更、质量数据面板 | `internal` |
+| `quality.supplier.engineer` | 供应商质量工程师 | 负责供应商绩效维护与分析、执行审核、问题清单闭环、发起和跟进供应商索赔、处理供应商变更；对被分派的跨模块问题可执行应答 | 供应商质量、SCAR/8D、审核、索赔、变更 | `internal` |
+| `quality.supplier.iqc.lead` | 来料检验班长 | 审核 IQC 录入的来料数据和问题，统筹来料检验现场；对被分派的跨模块问题可执行应答和转办 | 来料质量、供应商质量、待办 | `internal` |
 | `quality.supplier.iqc.inspector` | 来料检验员（IQC） | 来料质量数据及问题登录、录入，联动 IMS 确认物料到料信息 | 来料质量、检验规范、扫码/PDA | `internal` |
 | `quality.supplier.cmm_operator` | 三坐标测量员 | 负责精密尺寸检验等特定质量数据录入 | 来料质量、检验规范 | `internal` |
 
@@ -219,7 +219,7 @@
 
 | role_key | 岗位 | 主要职责 | 主要模块 / 权限候选 | 当前系统映射 |
 | --- | --- | --- | --- | --- |
-| `supplier.external` | 外部供应商账号 | 仅可查阅并操作本公司的任务：质量问题和审核问题应答、分供方绩效确认、供应商索赔处理、供应商变更提报 | 供应商门户、SCAR/8D、绩效、索赔、供应商变更 | `supplier` |
+| `supplier.external` | 外部供应商账号 | 仅可查阅并操作本公司的任务：质量问题和审核问题应答、分供方绩效确认、供应商索赔处理、供应商变更提报；仅可查看本供应商被分派的问题 | 供应商门户、SCAR/8D、绩效、索赔、供应商变更 | `supplier` |
 
 ## 8. 功能域与主责任角色映射
 
@@ -250,6 +250,33 @@
 | 客户质量管理 | `quality.customer.manager`、`quality.customer.engineer`、`quality.customer.failure_analyst`、`quality.customer.field_support` | `cross_function.manager`、`cross_function.engineer` | 客诉受理、8D、索赔、问题归档 |
 | 新品质量管理 | `quality.project.manager`、`quality.project.engineer` | `rd.manager`、`rd.engineer`、`manufacturing.engineer` | 试产数据、经验教训点检、阶段评审 |
 | 审核管理 | `quality.system.engineer`、各室经理 | 被审核部门负责人、责任工程师、`supplier.external` | 审核计划、执行、NC整改、验证关闭 |
+
+### 8.3 跨模块问题管理共通口径
+
+| 角色 / 人群 | 查看范围 | 典型动作 | 说明 |
+| --- | --- | --- | --- |
+| 内部员工 | 默认可查看全量业务问题 | 具体操作仍按模块权限、阶段权限和责任归属控制 | “可查看”不等于“可处理” |
+| 被分派的内部责任工程师 | 默认可查看全量业务问题 | 应答、提交对策、补证据、重提 | 需支持跨模块共用的被分派应答能力 |
+| 内部经理 / 室经理 | 默认可查看全量业务问题 | 督办、驳回、关闭、重开、升级候选 | 以本部门或本室问题为主，但不限制其查询全局 |
+| 外部供应商账号 | 仅本供应商被分派的问题 | 查看、提交问题简报、提交 8D、补证据、重提 | 不可查看其他供应商和内部备注 |
+
+补充共通约束：
+
+- 问题回复形式统一分为 `brief`（问题简报）和 `eight_d`（8D 报告）。
+- 问题主单号采用 `ZXQ-<分类子类>-<YYMM>-<SEQ3>`，8D 报告号采用 `ZX8D-<分类子类>-<YYMM>-<SEQ3>`。
+- 当前已确认分类编码：
+  - `CQ0`：0km
+  - `CQ1`：售后
+  - `PQ0`：PCBA段
+  - `PQ1`：组装测试段
+  - `IQ0`：结构料
+  - `IQ1`：电子料
+  - `DQ0`：厂内试产/调试问题
+  - `DQ1`：客诉问题
+  - `AQ0`：体系审核 NC
+  - `AQ1`：过程审核 NC
+  - `AQ2`：产品审核 NC
+  - `AQ3`：客户审核问题
 
 ## 9. 系统管理专项映射
 

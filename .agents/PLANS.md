@@ -218,6 +218,45 @@
 - Status:
   - completed on 2026-04-18
 - Delivered:
+
+## Task: Cross-Module Problem Management Unification (2026-04-20)
+
+- Goal:
+  - 梳理供应商质量、制程质量、客户质量、新品质量、审核管理五个板块的问题管理共性与差异
+  - 在现有权限、待办、通知和供应商数据隔离底座上，设计一套可渐进落地的统一问题管理抽象
+  - 优先收敛第一批最小闭环，为后续编码阶段确定主表/子表、状态机、角色权限和页面/API 顺序
+- Non-goals:
+  - 本轮不一次性重构所有现有业务表到统一模型
+  - 本轮不追求把通知中心、全局任务监控、操作日志全部做成完全体
+  - 本轮不直接覆盖供应商绩效、PPAP、索赔、变更等非问题主链路能力
+- Planned sequence:
+  - Phase 1: 盘点现有问题类模型、页面、接口、权限与待办基础，识别真实可复用部分和契约漂移
+  - Phase 2: 定义统一问题主模型边界，明确共性字段、状态、动作、附件、应答、SLA、待办、通知抽象
+  - Phase 3: 定义模块差异扩展层，区分供应商SCAR/8D、制程问题、客诉8D、试产问题、审核NC/客户审核问题
+  - Phase 4: 锁定第一批最小闭环并按后端模型/API、权限范围、前端列表/详情/应答页顺序实施
+- Planned verification:
+  - `& '.\\.venv\\Scripts\\python.exe' -m pytest backend/test/test_scar_api.py backend/test/test_process_quality_module.py backend/test/test_customer_quality_comprehensive.py backend/test/test_new_product_comprehensive.py backend/test/test_audit_management_module.py`
+  - `& '.\\.venv\\Scripts\\python.exe' -m pytest backend/test/test_permissions.py backend/test/test_notifications.py backend/test/test_task_aggregator.py`
+  - `Set-Location frontend; npm run test:foundation`
+  - `Set-Location frontend; npm run build`
+- Risks / rollback:
+  - 现有多个模块已存在各自问题单模型、状态值和前端文案，统一抽象时容易引入契约不兼容
+  - 当前任务聚合、通知发送、权限校验在业务模块内落地深度不一致，不能假设已有底座已天然可复用
+  - 若统一主模型改造跨度过大，应回退为“统一问题中心 + 模块扩展子表”的渐进方案，避免一次性替换全部现有表
+- Status:
+  - in progress
+- Notes:
+  - 分析阶段先输出现状梳理、统一设计建议、角色权限矩阵和最小闭环范围；讨论确认后再进入代码落地。
+  - 问题回复形式增加分级：简单/单点问题可走“问题简报”，复杂/重大问题走“8D报告”；发起时可选择，跟进责任人和管理角色可在流程中即时调整，并保留切换审计轨迹。
+  - 问题主单号需要按问题分类编码，编码结构参考既定 8D 报告规则；统一编号生成器需支持主问题单号与 8D 报告号分离，并共享分类码、子类码、年月和流水规则。
+  - 编号格式定稿：分类码与子类码拼成一个分段，不额外增加连接符；示例：`ZXQ-CQ1-2604-003`、`ZX8D-AQ3-2604-001`。
+  - 分类码定稿：
+    - `CQ`: `0`=0km，`1`=售后
+    - `PQ`: `0`=PCBA段，`1`=组装测试段
+    - `IQ`: `0`=结构料，`1`=电子料
+    - `DQ`: `0`=厂内试产/调试问题，`1`=客诉问题
+    - `AQ`: `0`=体系审核NC，`1`=过程审核NC，`2`=产品审核NC，`3`=客户审核问题
+  - 实现假设：`CQ` 默认承载量产后客户质量问题；`DQ-1` 作为量产前/新品阶段来自客户侧的问题编码，后续在主表通过来源类型与业务模块进一步区分。
   - public registration was contracted to internal employees only
   - supplier self-registration and public supplier search were removed
   - internal registration now enforces the corporate email policy with outward-generic validation messaging

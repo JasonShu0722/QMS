@@ -1,11 +1,15 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from zoneinfo import ZoneInfo
+from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 
 UTC = timezone.utc
-BEIJING_TIMEZONE = ZoneInfo("Asia/Shanghai")
+try:
+    BEIJING_TIMEZONE = ZoneInfo("Asia/Shanghai")
+except ZoneInfoNotFoundError:
+    # Fallback for environments without tzdata installed.
+    BEIJING_TIMEZONE = timezone(timedelta(hours=8))
 
 
 def utc_now_naive() -> datetime:

@@ -255,8 +255,10 @@
     - `PQ`: `0`=PCBA段，`1`=组装测试段
     - `IQ`: `0`=结构料，`1`=电子料
     - `DQ`: `0`=厂内试产/调试问题，`1`=客诉问题
-    - `AQ`: `0`=体系审核NC，`1`=过程审核NC，`2`=产品审核NC，`3`=客户审核问题
+  - `AQ`: `0`=体系审核NC，`1`=过程审核NC，`2`=产品审核NC，`3`=客户审核问题
   - 实现假设：`CQ` 默认承载量产后客户质量问题；`DQ-1` 作为量产前/新品阶段来自客户侧的问题编码，后续在主表通过来源类型与业务模块进一步区分。
+  - 已补后端共享能力：`backend/app/core/problem_management.py`、`backend/app/api/v1/problem_management.py`、`backend/app/schemas/problem_management.py`，对外提供统一分类字典、回复形式、处理分级和编号规则元数据接口。
+  - 已补前端共享接入层：`frontend/src/types/problem-management.ts`、`frontend/src/api/problem-management.ts`、`frontend/src/stores/problemManagement.ts`，并在登录/刷新用户信息后预加载共享字典，避免后续问题页继续散落硬编码。
   - public registration was contracted to internal employees only
   - supplier self-registration and public supplier search were removed
   - internal registration now enforces the corporate email policy with outward-generic validation messaging
@@ -270,6 +272,8 @@
   - `doc/QMS_ROLE_FUNCTION_MAPPING.md`
   - `frontend/src/features/requirements-panel/catalog.ts`
 - Verification evidence:
+  - `& '.\.venv\Scripts\python.exe' -m pytest backend/test/test_problem_management.py backend/test/test_problem_management_api.py`
+  - `Set-Location frontend; npm run test -- src/stores/test/problemManagement.spec.ts src/stores/test/auth.spec.ts`
   - `Set-Location frontend; npm run build`
   - `Set-Location frontend; npm run test:foundation`
   - `& '.\.venv\Scripts\python.exe' -m pytest backend/test/test_user_registration.py backend/test/test_login.py backend/test/test_admin_suppliers_api.py backend/test/test_admin_users_api.py backend/test/test_foundation_milestone_api.py backend/test/test_profile_api.py`

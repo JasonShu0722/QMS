@@ -153,6 +153,10 @@ export const useAuthStore = defineStore('auth', () => {
     const { useFeatureFlagStore } = await import('@/stores/featureFlag')
     const featureFlagStore = useFeatureFlagStore()
     await featureFlagStore.loadFeatureFlags(true)
+
+    const { useProblemManagementStore } = await import('@/stores/problemManagement')
+    const problemManagementStore = useProblemManagementStore()
+    await problemManagementStore.loadCatalog(true)
   }
 
   function logout() {
@@ -165,6 +169,11 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.removeItem('permission_tree')
     localStorage.removeItem('current_environment')
     localStorage.removeItem('password_expired')
+
+    void import('@/stores/problemManagement').then(({ useProblemManagementStore }) => {
+      const problemManagementStore = useProblemManagementStore()
+      problemManagementStore.reset()
+    })
   }
 
   async function checkPermission(
@@ -198,6 +207,10 @@ export const useAuthStore = defineStore('auth', () => {
       userInfo.value = response
       localStorage.setItem('user_info', JSON.stringify(response))
       await loadPermissionTree(true)
+
+      const { useProblemManagementStore } = await import('@/stores/problemManagement')
+      const problemManagementStore = useProblemManagementStore()
+      await problemManagementStore.loadCatalog(true)
     } catch (error) {
       console.error('Failed to refresh user info:', error)
       logout()

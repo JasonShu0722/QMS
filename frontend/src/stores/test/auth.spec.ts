@@ -7,6 +7,8 @@ const getCurrentUserMock = vi.fn()
 const checkPermissionMock = vi.fn()
 const getPermissionTreeMock = vi.fn()
 const loadFeatureFlagsMock = vi.fn()
+const loadProblemManagementCatalogMock = vi.fn()
+const resetProblemManagementCatalogMock = vi.fn()
 
 vi.mock('@/api/auth', () => ({
   authApi: {
@@ -20,6 +22,13 @@ vi.mock('@/api/auth', () => ({
 vi.mock('@/stores/featureFlag', () => ({
   useFeatureFlagStore: () => ({
     loadFeatureFlags: loadFeatureFlagsMock
+  })
+}))
+
+vi.mock('@/stores/problemManagement', () => ({
+  useProblemManagementStore: () => ({
+    loadCatalog: loadProblemManagementCatalogMock,
+    reset: resetProblemManagementCatalogMock
   })
 }))
 
@@ -110,6 +119,7 @@ describe('auth store', () => {
     expect(window.localStorage.setItem).toHaveBeenCalledWith('password_expired', 'false')
     expect(getPermissionTreeMock).toHaveBeenCalled()
     expect(loadFeatureFlagsMock).toHaveBeenCalledWith(true)
+    expect(loadProblemManagementCatalogMock).toHaveBeenCalledWith(true)
   })
 
   it('persists password-expired reminder state after login', async () => {
@@ -165,6 +175,7 @@ describe('auth store', () => {
 
     expect(store.currentEnvironment).toBe('stable')
     expect(window.localStorage.setItem).toHaveBeenCalledWith('current_environment', 'stable')
+    expect(loadProblemManagementCatalogMock).toHaveBeenCalledWith(true)
   })
 
   it('hydrates permission tree and supports local permission checks', () => {
@@ -274,5 +285,6 @@ describe('auth store', () => {
     expect(store.userInfo?.signature_image_path).toBe('/uploads/signatures/supplier_user.png')
     expect(store.allowedEnvironments).toEqual(['stable', 'preview'])
     expect(getPermissionTreeMock).toHaveBeenCalled()
+    expect(loadProblemManagementCatalogMock).toHaveBeenCalledWith(true)
   })
 })

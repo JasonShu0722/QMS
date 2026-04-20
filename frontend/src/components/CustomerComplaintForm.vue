@@ -8,8 +8,13 @@
   >
     <el-form-item label="客诉类型" prop="complaint_type">
       <el-radio-group v-model="formData.complaint_type">
-        <el-radio label="0km">0KM客诉</el-radio>
-        <el-radio label="after_sales">售后客诉</el-radio>
+        <el-radio
+          v-for="option in complaintTypeOptions"
+          :key="option.value"
+          :label="option.value"
+        >
+          {{ option.label }}
+        </el-radio>
       </el-radio-group>
     </el-form-item>
 
@@ -32,11 +37,10 @@
 
     <el-form-item label="严重度等级" prop="severity_level">
       <el-input v-model="formData.severity_level" placeholder="请输入严重度等级" />
-      <div class="text-xs text-gray-500 mt-1">具体分级方案待产品定义</div>
+      <div class="mt-1 text-xs text-gray-500">具体分级方案待产品定义</div>
     </el-form-item>
 
-    <!-- 售后客诉特有字段 -->
-    <template v-if="formData.complaint_type === 'after_sales'">
+    <template v-if="formData.complaint_type === ComplaintType.AFTER_SALES">
       <el-form-item label="VIN码" prop="vin_code">
         <el-input v-model="formData.vin_code" placeholder="请输入车辆识别码" />
       </el-form-item>
@@ -63,7 +67,7 @@
     </template>
 
     <el-form-item>
-      <el-button type="primary" @click="handleSubmit" :loading="submitting">
+      <el-button type="primary" :loading="submitting" @click="handleSubmit">
         提交
       </el-button>
       <el-button @click="handleCancel">取消</el-button>
@@ -72,24 +76,24 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue';
-import { ElMessage, type FormInstance, type FormRules } from 'element-plus';
-import { createCustomerComplaint } from '@/api/customer-quality';
-import type { CustomerComplaintCreate, ComplaintType } from '@/types/customer-quality';
+import { computed, onMounted, reactive, ref } from 'vue'
+import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
+import { createCustomerComplaint } from '@/api/customer-quality'
+import { useProblemManagementStore } from '@/stores/problemManagement'
+import { ComplaintType, type CustomerComplaintCreate } from '@/types/customer-quality'
+import { buildCustomerComplaintTypeOptions } from '@/utils/problemManagement'
 
-// 定义事件
 const emit = defineEmits<{
-  success: [];
-  cancel: [];
-}>();
+  success: []
+  cancel: []
+}>()
 
-// 表单引用
-const formRef = ref<FormInstance>();
-const submitting = ref(false);
+const formRef = ref<FormInstance>()
+const submitting = ref(false)
+const problemManagementStore = useProblemManagementStore()
 
-// 表单数据
 const formData = reactive<CustomerComplaintCreate>({
-  complaint_type: '0km' as ComplaintType,
+  complaint_type: ComplaintType.ZERO_KM,
   customer_code: '',
   product_type: '',
   defect_description: '',
@@ -97,9 +101,12 @@ const formData = reactive<CustomerComplaintCreate>({
   vin_code: undefined,
   mileage: undefined,
   purchase_date: undefined
-});
+})
 
-// 表单验证规则
+const complaintTypeOptions = computed(() =>
+  buildCustomerComplaintTypeOptions(problemManagementStore.getCategory)
+)
+
 const rules: FormRules = {
   complaint_type: [
     { required: true, message: '请选择客诉类型', trigger: 'change' }
@@ -117,37 +124,37 @@ const rules: FormRules = {
   severity_level: [
     { required: true, message: '请输入严重度等级', trigger: 'blur' }
   ]
-};
+}
 
-/**
- * 提交表单
- */
 async function handleSubmit() {
-  if (!formRef.value) return;
+  if (!formRef.value) {
+    return
+  }
 
   try {
-    await formRef.value.validate();
-    submitting.value = true;
+    await formRef.value.validate()
+    submitting.value = true
 
-    await createCustomerComplaint(formData);
-    ElMessage.success('客诉单创建成功');
-    emit('success');
+    await createCustomerComplaint(formData)
+    ElMessage.success('客诉单创建成功')
+    emit('success')
   } catch (error: any) {
-    if (error !== false) { // 不是表单验证错误
-      ElMessage.error(error.message || '创建客诉单失败');
-      console.error('Create complaint error:', error);
+    if (error !== false) {
+      ElMessage.error(error.message || '创建客诉单失败')
+      console.error('Create complaint error:', error)
     }
   } finally {
-    submitting.value = false;
+    submitting.value = false
   }
 }
 
-/**
- * 取消
- */
 function handleCancel() {
-  emit('cancel');
+  emit('cancel')
 }
+
+onMounted(() => {
+  void problemManagementStore.loadCatalog()
+})
 </script>
 
 <style scoped>
@@ -155,7 +162,6 @@ function handleCancel() {
   padding: 20px 0;
 }
 
-/* 移动端适配 */
 @media (max-width: 768px) {
   .customer-complaint-form :deep(.el-form-item__label) {
     width: 100px !important;

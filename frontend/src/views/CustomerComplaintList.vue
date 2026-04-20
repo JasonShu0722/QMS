@@ -1,30 +1,42 @@
 <template>
   <div class="customer-complaint-list p-4 md:p-6">
-    <!-- 页面标题 -->
-    <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
-      <h1 class="text-2xl font-bold mb-4 md:mb-0">客诉管理</h1>
+    <div class="mb-6 flex flex-col md:flex-row md:items-center md:justify-between">
+      <h1 class="mb-4 text-2xl font-bold md:mb-0">客诉管理</h1>
       <el-button type="primary" @click="showCreateDialog = true">
         <el-icon class="mr-1"><Plus /></el-icon>
         创建客诉单
       </el-button>
     </div>
 
-    <!-- 筛选条件 -->
     <el-card class="mb-4">
       <el-form :model="queryParams" inline class="flex flex-wrap gap-2">
         <el-form-item label="客诉类型">
           <el-select v-model="queryParams.complaint_type" placeholder="全部" clearable class="w-full md:w-40">
-            <el-option label="0KM客诉" value="0km" />
-            <el-option label="售后客诉" value="after_sales" />
+            <el-option
+              v-for="option in complaintTypeOptions"
+              :key="option.value"
+              :label="option.label"
+              :value="option.value"
+            />
           </el-select>
         </el-form-item>
 
         <el-form-item label="客户代码">
-          <el-input v-model="queryParams.customer_code" placeholder="请输入" clearable class="w-full md:w-40" />
+          <el-input
+            v-model="queryParams.customer_code"
+            placeholder="请输入"
+            clearable
+            class="w-full md:w-40"
+          />
         </el-form-item>
 
         <el-form-item label="产品类型">
-          <el-input v-model="queryParams.product_type" placeholder="请输入" clearable class="w-full md:w-40" />
+          <el-input
+            v-model="queryParams.product_type"
+            placeholder="请输入"
+            clearable
+            class="w-full md:w-40"
+          />
         </el-form-item>
 
         <el-form-item label="状态">
@@ -56,19 +68,13 @@
       </el-form>
     </el-card>
 
-    <!-- 数据表格 -->
     <el-card>
-      <el-table
-        v-loading="loading"
-        :data="complaintList"
-        stripe
-        class="w-full"
-      >
+      <el-table v-loading="loading" :data="complaintList" stripe class="w-full">
         <el-table-column prop="complaint_number" label="客诉编号" width="150" fixed />
         <el-table-column prop="complaint_type" label="类型" width="100">
           <template #default="{ row }">
-            <el-tag :type="row.complaint_type === '0km' ? 'danger' : 'warning'">
-              {{ row.complaint_type === '0km' ? '0KM' : '售后' }}
+            <el-tag :type="row.complaint_type === ComplaintType.ZERO_KM ? 'danger' : 'warning'">
+              {{ getComplaintTypeLabel(row.complaint_type) }}
             </el-tag>
           </template>
         </el-table-column>
@@ -113,8 +119,7 @@
         </el-table-column>
       </el-table>
 
-      <!-- 分页 -->
-      <div class="flex justify-end mt-4">
+      <div class="mt-4 flex justify-end">
         <el-pagination
           v-model:current-page="queryParams.page"
           v-model:page-size="queryParams.page_size"
@@ -127,7 +132,6 @@
       </div>
     </el-card>
 
-    <!-- 创建客诉单对话框 -->
     <el-dialog
       v-model="showCreateDialog"
       title="创建客诉单"
@@ -144,24 +148,25 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
-import { ElMessage } from 'element-plus';
-import { Plus } from '@element-plus/icons-vue';
-import { getCustomerComplaints } from '@/api/customer-quality';
-import CustomerComplaintForm from '@/components/CustomerComplaintForm.vue';
-import type { CustomerComplaint, CustomerComplaintListQuery } from '@/types/customer-quality';
+import { computed, onMounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
+import { Plus } from '@element-plus/icons-vue'
+import { getCustomerComplaints } from '@/api/customer-quality'
+import CustomerComplaintForm from '@/components/CustomerComplaintForm.vue'
+import { useProblemManagementStore } from '@/stores/problemManagement'
+import { ComplaintType, type CustomerComplaint, type CustomerComplaintListQuery } from '@/types/customer-quality'
+import { buildCustomerComplaintTypeOptions, getCustomerComplaintTypeLabel as resolveCustomerComplaintTypeLabel } from '@/utils/problemManagement'
 
-const router = useRouter();
+const router = useRouter()
+const problemManagementStore = useProblemManagementStore()
 
-// 数据状态
-const loading = ref(false);
-const complaintList = ref<CustomerComplaint[]>([]);
-const total = ref(0);
-const showCreateDialog = ref(false);
-const dateRange = ref<[string, string] | null>(null);
+const loading = ref(false)
+const complaintList = ref<CustomerComplaint[]>([])
+const total = ref(0)
+const showCreateDialog = ref(false)
+const dateRange = ref<[string, string] | null>(null)
 
-// 查询参数
 const queryParams = reactive<CustomerComplaintListQuery>({
   page: 1,
   page_size: 20,
@@ -171,11 +176,16 @@ const queryParams = reactive<CustomerComplaintListQuery>({
   status: undefined,
   start_date: undefined,
   end_date: undefined
-});
+})
 
-/**
- * 获取状态标签
- */
+const complaintTypeOptions = computed(() =>
+  buildCustomerComplaintTypeOptions(problemManagementStore.getCategory)
+)
+
+function getComplaintTypeLabel(complaintType: ComplaintType): string {
+  return resolveCustomerComplaintTypeLabel(complaintType, problemManagementStore.getCategory)
+}
+
 function getStatusLabel(status: string): string {
   const statusMap: Record<string, string> = {
     pending_analysis: '待一次因解析',
@@ -183,13 +193,11 @@ function getStatusLabel(status: string): string {
     pending_8d: '待8D提交',
     under_review: '审核中',
     closed: '已关闭'
-  };
-  return statusMap[status] || status;
+  }
+
+  return statusMap[status] || status
 }
 
-/**
- * 获取状态类型
- */
 function getStatusType(status: string): string {
   const typeMap: Record<string, string> = {
     pending_analysis: 'warning',
@@ -197,92 +205,72 @@ function getStatusType(status: string): string {
     pending_8d: 'warning',
     under_review: 'info',
     closed: 'success'
-  };
-  return typeMap[status] || 'info';
+  }
+
+  return typeMap[status] || 'info'
 }
 
-/**
- * 加载客诉单列表
- */
 async function loadComplaints() {
-  loading.value = true;
+  loading.value = true
+
   try {
-    // 处理日期范围
     if (dateRange.value) {
-      queryParams.start_date = dateRange.value[0];
-      queryParams.end_date = dateRange.value[1];
+      queryParams.start_date = dateRange.value[0]
+      queryParams.end_date = dateRange.value[1]
     } else {
-      queryParams.start_date = undefined;
-      queryParams.end_date = undefined;
+      queryParams.start_date = undefined
+      queryParams.end_date = undefined
     }
 
-    const response = await getCustomerComplaints(queryParams);
-    complaintList.value = response.items;
-    total.value = response.total;
+    const response = await getCustomerComplaints(queryParams)
+    complaintList.value = response.items
+    total.value = response.total
   } catch (error) {
-    ElMessage.error('加载客诉单列表失败');
-    console.error('Load complaints error:', error);
+    ElMessage.error('加载客诉单列表失败')
+    console.error('Load complaints error:', error)
   } finally {
-    loading.value = false;
+    loading.value = false
   }
 }
 
-/**
- * 查询
- */
 function handleSearch() {
-  queryParams.page = 1;
-  loadComplaints();
+  queryParams.page = 1
+  loadComplaints()
 }
 
-/**
- * 重置
- */
 function handleReset() {
-  queryParams.page = 1;
-  queryParams.page_size = 20;
-  queryParams.complaint_type = undefined;
-  queryParams.customer_code = undefined;
-  queryParams.product_type = undefined;
-  queryParams.status = undefined;
-  dateRange.value = null;
-  loadComplaints();
+  queryParams.page = 1
+  queryParams.page_size = 20
+  queryParams.complaint_type = undefined
+  queryParams.customer_code = undefined
+  queryParams.product_type = undefined
+  queryParams.status = undefined
+  dateRange.value = null
+  loadComplaints()
 }
 
-/**
- * 查看详情
- */
 function handleView(row: CustomerComplaint) {
-  router.push(`/customer-complaints/${row.id}`);
+  router.push(`/customer-complaints/${row.id}`)
 }
 
-/**
- * 一次因解析
- */
 function handleAnalysis(row: CustomerComplaint) {
-  router.push(`/customer-complaints/${row.id}/analysis`);
+  router.push(`/customer-complaints/${row.id}/analysis`)
 }
 
-/**
- * 8D报告
- */
 function handle8D(row: CustomerComplaint) {
-  router.push(`/customer-complaints/${row.id}/8d`);
+  router.push(`/customer-complaints/${row.id}/8d`)
 }
 
-/**
- * 创建成功
- */
 function handleCreateSuccess() {
-  showCreateDialog.value = false;
-  ElMessage.success('客诉单创建成功');
-  loadComplaints();
+  showCreateDialog.value = false
+  ElMessage.success('客诉单创建成功')
+  loadComplaints()
 }
 
-// 初始化
 onMounted(() => {
-  loadComplaints();
-});
+  void problemManagementStore.loadCatalog()
+  loadComplaints()
+})
 </script>
 
 <style scoped>
@@ -290,7 +278,6 @@ onMounted(() => {
   min-height: 100vh;
 }
 
-/* 移动端适配 */
 @media (max-width: 768px) {
   :deep(.el-table) {
     font-size: 12px;

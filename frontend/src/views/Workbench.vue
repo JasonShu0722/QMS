@@ -461,8 +461,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import {
   ElMessage,
   type FormInstance,
@@ -500,6 +500,7 @@ import type {
   TodoTask
 } from '@/types/workbench'
 import { getEnvironmentLabel, isPreviewEnvironment } from '@/utils/environment'
+import { canAccessRouteMeta, type RouteAccessMeta } from '@/utils/accessControl'
 
 interface ProfileFormState {
   full_name: string
@@ -512,6 +513,7 @@ interface ProfileFormState {
 type SettingsTabName = 'profile' | 'avatar' | 'password' | 'signature'
 
 const router = useRouter()
+const route = useRoute()
 const authStore = useAuthStore()
 const featureFlagStore = useFeatureFlagStore()
 
@@ -623,11 +625,27 @@ const sessionUser = computed(() => dashboardData.value?.user_info || authStore.u
 const entryEnvironment = computed(() => authStore.currentEnvironment)
 const environmentLabel = computed(() => getEnvironmentLabel(entryEnvironment.value))
 const environmentTagType = computed(() => (isPreviewEnvironment(entryEnvironment.value) ? 'warning' : 'primary'))
+const canAccessRoute = (path: string) => {
+  const resolved = router.resolve(path)
+  if (!resolved.matched.length) {
+    return false
+  }
+
+  return canAccessRouteMeta(resolved.meta as RouteAccessMeta, {
+    isAuthenticated: authStore.isAuthenticated,
+    isInternal: authStore.isInternal,
+    isSupplier: authStore.isSupplier,
+    isPlatformAdmin: authStore.isPlatformAdmin,
+    isFeatureEnabled: (featureKey: string) => featureFlagStore.isFeatureEnabled(featureKey),
+    hasPermission: (modulePath, operation) => authStore.hasPermissionLocal(modulePath, operation),
+  })
+}
 const quickActionContext = computed<WorkbenchQuickActionContext>(() => ({
   isInternal: authStore.isInternal,
   isSupplier: authStore.isSupplier,
   isPlatformAdmin: authStore.isPlatformAdmin,
-  isFeatureEnabled: (featureKey: string) => featureFlagStore.isFeatureEnabled(featureKey)
+  isFeatureEnabled: (featureKey: string) => featureFlagStore.isFeatureEnabled(featureKey),
+  canAccessRoute,
 }))
 const configurableQuickActions = computed(() =>
   getConfigurableQuickActions(quickActionContext.value)
@@ -798,6 +816,24 @@ function openSettingsDialog(tab: SettingsTabName = 'profile') {
   activeSettingsTab.value = tab
   prepareSettingsDialog()
   showSettingsDialog.value = true
+}
+
+function syncSettingsRoute() {
+  const requestedTab = route.query.settings
+  if (
+    requestedTab !== 'profile' &&
+    requestedTab !== 'avatar' &&
+    requestedTab !== 'password' &&
+    requestedTab !== 'signature'
+  ) {
+    return
+  }
+
+  openSettingsDialog(requestedTab)
+
+  const nextQuery = { ...route.query }
+  delete nextQuery.settings
+  void router.replace({ path: route.path, query: nextQuery })
 }
 
 function openTodoDialog() {
@@ -1095,6 +1131,7 @@ async function handleChangePassword() {
         old_password: passwordForm.value.old_password,
         new_password: passwordForm.value.new_password
       })
+      authStore.clearPasswordExpiredReminder()
       showSettingsDialog.value = false
       resetPasswordForm()
       ElMessage.success('密码修改成功，请重新登录')
@@ -1139,9 +1176,14 @@ async function handleUploadSignature() {
 }
 
 onMounted(async () => {
+  syncSettingsRoute()
   await featureFlagStore.loadFeatureFlags()
   await loadDashboardData()
   await loadUnreadImportantAnnouncements()
+})
+
+watch(() => route.query.settings, () => {
+  syncSettingsRoute()
 })
 </script>
 

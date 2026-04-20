@@ -29,6 +29,7 @@
 - 通过 `is_platform_admin` 提供系统管理后台 bootstrap 入口。
 - 内部用户只有 `department`、`position` 两个基础字段。
 - 供应商用户通过 `supplier_id` 绑定供应商主体。
+- 供应商主体当前已开始进入“供应商基础信息主数据”治理，后续供应商账号展示与登录可用性都应依赖该主数据状态。
 
 现状见：
 
@@ -272,7 +273,8 @@
 | mapping_id | 功能 | 目标角色 | 当前前端入口 | 当前后端入口 | 当前状态 | 备注 |
 | --- | --- | --- | --- | --- | --- | --- |
 | `foundation.super_admin_bootstrap` | 超级管理员 bootstrap | `sys.super_admin` | 系统管理入口、工作台快捷入口 | `is_platform_admin` 相关鉴权 | 已落地 | 当前已创建管理员账号即此角色 |
-| `foundation.user_approval` | 用户审批与用户清单治理 | `sys.super_admin`、后续 `sys.business_admin` | `/admin/users` | `/v1/admin/users/pending`、`/v1/admin/users`、`approve`、`reject`、`freeze`、`unfreeze`、`reset-password`、`PATCH /users/{id}`、`PUT /users/{id}/roles`、`DELETE /users/{id}` | 已验证 | 已拆分用户审批与用户清单治理，支持资料维护、角色分配、冻结/删除保护及多条件筛选 |
+| `foundation.user_approval` | 用户审批与用户清单治理 | `sys.super_admin`、后续 `sys.business_admin` | `/admin/users` | `/v1/admin/users/pending`、`/v1/admin/users`、`POST /v1/admin/users`、`POST /v1/admin/users/bulk`、`approve`、`reject`、`freeze`、`unfreeze`、`reset-password`、`PATCH /users/{id}`、`PUT /users/{id}/roles`、`DELETE /users/{id}` | 已验证 | 公共注册仅保留内部员工；供应商账号统一由管理员在此创建，且必须绑定已存在且启用中的供应商主数据 |
+| `foundation.supplier_master` | 供应商基础信息主数据 | `sys.super_admin`、后续 `sys.business_admin` | `/admin/suppliers` | `/v1/admin/suppliers`、`/bulk`、`/{id}`、`/{id}/status` | 已验证 | 维护供应商代码、供应商名称、状态及联系信息；停用后阻止新绑定，并影响已绑定供应商账号登录可用性 |
 | `foundation.permission_matrix` | 角色标签权限矩阵 | `sys.super_admin` | `/admin/permissions` | `/v1/admin/permissions/matrix`、`/roles`、`/roles/{id}/permissions`、`grant`、`revoke` | 已验证 | 权限主模型已切换为角色标签矩阵，用户直连授权仅保留兼容通道 |
 | `foundation.task_monitor` | 全局任务统计与监控 | `sys.business_admin`、`sys.super_admin` | `/admin/tasks` | `/v1/admin/tasks/statistics`、`reassign` | 骨架存在 | 前端期待任务列表接口，后端未完全对齐；业务统计默认未启用 |
 | `foundation.operation_logs` | 操作日志与审计 | `sys.super_admin` | `/admin/operation-logs` | 当前实际为 `/v1/operation-logs` | 骨架存在 | 前后端路径、字段和导出能力尚未完全对齐，且管理员权限校验待补 |
@@ -281,7 +283,7 @@
 | `foundation.system_config` | 系统全局配置 | `sys.super_admin` | 暂无 | `/v1/admin/system-config` | 后端先行 | 前端页面、菜单、权限点未接入 |
 | `foundation.release_governance` | 版本与发布治理 | `sys.super_admin` | 暂无专门页面 | 当前依赖环境切换、部署与功能开关 | 部分落地 | 双环境、功能开关已存在，但缺独立发布控制台 |
 | `foundation.integration_config` | 集成接口与底层映射配置 | `sys.super_admin` | 暂无 | 暂无统一入口 | 预留 | 包括 IMS、OA、SAP 等底层映射配置 |
-| `foundation.master_data_admin` | 主数据与模板维护 | `sys.business_admin`、`sys.super_admin` | 业务页面分散入口 | 分散在各业务模块 | 部分落地 | SIP 模板、缺陷代码库、检验项目基础库需后续统一归口 |
+| `foundation.master_data_admin` | 主数据与模板维护 | `sys.business_admin`、`sys.super_admin` | 业务页面分散入口 | 分散在各业务模块 | 部分落地 | 供应商基础信息已先独立落地；SIP 模板、缺陷代码库、检验项目基础库需后续继续统一归口 |
 
 ## 10. 开发映射台账字段规范
 
@@ -310,7 +312,7 @@
 ```md
 | mapping_id | capability | target_roles | route | api | permission_module | operations | feature_flag | data_scope | source_requirement | implementation_status | notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| foundation.user_approval | 用户注册审核 | sys.super_admin, sys.business_admin | /admin/users | GET/POST /v1/admin/users/* | system.users | read/update | - | 全量账号 | Requirement 1,12 | 部分落地 | 前端仍未承接冻结/解冻/重置密码 |
+| foundation.user_approval | 内部员工注册审核与账号治理 | sys.super_admin, sys.business_admin | /admin/users | GET/POST /v1/admin/users/* | system.users | read/update | - | 全量账号 | Requirement 1,12 | 已验证 | 公共注册仅面向内部员工，供应商账号由管理员创建 |
 ```
 
 ## 11. 当前权限模型落点

@@ -126,6 +126,21 @@ describe('Login.vue', () => {
     expect(wrapper.find('a[href="/register"]').exists()).toBe(true)
   })
 
+  it('hides the register entry when supplier login is selected', async () => {
+    vi.mocked(authApi.getCaptcha).mockResolvedValue({
+      captcha_image: 'data:image/png;base64,test',
+      captcha_id: 'captcha-1',
+    })
+
+    const wrapper = mountLogin()
+    wrapper.vm.userType = 'supplier'
+
+    await wrapper.vm.$nextTick()
+    await flushPromises()
+
+    expect(wrapper.find('a[href="/register"]').exists()).toBe(false)
+  })
+
   it('defaults to internal login', () => {
     const wrapper = mountLogin()
     expect(wrapper.vm.userType).toBe('internal')

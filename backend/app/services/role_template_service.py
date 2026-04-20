@@ -342,6 +342,7 @@ DEFAULT_ROLE_TEMPLATES = [
         description="负责供应商侧问题应答、绩效确认、索赔和变更提交。",
         applicable_user_type="supplier",
         permissions=_merge(
+            _grant(QUALITY_OVERVIEW, ("read",)),
             _grant(("supplier.management", "supplier.audit", "supplier.ppap", "supplier.scar"), COLLABORATE),
             _grant(("supplier.performance",), ("read",)),
         ),

@@ -148,6 +148,44 @@ async def active_supplier(db_session: AsyncSession) -> Supplier:
 
 
 @pytest.fixture
+async def numeric_code_supplier(db_session: AsyncSession) -> Supplier:
+    supplier = Supplier(
+        name="Numeric Code Supplier",
+        code="101669",
+        status=SupplierStatus.ACTIVE,
+        contact_person="Numeric Contact",
+        contact_email="numeric@supplier.com",
+    )
+    db_session.add(supplier)
+    await db_session.commit()
+    await db_session.refresh(supplier)
+    return supplier
+
+
+@pytest.fixture
+async def duplicate_named_suppliers(db_session: AsyncSession) -> tuple[Supplier, Supplier]:
+    first_supplier = Supplier(
+        name="Shared Supplier",
+        code="SUP-DUP-001",
+        status=SupplierStatus.ACTIVE,
+        contact_person="Alice",
+        contact_email="alice@supplier.com",
+    )
+    second_supplier = Supplier(
+        name="Shared Supplier",
+        code="SUP-DUP-002",
+        status=SupplierStatus.ACTIVE,
+        contact_person="Bob",
+        contact_email="bob@supplier.com",
+    )
+    db_session.add_all([first_supplier, second_supplier])
+    await db_session.commit()
+    await db_session.refresh(first_supplier)
+    await db_session.refresh(second_supplier)
+    return first_supplier, second_supplier
+
+
+@pytest.fixture
 async def admin_token(async_client: AsyncClient, admin_user: User) -> str:
     response = await async_client.post(
         "/api/v1/auth/login",
@@ -289,6 +327,33 @@ class TestUserListManagement:
         assert data["user"]["supplier_name"] == active_supplier.name
 
     @pytest.mark.asyncio
+    async def test_create_supplier_user_prefers_numeric_supplier_code_over_id(
+        self,
+        async_client: AsyncClient,
+        admin_token: str,
+        numeric_code_supplier: Supplier,
+    ):
+        response = await async_client.post(
+            "/api/v1/admin/users",
+            headers={"Authorization": f"Bearer {admin_token}"},
+            json={
+                "username": "supplier_numeric_code",
+                "full_name": "数字代码供应商",
+                "email": "supplier-numeric@example.com",
+                "user_type": "supplier",
+                "supplier_identifier": numeric_code_supplier.code,
+                "position": "质量接口人",
+                "allowed_environments": "stable",
+                "role_tag_ids": [],
+            },
+        )
+
+        assert response.status_code == 201
+        data = response.json()
+        assert data["user"]["supplier_id"] == numeric_code_supplier.id
+        assert data["user"]["supplier_name"] == numeric_code_supplier.name
+
+    @pytest.mark.asyncio
     async def test_bulk_create_users_success(
         self,
         async_client: AsyncClient,
@@ -336,6 +401,125 @@ class TestUserListManagement:
             )
         ).scalars().all()
         assert len(created_users) == 2
+
+    @pytest.mark.asyncio
+    async def test_bulk_create_supplier_users_resolves_supplier_identifier(
+        self,
+        async_client: AsyncClient,
+        admin_token: str,
+        active_supplier: Supplier,
+        db_session: AsyncSession,
+    ):
+        response = await async_client.post(
+            "/api/v1/admin/users/bulk",
+            headers={"Authorization": f"Bearer {admin_token}"},
+            json={
+                "user_type": "supplier",
+                "allowed_environments": "stable",
+                "role_tag_ids": [],
+                "items": [
+                    {
+                        "username": "supplier_batch_code",
+                        "full_name": "供应商批量代码",
+                        "email": "supplier-batch-code@example.com",
+                        "phone": "13600136001",
+                        "supplier_identifier": active_supplier.code,
+                        "position": "质量接口人",
+                    },
+                    {
+                        "username": "supplier_batch_name",
+                        "full_name": "供应商批量名称",
+                        "email": "supplier-batch-name@example.com",
+                        "phone": "13600136002",
+                        "supplier_identifier": active_supplier.name,
+                        "position": "售后工程师",
+                    },
+                ],
+            },
+        )
+
+        assert response.status_code == 201
+        data = response.json()
+        assert data["created_count"] == 2
+        assert all(item["user"]["supplier_id"] == active_supplier.id for item in data["results"])
+
+        created_users = (
+            await db_session.execute(
+                select(User).where(
+                    User.username.in_(["supplier_batch_code", "supplier_batch_name"])
+                )
+            )
+        ).scalars().all()
+        assert len(created_users) == 2
+        assert all(user.supplier_id == active_supplier.id for user in created_users)
+
+    @pytest.mark.asyncio
+    async def test_bulk_create_supplier_users_prefers_numeric_supplier_code_over_id(
+        self,
+        async_client: AsyncClient,
+        admin_token: str,
+        numeric_code_supplier: Supplier,
+        db_session: AsyncSession,
+    ):
+        response = await async_client.post(
+            "/api/v1/admin/users/bulk",
+            headers={"Authorization": f"Bearer {admin_token}"},
+            json={
+                "user_type": "supplier",
+                "allowed_environments": "stable",
+                "role_tag_ids": [],
+                "items": [
+                    {
+                        "username": "supplier_batch_numeric",
+                        "full_name": "供应商批量数字代码",
+                        "email": "supplier-batch-numeric@example.com",
+                        "phone": "13600136009",
+                        "supplier_identifier": numeric_code_supplier.code,
+                        "position": "总经理",
+                    }
+                ],
+            },
+        )
+
+        assert response.status_code == 201
+        data = response.json()
+        assert data["created_count"] == 1
+        assert data["results"][0]["user"]["supplier_id"] == numeric_code_supplier.id
+
+        created_user = (
+            await db_session.execute(select(User).where(User.username == "supplier_batch_numeric"))
+        ).scalar_one()
+        assert created_user.supplier_id == numeric_code_supplier.id
+
+    @pytest.mark.asyncio
+    async def test_bulk_create_supplier_users_requires_unique_supplier_name(
+        self,
+        async_client: AsyncClient,
+        admin_token: str,
+        duplicate_named_suppliers: tuple[Supplier, Supplier],
+    ):
+        response = await async_client.post(
+            "/api/v1/admin/users/bulk",
+            headers={"Authorization": f"Bearer {admin_token}"},
+            json={
+                "user_type": "supplier",
+                "allowed_environments": "stable",
+                "role_tag_ids": [],
+                "items": [
+                    {
+                        "username": "supplier_batch_duplicate",
+                        "full_name": "供应商重名",
+                        "email": "supplier-batch-duplicate@example.com",
+                        "phone": "13600136003",
+                        "supplier_identifier": "Shared Supplier",
+                        "position": "质量接口人",
+                    }
+                ],
+            },
+        )
+
+        assert response.status_code == 400
+        assert "请改用唯一的供应商代码" in response.json()["detail"]
 
     @pytest.mark.asyncio
     async def test_update_user_basic_info_success(

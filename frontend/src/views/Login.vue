@@ -116,7 +116,7 @@
 
             <div class="form-meta">
               <el-checkbox v-model="rememberPassword">记住密码</el-checkbox>
-              <router-link to="/register" class="register-link">
+              <router-link v-if="userType === 'internal'" to="/register" class="register-link">
                 立即注册
               </router-link>
             </div>
@@ -264,6 +264,9 @@ const handleLogin = async () => {
     }
 
     ElMessage.success('登录成功')
+    if (authStore.passwordExpired) {
+      ElMessage.warning('当前账号密码已过期，请登录后尽快修改密码')
+    }
     router.push('/workbench')
   } catch (error: any) {
     ElMessage.error(error.response?.data?.detail || '登录失败，请检查用户名和密码')

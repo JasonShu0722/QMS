@@ -14,20 +14,21 @@
           <h1>
             统一账号申请入口
           </h1>
-          
+          <p class="hero-subtitle">
+            内部员工可在此提交账号申请。
+          </p>
         </div>
       </section>
 
       <section class="register-panel">
         <div class="register-panel-shell">
           <div class="register-panel-head">
-            <h2>用户注册</h2>
+            <div>
+              <h2>用户注册</h2>
+              <p>仅开放内部员工申请</p>
+            </div>
+            <span class="panel-badge">内部员工</span>
           </div>
-
-          <el-radio-group v-model="userType" class="user-type-selector" size="large">
-            <el-radio-button value="internal">内部员工</el-radio-button>
-            <el-radio-button value="supplier">供应商</el-radio-button>
-          </el-radio-group>
 
           <el-form
             ref="registerFormRef"
@@ -41,7 +42,7 @@
               <el-form-item label="用户名" prop="username">
                 <el-input
                   v-model="registerForm.username"
-                  placeholder="3-50 个字符，仅支持字母、数字、下划线"
+                  placeholder="3-50 个字符，仅支持字母、数字和下划线"
                   clearable
                 />
               </el-form-item>
@@ -58,7 +59,7 @@
                 <el-input
                   v-model="registerForm.password"
                   type="password"
-                  placeholder="至少 8 位，需满足三种字符组合"
+                  placeholder="至少 8 位，满足三类字符组合"
                   show-password
                   clearable
                 />
@@ -77,7 +78,7 @@
               <el-form-item label="邮箱" prop="email">
                 <el-input
                   v-model="registerForm.email"
-                  placeholder="请输入邮箱地址"
+                  placeholder="请输入企业邮箱"
                   clearable
                 />
               </el-form-item>
@@ -90,47 +91,28 @@
                 />
               </el-form-item>
 
-              <template v-if="userType === 'internal'">
-                <el-form-item label="部门" prop="department">
-                  <el-select
-                    v-model="registerForm.department"
-                    placeholder="请选择部门"
-                    clearable
-                  >
-                    <el-option label="质量部" value="质量部" />
-                    <el-option label="生产部" value="生产部" />
-                    <el-option label="技术部" value="技术部" />
-                    <el-option label="采购部" value="采购部" />
-                    <el-option label="研发部" value="研发部" />
-                    <el-option label="管理部" value="管理部" />
-                  </el-select>
-                </el-form-item>
+              <el-form-item label="部门" prop="department">
+                <el-select
+                  v-model="registerForm.department"
+                  placeholder="请选择部门"
+                  clearable
+                >
+                  <el-option label="质量管理部" value="质量管理部" />
+                  <el-option label="制造管理部" value="制造管理部" />
+                  <el-option label="研发中心" value="研发中心" />
+                  <el-option label="采购部" value="采购部" />
+                  <el-option label="信息技术部" value="信息技术部" />
+                  <el-option label="经营管理部" value="经营管理部" />
+                </el-select>
+              </el-form-item>
 
-                <el-form-item label="职位" prop="position">
-                  <el-input
-                    v-model="registerForm.position"
-                    placeholder="请输入职位"
-                    clearable
-                  />
-                </el-form-item>
-              </template>
-
-              <template v-else>
-                <el-form-item label="供应商" prop="supplier_id" class="field-span-2">
-                  <SupplierSearch
-                    v-model="registerForm.supplier_id"
-                    v-model:supplier-name="selectedSupplierName"
-                  />
-                </el-form-item>
-
-                <el-form-item label="职位" prop="position" class="field-span-2">
-                  <el-input
-                    v-model="registerForm.position"
-                    placeholder="请输入职位"
-                    clearable
-                  />
-                </el-form-item>
-              </template>
+              <el-form-item label="岗位" prop="position">
+                <el-input
+                  v-model="registerForm.position"
+                  placeholder="请输入岗位"
+                  clearable
+                />
+              </el-form-item>
             </div>
 
             <div class="register-actions">
@@ -141,7 +123,7 @@
                 class="submit-button"
                 @click="handleRegister"
               >
-                提交注册
+                提交申请
               </el-button>
 
               <el-button
@@ -160,16 +142,18 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
-import SupplierSearch from '@/components/SupplierSearch.vue'
+
+import { authApi } from '@/api/auth'
 
 const router = useRouter()
 const registerFormRef = ref<FormInstance>()
-const userType = ref<'internal' | 'supplier'>('internal')
-const selectedSupplierName = ref('')
 const loading = ref(false)
+
+const INTERNAL_EMAIL_DOMAIN = 'ics-energy.com'
+const GENERIC_VALIDATION_ERROR = '注册信息校验未通过，请检查后重试'
 
 const registerForm = reactive({
   username: '',
@@ -180,10 +164,9 @@ const registerForm = reactive({
   phone: '',
   department: '',
   position: '',
-  supplier_id: undefined as number | undefined
 })
 
-const validatePassword = (_rule: any, value: string, callback: (error?: Error) => void) => {
+const validatePassword = (_rule: unknown, value: string, callback: (error?: Error) => void) => {
   if (!value) {
     callback(new Error('请输入密码'))
     return
@@ -201,14 +184,14 @@ const validatePassword = (_rule: any, value: string, callback: (error?: Error) =
   if (/[^a-zA-Z0-9]/.test(value)) complexity += 1
 
   if (complexity < 3) {
-    callback(new Error('密码需包含大写、小写、数字、特殊字符中的至少三种'))
+    callback(new Error('密码需满足至少三类字符组合'))
     return
   }
 
   callback()
 }
 
-const validateConfirmPassword = (_rule: any, value: string, callback: (error?: Error) => void) => {
+const validateConfirmPassword = (_rule: unknown, value: string, callback: (error?: Error) => void) => {
   if (!value) {
     callback(new Error('请再次输入密码'))
     return
@@ -226,43 +209,27 @@ const registerRules = computed<FormRules>(() => ({
   username: [
     { required: true, message: '请输入用户名', trigger: 'blur' },
     { min: 3, max: 50, message: '用户名长度为 3 到 50 个字符', trigger: 'blur' },
-    { pattern: /^[a-zA-Z0-9_]+$/, message: '仅支持字母、数字、下划线', trigger: 'blur' }
+    { pattern: /^[a-zA-Z0-9_]+$/, message: '仅支持字母、数字和下划线', trigger: 'blur' },
   ],
-  password: [
-    { required: true, validator: validatePassword, trigger: 'blur' }
-  ],
-  confirmPassword: [
-    { required: true, validator: validateConfirmPassword, trigger: 'blur' }
-  ],
+  password: [{ required: true, validator: validatePassword, trigger: 'blur' }],
+  confirmPassword: [{ required: true, validator: validateConfirmPassword, trigger: 'blur' }],
   full_name: [
     { required: true, message: '请输入姓名', trigger: 'blur' },
-    { min: 2, max: 100, message: '姓名长度为 2 到 100 个字符', trigger: 'blur' }
+    { min: 2, max: 100, message: '姓名长度为 2 到 100 个字符', trigger: 'blur' },
   ],
   email: [
     { required: true, message: '请输入邮箱', trigger: 'blur' },
-    { type: 'email', message: '请输入正确的邮箱格式', trigger: 'blur' }
+    { type: 'email', message: '请输入正确的邮箱格式', trigger: 'blur' },
   ],
-  phone: [
-    { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号码', trigger: 'blur' }
-  ],
-  department: userType.value === 'internal'
-    ? [{ required: true, message: '请选择部门', trigger: 'change' }]
-    : [],
-  supplier_id: userType.value === 'supplier'
-    ? [{ required: true, message: '请选择供应商', trigger: 'change' }]
-    : []
+  phone: [{ pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号', trigger: 'blur' }],
+  department: [{ required: true, message: '请选择部门', trigger: 'change' }],
 }))
 
-watch(userType, (nextType) => {
-  if (nextType === 'internal') {
-    registerForm.supplier_id = undefined
-    selectedSupplierName.value = ''
-  } else {
-    registerForm.department = ''
-  }
-})
+function matchesInternalEmailPolicy(email: string) {
+  return email.trim().toLowerCase().endsWith(`@${INTERNAL_EMAIL_DOMAIN}`)
+}
 
-const validateFallback = () => {
+function validateFallback() {
   if (!registerForm.username.trim()) {
     ElMessage.error('请输入用户名')
     return false
@@ -288,22 +255,21 @@ const validateFallback = () => {
     return false
   }
 
-  if (userType.value === 'internal' && !registerForm.department) {
-    ElMessage.error('请选择部门')
+  if (!matchesInternalEmailPolicy(registerForm.email)) {
+    ElMessage.error(GENERIC_VALIDATION_ERROR)
     return false
   }
 
-  if (userType.value === 'supplier' && !registerForm.supplier_id) {
-    ElMessage.error('请选择供应商')
+  if (!registerForm.department) {
+    ElMessage.error('请选择部门')
     return false
   }
 
   return true
 }
 
-const handleRegister = async () => {
-  const passedFallback = validateFallback()
-  if (!passedFallback) {
+async function handleRegister() {
+  if (!validateFallback()) {
     return
   }
 
@@ -319,25 +285,17 @@ const handleRegister = async () => {
   loading.value = true
 
   try {
-    const { authApi } = await import('@/api/auth')
-
-    const registerData: Record<string, unknown> = {
-      username: registerForm.username,
+    const response = await authApi.register({
+      username: registerForm.username.trim(),
       password: registerForm.password,
-      full_name: registerForm.full_name,
-      email: registerForm.email,
-      phone: registerForm.phone || undefined,
-      user_type: userType.value,
-      position: registerForm.position || undefined
-    }
+      full_name: registerForm.full_name.trim(),
+      email: registerForm.email.trim(),
+      phone: registerForm.phone.trim() || undefined,
+      user_type: 'internal',
+      department: registerForm.department.trim(),
+      position: registerForm.position.trim() || undefined,
+    })
 
-    if (userType.value === 'internal') {
-      registerData.department = registerForm.department
-    } else {
-      registerData.supplier_id = registerForm.supplier_id
-    }
-
-    const response = await authApi.register(registerData)
     ElMessage.success(response.message || '注册成功，请等待管理员审核')
     await router.push('/login')
   } catch (error: any) {
@@ -349,9 +307,8 @@ const handleRegister = async () => {
 
 defineExpose({
   registerForm,
-  userType,
   loading,
-  handleRegister
+  handleRegister,
 })
 </script>
 
@@ -405,7 +362,7 @@ defineExpose({
   flex: 1;
   box-sizing: border-box;
   display: grid;
-  grid-template-columns: minmax(0, 1.05fr) minmax(420px, 560px);
+  grid-template-columns: minmax(0, 1.05fr) minmax(400px, 520px);
   align-items: center;
   gap: clamp(28px, 4vw, 52px);
   height: calc(100vh - 64px);
@@ -423,7 +380,7 @@ defineExpose({
 
 .register-stage::before {
   right: 10%;
-  top: 10%;
+  top: 8%;
   width: 420px;
   height: 420px;
   border-radius: 50%;
@@ -440,7 +397,7 @@ defineExpose({
     rgba(255, 255, 255, 0) 14px 34px
   );
   clip-path: polygon(20% 100%, 42% 18%, 56% 18%, 88% 100%, 68% 100%, 59% 72%, 34% 72%, 27% 100%);
-  opacity: 0.7;
+  opacity: 0.72;
 }
 
 .register-hero {
@@ -459,8 +416,8 @@ defineExpose({
 }
 
 .register-hero::after {
-  right: 10%;
-  bottom: 10%;
+  right: 6%;
+  bottom: 4%;
   width: 180px;
   height: 180px;
   border-radius: 50%;
@@ -491,9 +448,9 @@ defineExpose({
 }
 
 .hero-subtitle {
-  margin: 16px 0 0;
+  margin: 18px 0 0;
   font-size: clamp(17px, 1.55vw, 21px);
-  line-height: 1.45;
+  line-height: 1.55;
   max-width: 440px;
   opacity: 0.88;
 }
@@ -506,26 +463,8 @@ defineExpose({
 }
 
 .register-panel-shell {
-  --panel-title: #0f2748;
-  --panel-muted: rgba(34, 59, 92, 0.74);
-  --panel-field-bg: rgba(255, 255, 255, 0.96);
-  --panel-field-border: rgba(15, 39, 72, 0.12);
-  --panel-field-text: #223b5c;
-  --panel-field-placeholder: rgba(34, 59, 92, 0.58);
-  --panel-segment-bg: rgba(233, 242, 251, 0.96);
-  --panel-segment-text: #4a6787;
-  --panel-segment-border: rgba(40, 112, 184, 0.16);
-  --panel-primary-start: #2d8cf0;
-  --panel-primary-end: #4ba6ff;
-  --panel-primary-shadow: rgba(35, 131, 228, 0.24);
-  --panel-primary-contrast: #ffffff;
-  --panel-secondary-bg: rgba(227, 238, 249, 0.96);
-  --panel-secondary-text: #526f8d;
-  --panel-secondary-border: rgba(21, 76, 136, 0.12);
-  --panel-focus-border: rgba(47, 142, 239, 0.34);
-  --panel-focus-ring: rgba(47, 142, 239, 0.1);
   width: 100%;
-  max-width: 560px;
+  max-width: 520px;
   max-height: calc(100vh - 112px);
   padding: 22px 24px 24px;
   border: 1px solid rgba(255, 255, 255, 0.72);
@@ -539,50 +478,40 @@ defineExpose({
 
 .register-panel-head {
   display: flex;
-  align-items: center;
-  justify-content: flex-start;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
   margin-bottom: 18px;
 }
 
 .register-panel-head h2 {
   margin: 0;
-  color: var(--panel-title);
+  color: #0f2748;
   font-size: 26px;
   line-height: 1.15;
   font-weight: 700;
 }
 
-.user-type-selector {
-  width: 100%;
-  display: flex;
-  margin-bottom: 18px;
+.register-panel-head p {
+  margin: 8px 0 0;
+  color: rgba(34, 59, 92, 0.72);
+  font-size: 14px;
+  line-height: 1.5;
 }
 
-.user-type-selector :deep(.el-radio-button) {
-  flex: 1;
-}
-
-.user-type-selector :deep(.el-radio-button__inner) {
-  width: 100%;
-  height: 44px;
-  border-radius: 14px;
-  border: 1px solid var(--panel-segment-border);
-  background: var(--panel-segment-bg);
-  color: var(--panel-segment-text);
+.panel-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 84px;
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: rgba(19, 119, 214, 0.12);
+  color: #1377d6;
+  font-size: 13px;
   font-weight: 600;
-  transition: all 0.24s ease;
-}
-
-.user-type-selector :deep(.el-radio-button:first-child .el-radio-button__inner),
-.user-type-selector :deep(.el-radio-button:last-child .el-radio-button__inner) {
-  border-radius: 14px;
-}
-
-.user-type-selector :deep(.el-radio-button__original-radio:checked + .el-radio-button__inner) {
-  background: linear-gradient(135deg, var(--panel-primary-start), var(--panel-primary-end));
-  border-color: transparent;
-  color: var(--panel-primary-contrast);
-  box-shadow: 0 14px 28px var(--panel-primary-shadow);
+  white-space: nowrap;
 }
 
 .register-form {
@@ -596,17 +525,13 @@ defineExpose({
   gap: 4px 12px;
 }
 
-.field-span-2 {
-  grid-column: 1 / -1;
-}
-
 .register-form :deep(.el-form-item) {
   margin-bottom: 8px;
 }
 
 .register-form :deep(.el-form-item__label) {
   padding-bottom: 6px;
-  color: var(--panel-muted);
+  color: rgba(34, 59, 92, 0.74);
   font-weight: 600;
 }
 
@@ -614,25 +539,15 @@ defineExpose({
 .register-form :deep(.el-select__wrapper) {
   min-height: 44px;
   border-radius: 14px;
-  background: var(--panel-field-bg);
-  box-shadow: 0 0 0 1px var(--panel-field-border) inset;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 0 0 1px rgba(15, 39, 72, 0.12) inset;
 }
 
 .register-form :deep(.el-input__wrapper.is-focus),
 .register-form :deep(.el-select__wrapper.is-focused) {
   box-shadow:
-    0 0 0 1px var(--panel-focus-border) inset,
-    0 0 0 4px var(--panel-focus-ring);
-}
-
-.register-form :deep(.el-input__inner),
-.register-form :deep(.el-select__placeholder),
-.register-form :deep(.el-select__selected-item) {
-  color: var(--panel-field-text);
-}
-
-.register-form :deep(.el-input__inner::placeholder) {
-  color: var(--panel-field-placeholder);
+    0 0 0 1px rgba(47, 142, 239, 0.34) inset,
+    0 0 0 4px rgba(47, 142, 239, 0.1);
 }
 
 .register-actions {
@@ -658,19 +573,15 @@ defineExpose({
 
 .submit-button {
   border: none;
-  background: linear-gradient(135deg, var(--panel-primary-start), var(--panel-primary-end));
-  box-shadow: 0 18px 30px var(--panel-primary-shadow);
-}
-
-.submit-button:hover {
-  opacity: 0.96;
+  background: linear-gradient(135deg, #2d8cf0, #4ba6ff);
+  box-shadow: 0 18px 30px rgba(35, 131, 228, 0.24);
 }
 
 .cancel-button,
 .cancel-button:hover {
-  background: var(--panel-secondary-bg);
-  color: var(--panel-secondary-text);
-  border-color: var(--panel-secondary-border);
+  background: rgba(227, 238, 249, 0.96);
+  color: #526f8d;
+  border-color: rgba(21, 76, 136, 0.12);
 }
 
 .register-form :deep(.el-button + .el-button) {
@@ -757,10 +668,6 @@ defineExpose({
   .register-actions {
     grid-template-columns: minmax(0, 1fr);
   }
-
-  .field-span-2 {
-    grid-column: auto;
-  }
 }
 
 @media (max-width: 640px) {
@@ -778,7 +685,8 @@ defineExpose({
   }
 
   .register-panel-head {
-    margin-bottom: 16px;
+    flex-direction: column;
+    align-items: flex-start;
   }
 }
 </style>

@@ -2,7 +2,7 @@
 质量指标 Pydantic 模型
 Quality Metric Schemas - API 请求/响应数据校验
 """
-from datetime import date
+from datetime import date as date_type
 from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, Field
 from decimal import Decimal
@@ -14,7 +14,7 @@ class QualityMetricResponse(BaseModel):
     """质量指标响应模型"""
     id: int
     metric_type: str
-    metric_date: date
+    metric_date: date_type
     value: float
     target_value: Optional[float] = None
     product_type: Optional[str] = None
@@ -44,7 +44,7 @@ class DashboardMetricSummary(BaseModel):
 
 class DashboardResponse(BaseModel):
     """仪表盘数据响应"""
-    data_date: date = Field(..., description="数据日期")
+    date: date_type = Field(..., description="数据日期")
     metrics: List[DashboardMetricSummary] = Field(..., description="指标列表")
     summary: Dict[str, Any] = Field(..., description="汇总信息")
 
@@ -52,8 +52,8 @@ class DashboardResponse(BaseModel):
 class MetricTrendRequest(BaseModel):
     """指标趋势查询请求"""
     metric_type: str = Field(..., description="指标类型")
-    start_date: date = Field(..., description="开始日期")
-    end_date: date = Field(..., description="结束日期")
+    start_date: date_type = Field(..., description="开始日期")
+    end_date: date_type = Field(..., description="结束日期")
     supplier_id: Optional[int] = Field(None, description="供应商ID（可选）")
     product_type: Optional[str] = Field(None, description="产品类型（可选）")
     line_id: Optional[str] = Field(None, description="产线ID（可选）")
@@ -64,8 +64,8 @@ class MetricTrendResponse(BaseModel):
     """指标趋势响应"""
     metric_type: str
     metric_name: str
-    start_date: date
-    end_date: date
+    start_date: date_type
+    end_date: date_type
     data_points: List[QualityMetricResponse]
     statistics: Dict[str, Any] = Field(..., description="统计信息：平均值、最大值、最小值等")
 
@@ -73,7 +73,7 @@ class MetricTrendResponse(BaseModel):
 class DrillDownRequest(BaseModel):
     """下钻查询请求"""
     metric_type: str = Field(..., description="指标类型")
-    metric_date: date = Field(..., description="指标日期")
+    metric_date: date_type = Field(..., description="指标日期")
     supplier_id: Optional[int] = Field(None, description="供应商ID（可选）")
     product_type: Optional[str] = Field(None, description="产品类型（可选）")
     line_id: Optional[str] = Field(None, description="产线ID（可选）")
@@ -83,7 +83,7 @@ class DrillDownRequest(BaseModel):
 class DrillDownResponse(BaseModel):
     """下钻查询响应"""
     metric_type: str
-    metric_date: date
+    metric_date: date_type
     metric_value: float
     details: List[Dict[str, Any]] = Field(..., description="明细数据")
     breakdown: Dict[str, Any] = Field(..., description="分类统计")
@@ -103,7 +103,7 @@ class TopSuppliersResponse(BaseModel):
     metric_type: str
     metric_name: str
     period: str = Field(..., description="统计周期：daily/monthly/yearly")
-    date: date
+    date: date_type
     top_suppliers: List[TopSupplierItem]
 
 
@@ -121,8 +121,8 @@ class ProcessAnalysisItem(BaseModel):
 class ProcessAnalysisResponse(BaseModel):
     """制程质量分析响应"""
     period: str = Field(..., description="统计周期")
-    start_date: date
-    end_date: date
+    start_date: date_type
+    end_date: date_type
     by_responsibility: List[ProcessAnalysisItem] = Field(..., description="按责任类别统计")
     by_process: List[ProcessAnalysisItem] = Field(..., description="按工序统计")
     by_line: List[ProcessAnalysisItem] = Field(..., description="按线体统计")
@@ -142,8 +142,8 @@ class CustomerAnalysisItem(BaseModel):
 class CustomerAnalysisResponse(BaseModel):
     """客户质量分析响应"""
     period: str
-    start_date: date
-    end_date: date
+    start_date: date_type
+    end_date: date_type
     by_product_type: List[CustomerAnalysisItem] = Field(..., description="按产品类型统计")
     monthly_trend: List[Dict[str, Any]] = Field(..., description="月度趋势")
     severity_distribution: Dict[str, int] = Field(..., description="严重度分布")

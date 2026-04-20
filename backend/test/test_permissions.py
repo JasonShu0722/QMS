@@ -13,11 +13,33 @@ from app.models.role_tag import RoleTag
 from app.models.user_role_assignment import UserRoleAssignment
 from app.core.permissions import (
     PermissionChecker,
+    get_redis_client,
     require_permission,
     has_permission,
     require_any_permission,
     require_all_permissions
 )
+
+
+@pytest.fixture(autouse=True)
+async def clear_permission_cache_between_tests():
+    try:
+        redis_client = await get_redis_client()
+        cache_keys = await redis_client.keys(f"{PermissionChecker.CACHE_PREFIX}*")
+        if cache_keys:
+            await redis_client.delete(*cache_keys)
+    except Exception:
+        pass
+
+    yield
+
+    try:
+        redis_client = await get_redis_client()
+        cache_keys = await redis_client.keys(f"{PermissionChecker.CACHE_PREFIX}*")
+        if cache_keys:
+            await redis_client.delete(*cache_keys)
+    except Exception:
+        pass
 
 
 @pytest.mark.asyncio
@@ -479,3 +501,86 @@ async def test_inactive_role_tag_permissions_do_not_take_effect(db_session: Asyn
     )
 
     assert has_perm is False
+
+
+@pytest.mark.asyncio
+async def test_quality_dashboard_read_is_available_for_internal_user(db_session: AsyncSession):
+    """内部账号默认可查看质量数据面板"""
+    user = User(
+        username="dashboard_internal",
+        password_hash="hashed_password",
+        full_name="Dashboard Internal",
+        email="dashboard-internal@example.com",
+        user_type=UserType.INTERNAL,
+        status=UserStatus.ACTIVE
+    )
+    db_session.add(user)
+    await db_session.commit()
+    await db_session.refresh(user)
+
+    has_perm = await PermissionChecker.check_permission(
+        user_id=user.id,
+        module_path="quality.data_panel",
+        operation=OperationType.READ,
+        db=db_session
+    )
+    permission_tree = await PermissionChecker.get_user_permissions(user.id, db_session)
+
+    assert has_perm is True
+    assert permission_tree["quality.data_panel"]["read"] is True
+
+
+@pytest.mark.asyncio
+async def test_quality_dashboard_read_is_available_for_supplier_user(db_session: AsyncSession):
+    """供应商账号默认可查看归属自己的质量数据面板"""
+    user = User(
+        username="dashboard_supplier",
+        password_hash="hashed_password",
+        full_name="Dashboard Supplier",
+        email="dashboard-supplier@example.com",
+        user_type=UserType.SUPPLIER,
+        status=UserStatus.ACTIVE,
+        supplier_id=1
+    )
+    db_session.add(user)
+    await db_session.commit()
+    await db_session.refresh(user)
+
+    has_perm = await PermissionChecker.check_permission(
+        user_id=user.id,
+        module_path="quality.data_panel",
+        operation=OperationType.READ,
+        db=db_session
+    )
+    permission_tree = await PermissionChecker.get_user_permissions(user.id, db_session)
+
+    assert has_perm is True
+    assert permission_tree["quality.data_panel"]["read"] is True
+
+
+@pytest.mark.asyncio
+async def test_supplier_performance_read_is_available_for_supplier_user(db_session: AsyncSession):
+    """供应商账号默认可查看自己的绩效页面"""
+    user = User(
+        username="supplier_performance_user",
+        password_hash="hashed_password",
+        full_name="Supplier Performance User",
+        email="supplier-performance@example.com",
+        user_type=UserType.SUPPLIER,
+        status=UserStatus.ACTIVE,
+        supplier_id=1
+    )
+    db_session.add(user)
+    await db_session.commit()
+    await db_session.refresh(user)
+
+    has_perm = await PermissionChecker.check_permission(
+        user_id=user.id,
+        module_path="supplier.performance",
+        operation=OperationType.READ,
+        db=db_session
+    )
+    permission_tree = await PermissionChecker.get_user_permissions(user.id, db_session)
+
+    assert has_perm is True
+    assert permission_tree["supplier.performance"]["read"] is True

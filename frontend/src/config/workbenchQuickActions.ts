@@ -13,6 +13,7 @@ export interface WorkbenchQuickActionContext {
   isSupplier: boolean
   isPlatformAdmin: boolean
   isFeatureEnabled: (featureKey: string) => boolean
+  canAccessRoute: (path: string) => boolean
 }
 
 const WORKBENCH_QUICK_ACTION_CATALOG: WorkbenchQuickActionOption[] = [
@@ -245,40 +246,35 @@ const WORKBENCH_QUICK_ACTION_CATALOG: WorkbenchQuickActionOption[] = [
     category: '系统管理',
     title: '用户管理',
     description: '审核注册申请并治理账号状态',
-    link: '/admin/users',
-    requiresPlatformAdmin: true
+    link: '/admin/users'
   },
   {
     id: 'admin-permissions',
     category: '系统管理',
     title: '权限矩阵',
     description: '配置模块权限与操作授权',
-    link: '/admin/permissions',
-    requiresPlatformAdmin: true
+    link: '/admin/permissions'
   },
   {
     id: 'admin-tasks',
     category: '系统管理',
     title: '任务监控',
     description: '查看平台聚合任务与超期情况',
-    link: '/admin/tasks',
-    requiresPlatformAdmin: true
+    link: '/admin/tasks'
   },
   {
     id: 'admin-operation-logs',
     category: '系统管理',
     title: '操作日志',
     description: '审计关键系统操作记录',
-    link: '/admin/operation-logs',
-    requiresPlatformAdmin: true
+    link: '/admin/operation-logs'
   },
   {
     id: 'admin-feature-flags',
     category: '系统管理',
     title: '功能开关',
     description: '治理正式与预览环境功能开关',
-    link: '/admin/feature-flags',
-    requiresPlatformAdmin: true
+    link: '/admin/feature-flags'
   },
   {
     id: 'instruments',
@@ -315,6 +311,10 @@ export function getConfigurableQuickActions(context: WorkbenchQuickActionContext
     }
 
     if (item.requiresPlatformAdmin && !context.isPlatformAdmin) {
+      return false
+    }
+
+    if (!context.canAccessRoute(item.link)) {
       return false
     }
 

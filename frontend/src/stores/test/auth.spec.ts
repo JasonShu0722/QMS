@@ -5,13 +5,15 @@ import { useAuthStore } from '@/stores/auth'
 const loginMock = vi.fn()
 const getCurrentUserMock = vi.fn()
 const checkPermissionMock = vi.fn()
+const getPermissionTreeMock = vi.fn()
 const loadFeatureFlagsMock = vi.fn()
 
 vi.mock('@/api/auth', () => ({
   authApi: {
     login: loginMock,
     getCurrentUser: getCurrentUserMock,
-    checkPermission: checkPermissionMock
+    checkPermission: checkPermissionMock,
+    getPermissionTree: getPermissionTreeMock
   }
 }))
 
@@ -62,6 +64,7 @@ describe('auth store', () => {
     vi.clearAllMocks()
     installStorage()
     installLocation('localhost', 'http://localhost:5173/login')
+    getPermissionTreeMock.mockResolvedValue({})
   })
 
   it('hydrates preview environment from local storage on localhost', () => {
@@ -101,9 +104,39 @@ describe('auth store', () => {
     expect(store.currentEnvironment).toBe('preview')
     expect(store.isPlatformAdmin).toBe(true)
     expect(store.allowedEnvironments).toEqual(['stable', 'preview'])
+    expect(store.passwordExpired).toBe(false)
     expect(window.localStorage.setItem).toHaveBeenCalledWith('access_token', 'token-123')
     expect(window.localStorage.setItem).toHaveBeenCalledWith('current_environment', 'preview')
+    expect(window.localStorage.setItem).toHaveBeenCalledWith('password_expired', 'false')
+    expect(getPermissionTreeMock).toHaveBeenCalled()
     expect(loadFeatureFlagsMock).toHaveBeenCalledWith(true)
+  })
+
+  it('persists password-expired reminder state after login', async () => {
+    loginMock.mockResolvedValue({
+      access_token: 'token-expired',
+      token_type: 'bearer',
+      environment: 'stable',
+      allowed_environments: ['stable'],
+      password_expired: true,
+      user_info: {
+        id: 8,
+        username: 'expired-user',
+        full_name: 'Expired User',
+        email: 'expired@example.com',
+        user_type: 'internal',
+        status: 'active',
+        allowed_environments: 'stable',
+        created_at: '2026-03-31T00:00:00Z',
+        updated_at: '2026-03-31T00:00:00Z'
+      }
+    })
+
+    const store = useAuthStore()
+    await store.login('expired-user', 'Secret123!', 'internal')
+
+    expect(store.passwordExpired).toBe(true)
+    expect(window.localStorage.setItem).toHaveBeenCalledWith('password_expired', 'true')
   })
 
   it('keeps the selected entry environment when backend returns a runtime environment marker', async () => {
@@ -132,6 +165,75 @@ describe('auth store', () => {
 
     expect(store.currentEnvironment).toBe('stable')
     expect(window.localStorage.setItem).toHaveBeenCalledWith('current_environment', 'stable')
+  })
+
+  it('hydrates permission tree and supports local permission checks', () => {
+    installStorage({
+      access_token: 'token-local',
+      user_info: JSON.stringify({
+        id: 11,
+        username: 'quality-user',
+        full_name: 'Quality User',
+        email: 'quality@example.com',
+        user_type: 'internal',
+        status: 'active',
+        created_at: '2026-03-31T00:00:00Z',
+        updated_at: '2026-03-31T00:00:00Z'
+      }),
+      permission_tree: JSON.stringify({
+        'quality.data_panel': { read: true },
+        'quality.process': { read: false }
+      })
+    })
+
+    const store = useAuthStore()
+
+    expect(store.hasPermissionLocal('quality.data_panel', 'read')).toBe(true)
+    expect(store.hasPermissionLocal('quality.process', 'read')).toBe(false)
+  })
+
+  it('treats quality dashboard as visible for authenticated internal accounts without explicit permission tree entries', () => {
+    installStorage({
+      access_token: 'token-local-internal',
+      user_info: JSON.stringify({
+        id: 12,
+        username: 'internal-user',
+        full_name: 'Internal User',
+        email: 'internal@example.com',
+        user_type: 'internal',
+        status: 'active',
+        created_at: '2026-03-31T00:00:00Z',
+        updated_at: '2026-03-31T00:00:00Z'
+      }),
+      permission_tree: JSON.stringify({})
+    })
+
+    const store = useAuthStore()
+
+    expect(store.hasPermissionLocal('quality.data_panel', 'read')).toBe(true)
+    expect(store.hasPermissionLocal('supplier.performance', 'read')).toBe(false)
+  })
+
+  it('treats quality dashboard as visible for authenticated supplier accounts', () => {
+    installStorage({
+      access_token: 'token-local',
+      user_info: JSON.stringify({
+        id: 13,
+        username: 'supplier-user',
+        full_name: 'Supplier User',
+        email: 'supplier@example.com',
+        user_type: 'supplier',
+        status: 'active',
+        created_at: '2026-03-31T00:00:00Z',
+        updated_at: '2026-03-31T00:00:00Z'
+      }),
+      permission_tree: JSON.stringify({})
+    })
+
+    const store = useAuthStore()
+
+    expect(store.hasPermissionLocal('quality.data_panel', 'read')).toBe(true)
+    expect(store.hasPermissionLocal('supplier.performance', 'read')).toBe(true)
   })
 
   it('refreshes user info and preserves normalized payload fields', async () => {
@@ -171,5 +273,6 @@ describe('auth store', () => {
     expect(store.userInfo?.supplier_name).toBe('Northwind Components')
     expect(store.userInfo?.signature_image_path).toBe('/uploads/signatures/supplier_user.png')
     expect(store.allowedEnvironments).toEqual(['stable', 'preview'])
+    expect(getPermissionTreeMock).toHaveBeenCalled()
   })
 })

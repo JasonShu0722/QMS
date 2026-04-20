@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import type { User } from '@/types/user'
+import type { PermissionOperation, PermissionTree, User } from '@/types/user'
 import { detectEntryEnvironment, normalizeEntryEnvironment, type EntryEnvironment } from '@/utils/environment'
 
 /**
@@ -14,7 +14,9 @@ import { detectEntryEnvironment, normalizeEntryEnvironment, type EntryEnvironmen
 export const useAuthStore = defineStore('auth', () => {
   const token = ref<string | null>(localStorage.getItem('access_token'))
   const userInfo = ref<User | null>(null)
+  const permissionTree = ref<PermissionTree>({})
   const currentEnvironment = ref<EntryEnvironment>(detectEntryEnvironment())
+  const passwordExpired = ref(localStorage.getItem('password_expired') === 'true')
 
   const isAuthenticated = computed(() => !!token.value)
   const isSupplier = computed(() => userInfo.value?.user_type === 'supplier')
@@ -37,6 +39,79 @@ export const useAuthStore = defineStore('auth', () => {
     } catch (error) {
       console.error('Failed to parse user info from localStorage:', error)
       logout()
+    }
+  }
+
+  function initPermissionTree() {
+    const storedPermissionTree = localStorage.getItem('permission_tree')
+    if (!storedPermissionTree) {
+      return
+    }
+
+    try {
+      permissionTree.value = JSON.parse(storedPermissionTree)
+    } catch (error) {
+      console.error('Failed to parse permission tree from localStorage:', error)
+      localStorage.removeItem('permission_tree')
+      permissionTree.value = {}
+    }
+  }
+
+  function setPermissionTree(nextPermissionTree: PermissionTree) {
+    permissionTree.value = nextPermissionTree
+    localStorage.setItem('permission_tree', JSON.stringify(nextPermissionTree))
+  }
+
+  function setPasswordExpired(nextValue: boolean) {
+    passwordExpired.value = nextValue
+    localStorage.setItem('password_expired', String(nextValue))
+  }
+
+  function clearPasswordExpiredReminder() {
+    passwordExpired.value = false
+    localStorage.removeItem('password_expired')
+  }
+
+  function hasPermissionLocal(modulePath: string, operation: PermissionOperation): boolean {
+    if (!isAuthenticated.value || !userInfo.value) {
+      return false
+    }
+
+    if (isPlatformAdmin.value) {
+      return true
+    }
+
+    if (modulePath === 'quality.data_panel' && operation === 'read') {
+      return isInternal.value || isSupplier.value
+    }
+
+    if (modulePath === 'supplier.performance' && operation === 'read') {
+      return isSupplier.value || permissionTree.value?.[modulePath]?.[operation] === true
+    }
+
+    return permissionTree.value?.[modulePath]?.[operation] === true
+  }
+
+  async function loadPermissionTree(force = false): Promise<void> {
+    if (!isAuthenticated.value) {
+      permissionTree.value = {}
+      return
+    }
+
+    if (!force && Object.keys(permissionTree.value).length > 0) {
+      return
+    }
+
+    try {
+      const { authApi } = await import('@/api/auth')
+      const nextPermissionTree = await authApi.getPermissionTree()
+      setPermissionTree(nextPermissionTree)
+    } catch (error) {
+      console.error('Failed to load permission tree:', error)
+      if (force) {
+        permissionTree.value = {}
+        localStorage.removeItem('permission_tree')
+      }
     }
   }
 
@@ -72,6 +147,8 @@ export const useAuthStore = defineStore('auth', () => {
       })
     )
     localStorage.setItem('current_environment', currentEnvironment.value)
+    setPasswordExpired(response.password_expired)
+    await loadPermissionTree(true)
 
     const { useFeatureFlagStore } = await import('@/stores/featureFlag')
     const featureFlagStore = useFeatureFlagStore()
@@ -81,15 +158,18 @@ export const useAuthStore = defineStore('auth', () => {
   function logout() {
     token.value = null
     userInfo.value = null
+    permissionTree.value = {}
     currentEnvironment.value = detectEntryEnvironment()
     localStorage.removeItem('access_token')
     localStorage.removeItem('user_info')
+    localStorage.removeItem('permission_tree')
     localStorage.removeItem('current_environment')
+    localStorage.removeItem('password_expired')
   }
 
   async function checkPermission(
     modulePath: string,
-    operation: 'create' | 'read' | 'update' | 'delete' | 'export'
+    operation: PermissionOperation
   ): Promise<boolean> {
     if (!isAuthenticated.value || !userInfo.value) {
       return false
@@ -97,6 +177,9 @@ export const useAuthStore = defineStore('auth', () => {
 
     try {
       const { authApi } = await import('@/api/auth')
+      if (hasPermissionLocal(modulePath, operation)) {
+        return true
+      }
       return await authApi.checkPermission(modulePath, operation)
     } catch (error) {
       console.error('Permission check failed:', error)
@@ -114,6 +197,7 @@ export const useAuthStore = defineStore('auth', () => {
       const response = await authApi.getCurrentUser()
       userInfo.value = response
       localStorage.setItem('user_info', JSON.stringify(response))
+      await loadPermissionTree(true)
     } catch (error) {
       console.error('Failed to refresh user info:', error)
       logout()
@@ -126,11 +210,14 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   initUserInfo()
+  initPermissionTree()
 
   return {
     token,
     userInfo,
+    permissionTree,
     currentEnvironment,
+    passwordExpired,
     isAuthenticated,
     isSupplier,
     isInternal,
@@ -139,8 +226,12 @@ export const useAuthStore = defineStore('auth', () => {
     allowedEnvironments,
     login,
     logout,
+    hasPermissionLocal,
+    loadPermissionTree,
     checkPermission,
     refreshUserInfo,
-    updateToken
+    updateToken,
+    setPasswordExpired,
+    clearPasswordExpiredReminder
   }
 })

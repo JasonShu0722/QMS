@@ -140,19 +140,31 @@ async def _resolve_supplier_id(
     if not normalized_identifier:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"{row_label}必须指定供应商")
 
-    query = select(Supplier)
-    if normalized_identifier.isdigit():
-        query = query.where(Supplier.id == int(normalized_identifier))
-    else:
-        query = query.where(
-            or_(
-                Supplier.code.ilike(normalized_identifier),
-                Supplier.name.ilike(normalized_identifier),
-            )
-        )
+    code_result = await db.execute(
+        select(Supplier).where(Supplier.code.ilike(normalized_identifier)).limit(1)
+    )
+    supplier = code_result.scalar_one_or_none()
 
-    result = await db.execute(query.limit(1))
-    supplier = result.scalar_one_or_none()
+    if supplier is None and normalized_identifier.isdigit():
+        id_result = await db.execute(
+            select(Supplier).where(Supplier.id == int(normalized_identifier)).limit(1)
+        )
+        supplier = id_result.scalar_one_or_none()
+
+    if supplier is None:
+        name_result = await db.execute(
+            select(Supplier).where(Supplier.name.ilike(normalized_identifier))
+        )
+        suppliers = name_result.scalars().all()
+        if len(suppliers) > 1:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=(
+                    f"{row_label}匹配到多个同名供应商：{normalized_identifier}，"
+                    "请改用唯一的供应商代码"
+                ),
+            )
+        supplier = suppliers[0] if suppliers else None
 
     if not supplier:
         raise HTTPException(

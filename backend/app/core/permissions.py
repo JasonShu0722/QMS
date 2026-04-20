@@ -18,6 +18,17 @@ from app.models.role_permission import RolePermission
 from app.models.role_tag import RoleTag
 from app.models.user_role_assignment import UserRoleAssignment
 
+QUALITY_DASHBOARD_MODULE = "quality.data_panel"
+QUALITY_DASHBOARD_READ_KEY = Permission.build_permission_key(
+    QUALITY_DASHBOARD_MODULE,
+    OperationType.READ.value
+)
+SUPPLIER_PERFORMANCE_MODULE = "supplier.performance"
+SUPPLIER_PERFORMANCE_READ_KEY = Permission.build_permission_key(
+    SUPPLIER_PERFORMANCE_MODULE,
+    OperationType.READ.value
+)
+
 
 # Redis 客户端（用于权限缓存）
 _redis_client: Optional[redis.Redis] = None
@@ -94,6 +105,20 @@ class PermissionChecker:
             await PermissionChecker._cache_permissions(user_id, user_permissions)
         
         # 检查权限键是否在用户权限集合中
+        if (
+            module_path == QUALITY_DASHBOARD_MODULE
+            and operation == OperationType.READ
+            and await PermissionChecker._can_access_quality_dashboard(user_id, db)
+        ):
+            return True
+
+        if (
+            module_path == SUPPLIER_PERFORMANCE_MODULE
+            and operation == OperationType.READ
+            and await PermissionChecker._can_access_supplier_performance(user_id, db)
+        ):
+            return True
+
         return permission_key in user_permissions
     
     @staticmethod
@@ -134,6 +159,11 @@ class PermissionChecker:
             await PermissionChecker._cache_permissions(user_id, user_permissions)
         
         # 将扁平的权限集合转换为结构化的权限树
+        if await PermissionChecker._can_access_quality_dashboard(user_id, db):
+            user_permissions.add(QUALITY_DASHBOARD_READ_KEY)
+        if await PermissionChecker._can_access_supplier_performance(user_id, db):
+            user_permissions.add(SUPPLIER_PERFORMANCE_READ_KEY)
+
         permissions_tree: Dict[str, Dict[str, bool]] = {}
         
         for perm_key in user_permissions:
@@ -294,6 +324,24 @@ class PermissionChecker:
         permission_keys.update({perm.permission_key for perm in role_permissions})
 
         return permission_keys
+
+    @staticmethod
+    async def _can_access_quality_dashboard(user_id: int, db: AsyncSession) -> bool:
+        user_result = await db.execute(select(User).where(User.id == user_id))
+        user = user_result.scalar_one_or_none()
+        if not user:
+            return False
+
+        return user.user_type in {UserType.INTERNAL, UserType.SUPPLIER}
+
+    @staticmethod
+    async def _can_access_supplier_performance(user_id: int, db: AsyncSession) -> bool:
+        user_result = await db.execute(select(User).where(User.id == user_id))
+        user = user_result.scalar_one_or_none()
+        if not user:
+            return False
+
+        return user.user_type == UserType.SUPPLIER
 
 
 def require_permission(module_path: str, operation: OperationType):

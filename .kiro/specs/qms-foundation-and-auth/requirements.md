@@ -29,13 +29,13 @@
 
 本文档定义质量管理系统（QMS）的基础架构与认证授权模块的功能需求。该模块是整个 QMS 系统的核心底座，负责用户身份认证、权限管理、系统配置、个人工作台、通知机制以及双轨发布架构。系统采用 Monorepo 结构，通过 Docker Compose 编排，支持 Preview（预览环境）与 Stable（正式环境）双轨并行运行，共享同一数据库底座。
 
-本模块需支持内部员工与外部供应商的统一登录入口，实现细粒度的"功能-操作"权限控制体系，并提供千人千面的动态工作台。同时需预留仪器量具管理、质量成本管理等功能接口，为后续扩展奠定基础。
+本模块需支持内部员工与外部供应商的统一登录入口，实现细粒度的"功能-操作"权限控制体系，并提供千人千面的动态工作台。其中公共注册入口仅面向内部员工开放，供应商账号统一由管理员基于供应商主数据创建。同时需预留仪器量具管理、质量成本管理等功能接口，为后续扩展奠定基础。
 
 ## 当前实施基线（2026-04）
 
 | 范围 | 当前状态 | 说明 |
 | --- | --- | --- |
-| Requirement 1-3 | 已落地 | 注册审核、统一登录、环境准入、平台管理员引导、角色标签权限矩阵已形成可联调闭环 |
+| Requirement 1-3 | 已落地 | 内部员工注册审核、统一登录、环境准入、平台管理员引导、角色标签权限矩阵已形成可联调闭环 |
 | Requirement 4 | 预留 | 操作日志管理入口保留，但不作为第一里程碑阻塞项 |
 | Requirement 5 | 部分落地 | 资料读取、头像、密码、签名已落地；账户信息自助修改仅限平台管理员 |
 | Requirement 6-7 | 基础版已落地 | 工作台、快捷入口、底座域待办聚合已落地；增强指标与跨全部业务任务聚合继续扩展 |
@@ -88,13 +88,13 @@
 
 #### Acceptance Criteria
 
-1. WHEN 公司用户提交注册申请 THEN THE QMS_System SHALL 记录用户名、姓名、电话、邮箱、部门、职位信息
-2. WHEN 供应商用户提交注册申请 THEN THE QMS_System SHALL 记录用户名、姓名、电话、邮箱、供应商名称、职位信息
-3. WHEN 供应商用户输入供应商名称 THEN THE QMS_System SHALL 调用 API 模糊搜索系统内的供应商名录并返回匹配结果
-4. WHEN 供应商用户选择供应商名称 THEN THE QMS_System SHALL 仅允许从现存的供应商名录中选择
-5. WHEN 用户提交注册申请 THEN THE QMS_System SHALL 将用户状态设置为"待审核"
-6. WHEN 管理员审核通过注册申请 THEN THE QMS_System SHALL 将用户状态更新为"已激活"并允许用户登录
-7. WHEN 管理员驳回注册申请 THEN THE QMS_System SHALL 将用户状态更新为"已驳回"并记录驳回原因
+1. WHEN 内部员工提交注册申请 THEN THE QMS_System SHALL 记录用户名、姓名、电话、邮箱、部门、职位信息
+2. WHEN 内部员工提交注册申请 THEN THE QMS_System SHALL 校验企业邮箱策略，且对外失败提示不得暴露具体校验规则
+3. WHEN 用户提交内部注册申请 THEN THE QMS_System SHALL 将用户状态设置为"待审核"
+4. WHEN 管理员审核通过注册申请 THEN THE QMS_System SHALL 将用户状态更新为"已激活"并允许用户登录
+5. WHEN 管理员驳回注册申请 THEN THE QMS_System SHALL 将用户状态更新为"已驳回"并记录驳回原因
+6. WHEN 供应商账号需要接入系统 THEN THE QMS_System SHALL 要求管理员在用户管理界面统一创建，而不是开放公共供应商注册入口
+7. WHEN 管理员创建供应商账号 THEN THE QMS_System SHALL 仅允许其绑定现存的供应商主数据记录
 
 ### Requirement 2: 统一登录与身份认证
 
@@ -256,6 +256,10 @@
 10. WHEN 管理员解冻用户账号 THEN THE QMS_System SHALL 将用户状态恢复为"已激活"并允许其登录
 11. WHEN 管理员删除普通账户 THEN THE QMS_System SHALL 阻止删除超级管理员 bootstrap 账户和已关联关键业务数据的账户
 12. WHEN 管理员配置角色标签权限 THEN THE QMS_System SHALL 展示 Permission_Matrix 配置界面并支持实时保存
+13. WHEN 管理员访问供应商基础信息界面 THEN THE QMS_System SHALL 展示供应商代码、供应商名称、状态、联系人及关联账号数量
+14. WHEN 管理员维护供应商基础信息 THEN THE QMS_System SHALL 支持单条创建、批量导入、编辑与启停用
+15. WHEN 管理员创建供应商账号 THEN THE QMS_System SHALL 仅允许绑定已存在且处于启用状态的供应商主数据
+16. WHEN 供应商主数据被停用 THEN THE QMS_System SHALL 阻止继续创建绑定该主体的新供应商账号，并使已绑定账号失去登录资格
 
 ### Requirement 13: 移动端响应式适配
 

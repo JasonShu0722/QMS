@@ -188,3 +188,77 @@
   - batch parsing may reject malformed rows unexpectedly if validation messaging is unclear
   - supplier account creation depends on existing supplier master data
   - rollback point is `backend/app/api/v1/admin/users.py`, `backend/app/schemas/admin.py`, `frontend/src/views/admin/UserApproval.vue`, and related API/type files
+
+## Task: Registration Policy Tightening And Supplier Master Planning (2026-04-15)
+
+- Goal:
+  - contract public registration to internal employees only
+  - remove supplier self-registration and shift supplier account provisioning fully into admin user management
+  - introduce supplier master-data maintenance planning so supplier accounts are created against a governed supplier directory
+  - align registration policy, supplier master data, and supplier-account linkage into one closed design
+- Non-goals:
+  - no immediate implementation of full supplier-quality business workflows
+  - no one-shot refactor of all existing supplier-related modules
+  - no physical deletion strategy for supplier master records in this phase
+- Planned sequence:
+  - Phase 1: remove supplier self-registration from public register flow and contract `/auth/register` to internal-only
+  - Phase 2: add internal registration gate for corporate email suffix with non-revealing validation messaging
+  - Phase 3: design and land a minimal admin-only supplier master module with `supplier_code` and `supplier_name` as the primary reference pair
+  - Phase 4: adapt admin supplier-account creation to depend on supplier master records and inherited supplier attributes
+- Planned verification:
+  - `Set-Location backend; & '..\.venv\Scripts\python.exe' -m pytest test\test_auth_api.py test\test_admin_users_api.py`
+  - `Set-Location frontend; npm run test -- src/views/test/login.spec.ts src/views/test/register.spec.ts`
+  - `Set-Location frontend; npm run test:foundation`
+  - `Set-Location frontend; npm run build`
+- Risks / rollback:
+  - public registration policy changes require synchronized updates across frontend, backend schema, and source requirements docs
+  - supplier master maintenance is shared reference data and may affect downstream modules that already rely on `supplier_id`
+  - rollback point is `frontend/src/views/Register.vue`, `backend/app/api/v1/auth.py`, `backend/app/schemas/user.py`, plus the future supplier-master admin surfaces
+
+- Status:
+  - completed on 2026-04-18
+- Delivered:
+  - public registration was contracted to internal employees only
+  - supplier self-registration and public supplier search were removed
+  - internal registration now enforces the corporate email policy with outward-generic validation messaging
+  - supplier login now depends on an existing active supplier master record
+  - system management now includes supplier master maintenance with list/search/create/bulk-edit/status controls
+  - admin supplier-account creation and batch creation now resolve against supplier master data only
+- Documentation synced:
+  - `.kiro/steering/product.md`
+  - `.kiro/specs/qms-foundation-and-auth/requirements.md`
+  - `.kiro/specs/qms-foundation-and-auth/design.md`
+  - `doc/QMS_ROLE_FUNCTION_MAPPING.md`
+  - `frontend/src/features/requirements-panel/catalog.ts`
+- Verification evidence:
+  - `Set-Location frontend; npm run build`
+  - `Set-Location frontend; npm run test:foundation`
+  - `& '.\.venv\Scripts\python.exe' -m pytest backend/test/test_user_registration.py backend/test/test_login.py backend/test/test_admin_suppliers_api.py backend/test/test_admin_users_api.py backend/test/test_foundation_milestone_api.py backend/test/test_profile_api.py`
+  - `& '.\.venv\Scripts\python.exe' backend/scripts/run_foundation_smoke.py`
+- Residual notes:
+  - backend still emits existing `datetime.utcnow()` / Pydantic deprecation warnings during test runs
+  - frontend build still emits the existing Sass legacy API and large chunk warnings
+
+## Task: Permission-Driven Surface Visibility And Supplier Quality Panel Access (2026-04-18)
+
+- Goal:
+  - make major sections and subpages disappear from navigation when the current account lacks the corresponding permissions
+  - keep route-level blocking as the second line of defense, but move menu / quick-entry visibility to permission-aware rendering
+  - allow supplier accounts with the correct role tag to access the quality data panel and only view trend data scoped to their own supplier
+- Non-goals:
+  - no redesign of the permission matrix UI
+  - no expansion into full cross-module supplier self-service analytics beyond the quality data panel
+  - no rewrite of the entire workbench information architecture
+- Planned implementation:
+  - add a current-user permission-tree endpoint under auth APIs
+  - let the frontend auth store cache the current user permission tree for local visibility checks
+  - refactor sidebar and workbench quick actions to render only accessible major/minor entries
+  - unify quality data panel API permission checks to the `quality.data_panel` module and restrict supplier views to self-scoped trend access
+- Planned verification:
+  - `& '.\.venv\Scripts\python.exe' -m pytest backend/test/test_login.py backend/test/test_admin_permissions_api.py backend/test/test_foundation_milestone_api.py`
+  - `Set-Location frontend; npm run test:foundation`
+  - `Set-Location frontend; npm run build`
+- Risks / rollback:
+  - menu visibility may drift from route guarding if permission metadata is duplicated instead of centralized
+  - supplier analytics access must not leak peer-supplier rankings or unrelated internal analysis tabs
+  - rollback points are `frontend/src/layouts/MainLayout.vue`, `frontend/src/views/Workbench.vue`, `frontend/src/stores/auth.ts`, `frontend/src/router/index.ts`, `frontend/src/views/QualityDashboard.vue`, `backend/app/api/v1/auth.py`, and `backend/app/api/v1/quality_metrics.py`

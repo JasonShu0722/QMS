@@ -1,47 +1,45 @@
 import request from '@/utils/request'
 import type {
-  User,
-  Permission,
-  PermissionMatrixRow,
-  PermissionMatrixColumn,
-  OperationLog,
-  OperationLogQuery,
-  TodoTask,
-  TaskStatistics,
-  TaskReassignRequest,
-  FeatureFlag,
-  FeatureFlagUpdateRequest,
   AdminBulkUserCreateRequest,
   AdminBulkUserCreateResponse,
   AdminUserCreateRequest,
   AdminUserCreateResponse,
+  FeatureFlag,
+  FeatureFlagUpdateRequest,
+  OperationLog,
+  OperationLogQuery,
+  Permission,
+  PermissionMatrixColumn,
+  PermissionMatrixRow,
+  SupplierListQuery,
+  SupplierMaster,
+  SupplierMasterBulkCreateRequest,
+  SupplierMasterBulkCreateResponse,
+  SupplierMasterCreateRequest,
+  SupplierMasterUpdateRequest,
+  TaskReassignRequest,
+  TaskStatistics,
+  TodoTask,
+  User,
   UserListQuery,
-  UserUpdateRequest
+  UserUpdateRequest,
 } from '@/types/admin'
 import type {
   RolePermissionChange,
   RoleTagCreateRequest,
-  RoleTemplateInitializationResponse,
   RoleTagSummary,
-  RoleTagUpdateRequest
+  RoleTagUpdateRequest,
+  RoleTemplateInitializationResponse,
 } from '@/types/role'
 
 /**
- * 管理后台相关 API
+ * 管理后台相关 API。
  */
 export const adminApi = {
-  // ==================== 用户审核管理 ====================
-  
-  /**
-   * 获取待审核用户列表
-   */
   getPendingUsers(): Promise<User[]> {
     return request.get('/v1/admin/users/pending')
   },
 
-  /**
-   * 获取用户清单
-   */
   getUsers(params?: UserListQuery): Promise<User[]> {
     return request.get('/v1/admin/users', { params })
   },
@@ -54,67 +52,61 @@ export const adminApi = {
     return request.post('/v1/admin/users/bulk', data)
   },
 
-  /**
-   * 批准用户注册
-   */
-  approveUser(userId: number): Promise<void> {
-    return request.post(`/v1/admin/users/${userId}/approve`)
-  },
-
-  /**
-   * 拒绝用户注册
-   */
-  rejectUser(userId: number, reason: string): Promise<void> {
-    return request.post(`/v1/admin/users/${userId}/reject`, { reason })
-  },
-
-  /**
-   * 更新用户基本信息
-   */
   updateUser(userId: number, data: UserUpdateRequest): Promise<User> {
     return request.patch(`/v1/admin/users/${userId}`, data)
   },
 
-  /**
-   * 分配角色标签
-   */
   assignUserRoles(userId: number, roleTagIds: number[]): Promise<User> {
     return request.put(`/v1/admin/users/${userId}/roles`, { role_tag_ids: roleTagIds })
   },
 
-  /**
-   * 冻结用户账号
-   */
+  approveUser(userId: number): Promise<void> {
+    return request.post(`/v1/admin/users/${userId}/approve`)
+  },
+
+  rejectUser(userId: number, reason: string): Promise<void> {
+    return request.post(`/v1/admin/users/${userId}/reject`, { reason })
+  },
+
   freezeUser(userId: number, reason?: string): Promise<void> {
     return request.post(`/v1/admin/users/${userId}/freeze`, reason ? { reason } : {})
   },
 
-  /**
-   * 解冻用户账号
-   */
   unfreezeUser(userId: number): Promise<void> {
     return request.post(`/v1/admin/users/${userId}/unfreeze`)
   },
 
-  /**
-   * 重置用户密码
-   */
   resetUserPassword(userId: number): Promise<{ temporary_password: string }> {
     return request.post(`/v1/admin/users/${userId}/reset-password`)
   },
 
-  /**
-   * 删除用户
-   */
   deleteUser(userId: number): Promise<void> {
     return request.delete(`/v1/admin/users/${userId}`)
   },
 
-  // ==================== 权限管理 ====================
+  getSuppliers(params?: SupplierListQuery): Promise<SupplierMaster[]> {
+    return request.get('/v1/admin/suppliers', { params })
+  },
 
-  /**
-   * 获取角色标签列表
-   */
+  createSupplier(data: SupplierMasterCreateRequest): Promise<SupplierMaster> {
+    return request.post('/v1/admin/suppliers', data)
+  },
+
+  bulkCreateSuppliers(data: SupplierMasterBulkCreateRequest): Promise<SupplierMasterBulkCreateResponse> {
+    return request.post('/v1/admin/suppliers/bulk', data)
+  },
+
+  updateSupplier(supplierId: number, data: SupplierMasterUpdateRequest): Promise<SupplierMaster> {
+    return request.patch(`/v1/admin/suppliers/${supplierId}`, data)
+  },
+
+  updateSupplierStatus(
+    supplierId: number,
+    status: 'active' | 'suspended'
+  ): Promise<SupplierMaster> {
+    return request.post(`/v1/admin/suppliers/${supplierId}/status`, { status })
+  },
+
   getRoleTags(params?: {
     include_inactive?: boolean
     applicable_user_type?: 'internal' | 'supplier'
@@ -122,43 +114,26 @@ export const adminApi = {
     return request.get('/v1/admin/permissions/roles', { params })
   },
 
-  /**
-   * 创建角色标签
-   */
   createRoleTag(data: RoleTagCreateRequest): Promise<RoleTagSummary> {
     return request.post('/v1/admin/permissions/roles', data)
   },
 
-  /**
-   * 更新角色标签
-   */
   updateRoleTag(roleId: number, data: RoleTagUpdateRequest): Promise<RoleTagSummary> {
     return request.put(`/v1/admin/permissions/roles/${roleId}`, data)
   },
 
-  /**
-   * 删除角色标签
-   */
   deleteRoleTag(roleId: number): Promise<void> {
     return request.delete(`/v1/admin/permissions/roles/${roleId}`)
   },
 
-  /**
-   * 更新角色标签权限
-   */
   updateRolePermissions(roleId: number, permissions: RolePermissionChange[]): Promise<void> {
-    return request.put(`/v1/admin/permissions/roles/${roleId}/permissions`, {
-      permissions
-    })
+    return request.put(`/v1/admin/permissions/roles/${roleId}/permissions`, { permissions })
   },
 
   initializeRoleTemplates(): Promise<RoleTemplateInitializationResponse> {
     return request.post('/v1/admin/permissions/initialize-role-templates')
   },
 
-  /**
-   * 获取权限矩阵
-   */
   getPermissionMatrix(): Promise<{
     modules: PermissionMatrixColumn[]
     rows: PermissionMatrixRow[]
@@ -166,9 +141,6 @@ export const adminApi = {
     return request.get('/v1/admin/permissions/matrix')
   },
 
-  /**
-   * 授予权限
-   */
   grantPermissions(data: {
     user_ids: number[]
     permissions: Array<{ module_path: string; operation_type: string }>
@@ -176,9 +148,6 @@ export const adminApi = {
     return request.put('/v1/admin/permissions/grant', data)
   },
 
-  /**
-   * 撤销权限
-   */
   revokePermissions(data: {
     user_ids: number[]
     permissions: Array<{ module_path: string; operation_type: string }>
@@ -186,18 +155,10 @@ export const adminApi = {
     return request.put('/v1/admin/permissions/revoke', data)
   },
 
-  /**
-   * 获取用户权限详情
-   */
   getUserPermissions(userId: number): Promise<Permission[]> {
     return request.get(`/v1/admin/permissions/users/${userId}`)
   },
 
-  // ==================== 操作日志 ====================
-
-  /**
-   * 获取操作日志列表
-   */
   getOperationLogs(query: OperationLogQuery): Promise<{
     logs: OperationLog[]
     total: number
@@ -207,35 +168,21 @@ export const adminApi = {
     return request.get('/v1/admin/operation-logs', { params: query })
   },
 
-  /**
-   * 获取操作日志详情
-   */
   getOperationLogDetail(logId: number): Promise<OperationLog> {
     return request.get(`/v1/admin/operation-logs/${logId}`)
   },
 
-  /**
-   * 导出操作日志
-   */
   exportOperationLogs(query: OperationLogQuery): Promise<Blob> {
     return request.get('/v1/admin/operation-logs/export', {
       params: query,
-      responseType: 'blob'
+      responseType: 'blob',
     })
   },
 
-  // ==================== 任务统计与监控 ====================
-
-  /**
-   * 获取任务统计数据
-   */
   getTaskStatistics(): Promise<TaskStatistics> {
     return request.get('/v1/admin/tasks/statistics')
   },
 
-  /**
-   * 获取所有待办任务
-   */
   getAllTasks(filters?: {
     urgency?: string
     department?: string
@@ -244,40 +191,23 @@ export const adminApi = {
     return request.get('/v1/admin/tasks', { params: filters })
   },
 
-  /**
-   * 批量转派任务
-   */
   reassignTasks(data: TaskReassignRequest): Promise<void> {
     return request.post('/v1/admin/tasks/reassign', data)
   },
 
-  // ==================== 功能开关管理 ====================
-
-  /**
-   * 获取所有功能开关
-   */
   getFeatureFlags(environment?: 'stable' | 'preview'): Promise<FeatureFlag[]> {
     return request
       .get('/v1/admin/feature-flags', {
-        params: environment ? { environment } : undefined
+        params: environment ? { environment } : undefined,
       })
       .then((response: any) => response.feature_flags || [])
   },
 
-  /**
-   * 更新功能开关
-   */
-  updateFeatureFlag(
-    flagId: number,
-    data: FeatureFlagUpdateRequest
-  ): Promise<void> {
+  updateFeatureFlag(flagId: number, data: FeatureFlagUpdateRequest): Promise<void> {
     return request.put(`/v1/admin/feature-flags/${flagId}`, data)
   },
 
-  /**
-   * 获取功能开关详情
-   */
   getFeatureFlagDetail(flagId: number): Promise<FeatureFlag> {
     return request.get(`/v1/admin/feature-flags/${flagId}`)
-  }
+  },
 }

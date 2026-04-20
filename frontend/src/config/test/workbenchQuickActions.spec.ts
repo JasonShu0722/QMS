@@ -10,7 +10,8 @@ const adminContext = {
   isInternal: true,
   isSupplier: false,
   isPlatformAdmin: true,
-  isFeatureEnabled: (featureKey: string) => featureKey !== 'quality_costs.management'
+  isFeatureEnabled: (featureKey: string) => featureKey !== 'quality_costs.management',
+  canAccessRoute: (path: string) => path !== '/quality-costs'
 }
 
 describe('workbenchQuickActions', () => {
@@ -19,6 +20,16 @@ describe('workbenchQuickActions', () => {
 
     expect(options.some((item) => item.id === 'admin-users')).toBe(true)
     expect(options.some((item) => item.id === 'admin-feature-flags')).toBe(true)
+  })
+
+  it('filters out actions whose routes are not currently accessible', () => {
+    const options = getConfigurableQuickActions({
+      ...adminContext,
+      canAccessRoute: (path: string) => !['/admin/users', '/quality-costs'].includes(path)
+    })
+
+    expect(options.some((item) => item.id === 'admin-users')).toBe(false)
+    expect(options.some((item) => item.id === 'quality-dashboard')).toBe(true)
   })
 
   it('maps backend default shortcuts to catalog ids', () => {
@@ -50,7 +61,7 @@ describe('workbenchQuickActions', () => {
     )
     const visibleActions = getVisibleQuickActions(selectedIds, options, adminContext)
 
-    expect(selectedIds).toEqual(['admin-users', 'instruments', 'quality-costs'])
+    expect(selectedIds).toEqual(['admin-users', 'instruments'])
     expect(visibleActions.map((item) => item.link)).toEqual(['/admin/users', '/instruments'])
   })
 })

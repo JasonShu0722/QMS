@@ -9,6 +9,8 @@ export type UserType = 'internal' | 'supplier'
  * 用户状态
  */
 export type UserStatus = 'pending' | 'active' | 'frozen' | 'rejected'
+export type PermissionOperation = 'create' | 'read' | 'update' | 'delete' | 'export'
+export type PermissionTree = Record<string, Partial<Record<PermissionOperation, boolean>>>
 
 /**
  * 用户信息接口
@@ -78,5 +80,5 @@ export interface LoginResponse {
  */
 export interface PermissionCheckRequest {
   module_path: string
-  operation: 'create' | 'read' | 'update' | 'delete' | 'export'
+  operation: PermissionOperation
 }

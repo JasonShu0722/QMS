@@ -3,10 +3,11 @@ API Version 1
 统一管理所有 v1 版本的 API 路由
 """
 from fastapi import APIRouter
-from app.api.v1 import auth, tasks, notifications, profile, announcements, feature_flags, quality_metrics, ai, scar, supplier_lifecycle, supplier_targets, supplier_meetings, ppap, inspection_specs, barcode_validation, process_defects, process_issues, customer_complaints, eight_d_customer, customer_claims, supplier_claims, lesson_learned, new_product_projects, trial_production, audit_plans, audit_templates, audit_executions, audit_ncs, customer_audits, instruments, quality_costs, workbench, requirements_panel, requirements_panel_auth
+from app.api.v1 import auth, tasks, notifications, profile, announcements, feature_flags, quality_metrics, ai, scar, supplier_lifecycle, supplier_targets, supplier_meetings, supplier_performance, ppap, inspection_specs, barcode_validation, process_defects, process_issues, customer_complaints, eight_d_customer, customer_claims, supplier_claims, lesson_learned, new_product_projects, trial_production, audit_plans, audit_templates, audit_executions, audit_ncs, customer_audits, instruments, quality_costs, workbench, requirements_panel, requirements_panel_auth
 from app.api.v1.admin import (
     permissions, 
     users, 
+    suppliers,
     operation_logs, 
     tasks as admin_tasks, 
     notification_rules, 
@@ -31,6 +32,7 @@ api_router.include_router(scar.router)
 api_router.include_router(supplier_lifecycle.router)
 api_router.include_router(supplier_targets.router)
 api_router.include_router(supplier_meetings.router)
+api_router.include_router(supplier_performance.router)
 api_router.include_router(ppap.router)
 api_router.include_router(inspection_specs.router)
 api_router.include_router(barcode_validation.router)
@@ -54,6 +56,7 @@ api_router.include_router(requirements_panel_auth.router)
 api_router.include_router(requirements_panel.router)
 api_router.include_router(permissions.router)
 api_router.include_router(users.router)
+api_router.include_router(suppliers.router)
 api_router.include_router(operation_logs.router)
 api_router.include_router(admin_tasks.router)
 api_router.include_router(notification_rules.router)

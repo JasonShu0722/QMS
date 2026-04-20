@@ -28,6 +28,7 @@ class Settings(BaseSettings):
     PASSWORD_EXPIRE_DAYS: int = 90
     MAX_LOGIN_ATTEMPTS: int = 5
     ACCOUNT_LOCKOUT_MINUTES: int = 30
+    INTERNAL_REGISTRATION_EMAIL_DOMAIN: str = "ics-energy.com"
 
     LDAP_SERVER: Optional[str] = None
     LDAP_BASE_DN: Optional[str] = None

@@ -1,50 +1,52 @@
 """
-用户相关的 Pydantic 数据校验模型
-User Schemas - 用于 API 请求/响应的数据验证
+用户相关的 Pydantic 数据校验模型。
 """
-from typing import Optional
+from __future__ import annotations
+
 from datetime import datetime
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from typing import Literal, Optional
+
+from pydantic import BaseModel, EmailStr, Field, field_serializer, field_validator
 
 from app.schemas.role_tag import RoleTagSummarySchema
+from app.core.timezone import serialize_beijing_datetime
 
 
 class UserRegisterSchema(BaseModel):
     """
-    用户注册表单校验模型
-    
-    支持内部员工和供应商用户的注册
+    公共注册仅面向内部员工。
     """
+
     username: str = Field(..., min_length=3, max_length=50, description="用户名")
     password: str = Field(..., min_length=8, description="密码")
     full_name: str = Field(..., min_length=2, max_length=100, description="姓名")
     email: EmailStr = Field(..., description="邮箱")
     phone: Optional[str] = Field(None, max_length=20, description="电话")
-    user_type: str = Field(..., description="用户类型: internal 或 supplier")
-    
-    # 内部员工专属字段
-    department: Optional[str] = Field(None, max_length=100, description="部门（内部员工必填）")
-    position: Optional[str] = Field(None, max_length=100, description="职位")
-    
-    # 供应商用户专属字段
-    supplier_id: Optional[int] = Field(None, description="供应商ID（供应商用户必填）")
-    
-    @field_validator('user_type')
+    user_type: Literal["internal"] = Field(default="internal", description="用户类型")
+    department: Optional[str] = Field(None, max_length=100, description="部门")
+    position: Optional[str] = Field(None, max_length=100, description="岗位")
+
+    @field_validator("username")
     @classmethod
-    def validate_user_type(cls, v: str) -> str:
-        """验证用户类型"""
-        if v not in ['internal', 'supplier']:
-            raise ValueError('用户类型必须是 internal 或 supplier')
-        return v
-    
-    @field_validator('username')
+    def validate_username(cls, value: str) -> str:
+        normalized = value.strip()
+        if not normalized.replace("_", "").isalnum():
+            raise ValueError("用户名只支持字母、数字和下划线")
+        return normalized
+
+    @field_validator("full_name")
     @classmethod
-    def validate_username(cls, v: str) -> str:
-        """验证用户名格式"""
-        if not v.isalnum() and '_' not in v:
-            raise ValueError('用户名只能包含字母、数字和下划线')
-        return v
-    
+    def validate_full_name(cls, value: str) -> str:
+        return value.strip()
+
+    @field_validator("phone", "department", "position")
+    @classmethod
+    def normalize_optional_text(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return None
+        normalized = value.strip()
+        return normalized or None
+
     model_config = {
         "json_schema_extra": {
             "examples": [
@@ -52,21 +54,11 @@ class UserRegisterSchema(BaseModel):
                     "username": "zhang_san",
                     "password": "SecurePass123!",
                     "full_name": "张三",
-                    "email": "zhangsan@company.com",
+                    "email": "zhangsan@ics-energy.com",
                     "phone": "13800138000",
                     "user_type": "internal",
-                    "department": "质量部",
-                    "position": "质量工程师"
-                },
-                {
-                    "username": "supplier_user",
-                    "password": "SupplierPass456!",
-                    "full_name": "李四",
-                    "email": "lisi@supplier.com",
-                    "phone": "13900139000",
-                    "user_type": "supplier",
-                    "supplier_id": 1,
-                    "position": "质量经理"
+                    "department": "质量管理部",
+                    "position": "体系工程师",
                 }
             ]
         }
@@ -75,31 +67,24 @@ class UserRegisterSchema(BaseModel):
 
 class UserApprovalSchema(BaseModel):
     """
-    用户审核操作校验模型
-    
-    用于管理员审批或驳回用户注册申请
+    用户审核操作校验模型。
     """
+
     action: str = Field(..., description="审核动作: approve 或 reject")
-    reason: Optional[str] = Field(None, max_length=500, description="驳回原因（驳回时必填）")
-    
-    @field_validator('action')
+    reason: Optional[str] = Field(None, max_length=500, description="驳回原因")
+
+    @field_validator("action")
     @classmethod
-    def validate_action(cls, v: str) -> str:
-        """验证审核动作"""
-        if v not in ['approve', 'reject']:
-            raise ValueError('审核动作必须是 approve 或 reject')
-        return v
-    
+    def validate_action(cls, value: str) -> str:
+        if value not in ["approve", "reject"]:
+            raise ValueError("审核动作必须是 approve 或 reject")
+        return value
+
     model_config = {
         "json_schema_extra": {
             "examples": [
-                {
-                    "action": "approve"
-                },
-                {
-                    "action": "reject",
-                    "reason": "提供的资料不完整，请补充供应商资质证明"
-                }
+                {"action": "approve"},
+                {"action": "reject", "reason": "提供的资料不完整，请补充后重新提交"},
             ]
         }
     }
@@ -107,8 +92,9 @@ class UserApprovalSchema(BaseModel):
 
 class UserResponseSchema(BaseModel):
     """
-    用户信息响应模型
+    用户信息响应模型。
     """
+
     id: int
     username: str
     full_name: str
@@ -129,45 +115,24 @@ class UserResponseSchema(BaseModel):
     last_login_at: Optional[datetime]
     created_at: datetime
     updated_at: datetime
-    
-    model_config = {
-        "from_attributes": True
-    }
 
+    model_config = {"from_attributes": True}
 
-class SupplierSearchResponseSchema(BaseModel):
-    """
-    供应商搜索结果响应模型
-    """
-    id: int
-    name: str
-    code: str
-    status: str
-    
-    model_config = {
-        "from_attributes": True,
-        "json_schema_extra": {
-            "examples": [
-                {
-                    "id": 1,
-                    "name": "深圳市某某电子有限公司",
-                    "code": "SUP001",
-                    "status": "active"
-                }
-            ]
-        }
-    }
+    @field_serializer("last_login_at", "created_at", "updated_at", when_used="json")
+    def serialize_datetime_fields(self, value: datetime | None) -> str | None:
+        return serialize_beijing_datetime(value)
 
 
 class RegisterResponseSchema(BaseModel):
     """
-    注册成功响应模型
+    注册成功响应模型。
     """
+
     message: str
     user_id: int
     username: str
     status: str
-    
+
     model_config = {
         "json_schema_extra": {
             "examples": [
@@ -175,48 +140,47 @@ class RegisterResponseSchema(BaseModel):
                     "message": "注册成功，请等待管理员审核",
                     "user_id": 1,
                     "username": "zhang_san",
-                    "status": "pending"
+                    "status": "pending",
                 }
             ]
         }
     }
 
 
-
 class LoginRequestSchema(BaseModel):
     """
-    登录请求模型
+    登录请求模型。
     """
+
     username: str = Field(..., min_length=3, max_length=50, description="用户名")
     password: str = Field(..., min_length=1, description="密码")
     user_type: str = Field(..., description="用户类型: internal 或 supplier")
-    captcha: Optional[str] = Field(None, description="图形验证码（供应商登录必填）")
-    captcha_id: Optional[str] = Field(None, description="验证码ID（供应商登录必填）")
-    environment: Optional[str] = Field("stable", description="登录目标环境：stable（正式版）或 preview（预览版）")
-    
-    @field_validator('user_type')
+    captcha: Optional[str] = Field(None, description="图形验证码")
+    captcha_id: Optional[str] = Field(None, description="验证码 ID")
+    environment: Optional[str] = Field("stable", description="登录目标环境")
+
+    @field_validator("user_type")
     @classmethod
-    def validate_user_type(cls, v: str) -> str:
-        """验证用户类型"""
-        if v not in ['internal', 'supplier']:
-            raise ValueError('用户类型必须是 internal 或 supplier')
-        return v
-    
+    def validate_user_type(cls, value: str) -> str:
+        if value not in ["internal", "supplier"]:
+            raise ValueError("用户类型必须是 internal 或 supplier")
+        return value
+
     model_config = {
         "json_schema_extra": {
             "examples": [
                 {
                     "username": "zhang_san",
                     "password": "SecurePass123!",
-                    "user_type": "internal"
+                    "user_type": "internal",
                 },
                 {
                     "username": "supplier_user",
                     "password": "SupplierPass456!",
                     "user_type": "supplier",
                     "captcha": "ABCD",
-                    "captcha_id": "550e8400-e29b-41d4-a716-446655440000"
-                }
+                    "captcha_id": "550e8400-e29b-41d4-a716-446655440000",
+                },
             ]
         }
     }
@@ -224,15 +188,16 @@ class LoginRequestSchema(BaseModel):
 
 class LoginResponseSchema(BaseModel):
     """
-    登录成功响应模型
+    登录成功响应模型。
     """
+
     access_token: str
     token_type: str = "bearer"
     user_info: UserResponseSchema
     environment: str = "stable"
-    allowed_environments: list[str] = Field(default_factory=list, description="当前用户可访问的环境列表")
-    password_expired: bool = Field(default=False, description="密码是否过期（需要强制修改）")
-    
+    allowed_environments: list[str] = Field(default_factory=list, description="可访问环境列表")
+    password_expired: bool = Field(default=False, description="密码是否已过期")
+
     model_config = {
         "json_schema_extra": {
             "examples": [
@@ -244,10 +209,10 @@ class LoginResponseSchema(BaseModel):
                         "id": 1,
                         "username": "zhang_san",
                         "full_name": "张三",
-                        "email": "zhangsan@company.com",
+                        "email": "zhangsan@ics-energy.com",
                         "user_type": "internal",
-                        "status": "active"
-                    }
+                        "status": "active",
+                    },
                 }
             ]
         }
@@ -256,17 +221,18 @@ class LoginResponseSchema(BaseModel):
 
 class CaptchaResponseSchema(BaseModel):
     """
-    验证码响应模型
+    验证码响应模型。
     """
-    captcha_id: str = Field(..., description="验证码ID（用于验证时关联）")
-    captcha_image: str = Field(..., description="Base64编码的验证码图片")
-    
+
+    captcha_id: str = Field(..., description="验证码 ID")
+    captcha_image: str = Field(..., description="Base64 编码的验证码图片")
+
     model_config = {
         "json_schema_extra": {
             "examples": [
                 {
                     "captcha_id": "550e8400-e29b-41d4-a716-446655440000",
-                    "captcha_image": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA..."
+                    "captcha_image": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA...",
                 }
             ]
         }

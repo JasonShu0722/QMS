@@ -87,7 +87,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import { authApi } from '@/api/auth'
+import { adminApi } from '@/api/admin'
 
 interface Supplier {
   id: number
@@ -134,7 +134,10 @@ const handleSearch = async (query: string) => {
   loading.value = true
 
   try {
-    const response = await authApi.searchSuppliers(query.trim())
+    const response = await adminApi.getSuppliers({
+      keyword: query.trim(),
+      status: 'active',
+    })
     suppliers.value = response
   } catch (error: any) {
     ElMessage.error(error.response?.data?.detail || '搜索供应商失败')

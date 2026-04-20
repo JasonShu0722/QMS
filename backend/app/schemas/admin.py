@@ -2,6 +2,7 @@
 管理员相关的 Pydantic 数据校验模型
 Admin Schemas - 用于管理员操作的 API 请求/响应验证
 """
+from datetime import datetime
 import re
 from typing import Literal, Optional
 
@@ -83,7 +84,7 @@ class _AdminUserProvisionBase(BaseModel):
     supplier_identifier: Optional[str] = Field(
         None,
         max_length=200,
-        description="供应商标识，支持供应商ID、供应商代码或供应商名称",
+        description="供应商标识，优先填写供应商代码，兼容供应商ID或供应商名称；如名称重复请改用代码",
     )
 
     @field_validator("username")
@@ -154,6 +155,84 @@ class AdminBulkUserCreateResponse(BaseModel):
     total_count: int
     created_count: int
     results: list[AdminBulkUserCreateItemResponse]
+
+
+class SupplierMasterBase(BaseModel):
+    code: str = Field(..., min_length=1, max_length=50, description="供应商代码")
+    name: str = Field(..., min_length=1, max_length=200, description="供应商名称")
+    contact_person: Optional[str] = Field(None, max_length=100, description="联系人")
+    contact_email: Optional[EmailStr] = Field(None, description="联系邮箱")
+    contact_phone: Optional[str] = Field(None, max_length=20, description="联系电话")
+
+    @field_validator("code")
+    @classmethod
+    def normalize_code(cls, value: str) -> str:
+        normalized = value.strip().upper()
+        if not normalized:
+            raise ValueError("供应商代码不能为空")
+        return normalized
+
+    @field_validator("name")
+    @classmethod
+    def normalize_name(cls, value: str) -> str:
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("供应商名称不能为空")
+        return normalized
+
+    @field_validator("contact_person", "contact_phone")
+    @classmethod
+    def normalize_optional_text(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return None
+        normalized = value.strip()
+        return normalized or None
+
+
+class SupplierMasterCreateRequest(SupplierMasterBase):
+    status: Literal["active", "suspended"] = Field(default="active", description="供应商状态")
+
+
+class SupplierMasterUpdateRequest(SupplierMasterBase):
+    status: Literal["active", "suspended"] = Field(..., description="供应商状态")
+
+
+class SupplierMasterBulkCreateItem(SupplierMasterBase):
+    pass
+
+
+class SupplierMasterBulkCreateRequest(BaseModel):
+    items: list[SupplierMasterBulkCreateItem] = Field(
+        ..., min_length=1, max_length=500, description="批量导入明细"
+    )
+    status: Literal["active", "suspended"] = Field(default="active", description="统一导入状态")
+
+
+class SupplierMasterResponse(BaseModel):
+    id: int
+    code: str
+    name: str
+    contact_person: Optional[str]
+    contact_email: Optional[str]
+    contact_phone: Optional[str]
+    status: str
+    linked_user_count: int = 0
+    active_user_count: int = 0
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class SupplierMasterStatusUpdateRequest(BaseModel):
+    status: Literal["active", "suspended"] = Field(..., description="供应商状态")
+
+
+class SupplierMasterBulkCreateResponse(BaseModel):
+    message: str
+    total_count: int
+    created_count: int
+    suppliers: list[SupplierMasterResponse]
 
 
 class UserRoleAssignmentRequest(BaseModel):

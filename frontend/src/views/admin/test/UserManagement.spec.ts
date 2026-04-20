@@ -7,10 +7,11 @@ const adminApiMocks = vi.hoisted(() => ({
   getPendingUsersMock: vi.fn(),
   getUsersMock: vi.fn(),
   getRoleTagsMock: vi.fn(),
+  getSuppliersMock: vi.fn(),
   createUserMock: vi.fn(),
   bulkCreateUsersMock: vi.fn(),
   assignUserRolesMock: vi.fn(),
-  updateUserMock: vi.fn()
+  updateUserMock: vi.fn(),
 }))
 
 const messageMocks = vi.hoisted(() => ({
@@ -19,7 +20,7 @@ const messageMocks = vi.hoisted(() => ({
   infoMock: vi.fn(),
   confirmMock: vi.fn(),
   promptMock: vi.fn(),
-  alertMock: vi.fn()
+  alertMock: vi.fn(),
 }))
 
 vi.mock('@/api/admin', () => ({
@@ -27,17 +28,12 @@ vi.mock('@/api/admin', () => ({
     getPendingUsers: adminApiMocks.getPendingUsersMock,
     getUsers: adminApiMocks.getUsersMock,
     getRoleTags: adminApiMocks.getRoleTagsMock,
+    getSuppliers: adminApiMocks.getSuppliersMock,
     createUser: adminApiMocks.createUserMock,
     bulkCreateUsers: adminApiMocks.bulkCreateUsersMock,
     assignUserRoles: adminApiMocks.assignUserRolesMock,
-    updateUser: adminApiMocks.updateUserMock
-  }
-}))
-
-vi.mock('@/api/auth', () => ({
-  authApi: {
-    searchSuppliers: vi.fn().mockResolvedValue([])
-  }
+    updateUser: adminApiMocks.updateUserMock,
+  },
 }))
 
 vi.mock('element-plus', async () => {
@@ -47,13 +43,13 @@ vi.mock('element-plus', async () => {
     ElMessage: {
       success: messageMocks.successMock,
       error: messageMocks.errorMock,
-      info: messageMocks.infoMock
+      info: messageMocks.infoMock,
     },
     ElMessageBox: {
       confirm: messageMocks.confirmMock,
       prompt: messageMocks.promptMock,
-      alert: messageMocks.alertMock
-    }
+      alert: messageMocks.alertMock,
+    },
   }
 })
 
@@ -83,15 +79,16 @@ function mountUserManagement() {
         'el-dropdown-menu': { template: '<div><slot /></div>' },
         'el-dropdown-item': { template: '<button><slot /></button>' },
         'el-checkbox': { template: '<input type="checkbox" />' },
-        'el-checkbox-group': { template: '<div><slot /></div>' }
-      }
-    }
+        'el-checkbox-group': { template: '<div><slot /></div>' },
+      },
+    },
   })
 }
 
 describe('UserApproval.vue', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+
     adminApiMocks.getPendingUsersMock.mockResolvedValue([
       {
         id: 1,
@@ -101,9 +98,10 @@ describe('UserApproval.vue', () => {
         user_type: 'internal',
         status: 'pending',
         created_at: '2026-04-12T00:00:00Z',
-        updated_at: '2026-04-12T00:00:00Z'
-      }
+        updated_at: '2026-04-12T00:00:00Z',
+      },
     ])
+
     adminApiMocks.getUsersMock.mockResolvedValue([
       {
         id: 8,
@@ -117,9 +115,10 @@ describe('UserApproval.vue', () => {
         allowed_environments: 'stable',
         role_tags: [],
         created_at: '2026-04-12T00:00:00Z',
-        updated_at: '2026-04-12T00:00:00Z'
-      }
+        updated_at: '2026-04-12T00:00:00Z',
+      },
     ])
+
     adminApiMocks.getRoleTagsMock.mockResolvedValue([
       {
         id: 3,
@@ -127,9 +126,23 @@ describe('UserApproval.vue', () => {
         role_name: '制程质量工程师',
         applicable_user_type: 'internal',
         is_active: true,
-        assigned_user_count: 1
-      }
+        assigned_user_count: 1,
+      },
     ])
+
+    adminApiMocks.getSuppliersMock.mockResolvedValue([
+      {
+        id: 12,
+        code: 'SUP001',
+        name: '示例供应商',
+        status: 'active',
+        linked_user_count: 0,
+        active_user_count: 0,
+        created_at: '2026-04-13T00:00:00Z',
+        updated_at: '2026-04-13T00:00:00Z',
+      },
+    ])
+
     adminApiMocks.createUserMock.mockResolvedValue({
       message: 'created',
       user: {
@@ -143,11 +156,12 @@ describe('UserApproval.vue', () => {
         allowed_environments: 'stable',
         role_tags: [],
         created_at: '2026-04-13T00:00:00Z',
-        updated_at: '2026-04-13T00:00:00Z'
+        updated_at: '2026-04-13T00:00:00Z',
       },
       temporary_password: 'Temp123!',
-      email_sent: true
+      email_sent: true,
     })
+
     adminApiMocks.bulkCreateUsersMock.mockResolvedValue({
       message: 'created',
       total_count: 2,
@@ -166,13 +180,14 @@ describe('UserApproval.vue', () => {
             allowed_environments: 'stable',
             role_tags: [],
             created_at: '2026-04-13T00:00:00Z',
-            updated_at: '2026-04-13T00:00:00Z'
+            updated_at: '2026-04-13T00:00:00Z',
           },
           temporary_password: 'Bulk123!',
-          email_sent: true
-        }
-      ]
+          email_sent: true,
+        },
+      ],
     })
+
     adminApiMocks.assignUserRolesMock.mockResolvedValue(undefined)
     adminApiMocks.updateUserMock.mockResolvedValue(undefined)
   })
@@ -199,7 +214,7 @@ describe('UserApproval.vue', () => {
     expect(messageMocks.successMock).toHaveBeenCalled()
   })
 
-  it('creates a single user from the create dialog state', async () => {
+  it('creates a single internal user from the create dialog state', async () => {
     const wrapper = mountUserManagement()
     await flushPromises()
 
@@ -216,8 +231,8 @@ describe('UserApproval.vue', () => {
         username: 'new-user',
         user_type: 'internal',
         department: '质量管理部',
-        allowed_environments: 'stable'
-      })
+        allowed_environments: 'stable',
+      }),
     )
     expect(messageMocks.successMock).toHaveBeenCalled()
   })
@@ -239,11 +254,24 @@ describe('UserApproval.vue', () => {
         items: [
           expect.objectContaining({
             username: 'bulk-1',
-            department: '质量管理部'
-          })
-        ]
-      })
+            department: '质量管理部',
+          }),
+        ],
+      }),
     )
     expect(messageMocks.successMock).toHaveBeenCalled()
+  })
+
+  it('loads supplier master options for supplier account creation', async () => {
+    const wrapper = mountUserManagement()
+    await flushPromises()
+
+    await (wrapper.vm as any).loadSupplierOptions('SUP001')
+
+    expect(adminApiMocks.getSuppliersMock).toHaveBeenCalledWith({
+      keyword: 'SUP001',
+      status: 'active',
+    })
+    expect((wrapper.vm as any).supplierOptions[0].name).toBe('示例供应商')
   })
 })

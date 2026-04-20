@@ -10,6 +10,7 @@ from pathlib import Path
 import io
 from PIL import Image
 
+from app.models.supplier import Supplier, SupplierStatus
 from app.models.user import User, UserStatus, UserType
 from app.core.auth_strategy import LocalAuthStrategy
 from app.core.platform_admin import get_platform_admin_usernames
@@ -219,6 +220,18 @@ class TestUpdateProfile:
         db_session: AsyncSession
     ):
         auth_strategy = LocalAuthStrategy()
+        supplier = Supplier(
+            name="Test Supplier",
+            code="SUP-TEST-001",
+            status=SupplierStatus.ACTIVE,
+            contact_person="Supplier Contact",
+            contact_email="supplier@example.com",
+            contact_phone="13800138001",
+        )
+        db_session.add(supplier)
+        await db_session.commit()
+        await db_session.refresh(supplier)
+
         supplier_user = User(
             username="supplier_profile_user",
             password_hash=auth_strategy.hash_password("Test@1234"),
@@ -229,6 +242,7 @@ class TestUpdateProfile:
             status=UserStatus.ACTIVE,
             department=None,
             position="质量接口人",
+            supplier_id=supplier.id,
             password_changed_at=datetime.utcnow(),
             created_at=datetime.utcnow(),
             updated_at=datetime.utcnow()

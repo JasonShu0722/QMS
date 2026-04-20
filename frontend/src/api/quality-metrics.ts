@@ -20,7 +20,7 @@ import type {
  */
 export function getDashboard(targetDate?: string): Promise<DashboardResponse> {
   return request({
-    url: '/quality-metrics/dashboard',
+    url: '/v1/quality-metrics/dashboard',
     method: 'get',
     params: { target_date: targetDate }
   });
@@ -39,7 +39,7 @@ export function getMetricTrend(params: {
   process_id?: string;
 }): Promise<MetricTrendResponse> {
   return request({
-    url: '/quality-metrics/trend',
+    url: '/v1/quality-metrics/trend',
     method: 'get',
     params
   });
@@ -54,7 +54,7 @@ export function getTopSuppliers(params: {
   target_date?: string;
 }): Promise<TopSuppliersResponse> {
   return request({
-    url: '/quality-metrics/top-suppliers',
+    url: '/v1/quality-metrics/top-suppliers',
     method: 'get',
     params
   });
@@ -68,7 +68,7 @@ export function getProcessAnalysis(params: {
   end_date: string;
 }): Promise<ProcessAnalysisResponse> {
   return request({
-    url: '/quality-metrics/process-analysis',
+    url: '/v1/quality-metrics/process-analysis',
     method: 'get',
     params
   });
@@ -82,7 +82,7 @@ export function getCustomerAnalysis(params: {
   end_date: string;
 }): Promise<CustomerAnalysisResponse> {
   return request({
-    url: '/quality-metrics/customer-analysis',
+    url: '/v1/quality-metrics/customer-analysis',
     method: 'get',
     params
   });
@@ -93,7 +93,7 @@ export function getCustomerAnalysis(params: {
  */
 export function diagnoseAnomaly(data: AIDiagnoseRequest): Promise<AIDiagnoseResponse> {
   return request({
-    url: '/ai/diagnose',
+    url: '/v1/ai/diagnose',
     method: 'post',
     data
   });
@@ -104,7 +104,7 @@ export function diagnoseAnomaly(data: AIDiagnoseRequest): Promise<AIDiagnoseResp
  */
 export function naturalLanguageQuery(data: AIQueryRequest): Promise<AIQueryResponse> {
   return request({
-    url: '/ai/query',
+    url: '/v1/ai/query',
     method: 'post',
     data
   });

@@ -15,104 +15,24 @@
             text-color="#bfcbd9"
             active-text-color="#409eff"
           >
-            <el-menu-item index="/workbench">
-              <el-icon><HomeFilled /></el-icon>
-              <template #title>工作台</template>
+            <el-menu-item v-for="item in visiblePrimaryItems" :key="item.index" :index="item.index">
+              <el-icon><component :is="item.icon" /></el-icon>
+              <template #title>{{ item.title }}</template>
             </el-menu-item>
 
-            <el-sub-menu index="quality-data">
+            <el-sub-menu v-for="section in visibleSections" :key="section.index" :index="section.index">
               <template #title>
-                <el-icon><DataLine /></el-icon>
-                <span>质量数据面板</span>
+                <el-icon><component :is="section.icon" /></el-icon>
+                <span>{{ section.title }}</span>
               </template>
-              <el-menu-item index="/quality-dashboard">数据仪表盘</el-menu-item>
-              <el-menu-item index="/quality-dashboard/analysis">专项数据分析</el-menu-item>
+              <el-menu-item v-for="child in section.children" :key="child.index" :index="child.index">
+                {{ child.title }}
+              </el-menu-item>
             </el-sub-menu>
 
-            <el-sub-menu index="supplier">
-              <template #title>
-                <el-icon><OfficeBuilding /></el-icon>
-                <span>供应商质量管理</span>
-              </template>
-              <el-menu-item index="/supplier/scar">SCAR 管理</el-menu-item>
-              <el-menu-item index="/supplier/eight-d">供应商 8D 报告</el-menu-item>
-              <el-menu-item index="/supplier/audit-plan">供应商审核</el-menu-item>
-              <el-menu-item index="/supplier/targets">目标管理</el-menu-item>
-              <el-menu-item index="/supplier/performance">绩效评价</el-menu-item>
-              <el-menu-item index="/supplier/meetings">供应商会议</el-menu-item>
-              <el-menu-item index="/supplier/ppap">PPAP 管理</el-menu-item>
-              <el-menu-item index="/supplier/inspection-specs">检验规范</el-menu-item>
-              <el-menu-item index="/supplier/barcode">防错扫码</el-menu-item>
-              <el-menu-item index="/supplier/claims">供应商索赔</el-menu-item>
-              <el-menu-item index="/supplier/change-management">供应商变更</el-menu-item>
-            </el-sub-menu>
-
-            <el-sub-menu index="process-quality">
-              <template #title>
-                <el-icon><Monitor /></el-icon>
-                <span>过程质量管理</span>
-              </template>
-              <el-menu-item index="/quality/process-defects">不合格品数据</el-menu-item>
-              <el-menu-item index="/quality/process-issues">过程问题管理</el-menu-item>
-            </el-sub-menu>
-
-            <el-sub-menu index="customer-quality">
-              <template #title>
-                <el-icon><UserFilled /></el-icon>
-                <span>客户质量管理</span>
-              </template>
-              <el-menu-item index="/quality/customer-complaints">客诉管理</el-menu-item>
-              <el-menu-item index="/quality/eight-d-customer">客户 8D 报告</el-menu-item>
-              <el-menu-item index="/quality/customer-claims">客户索赔</el-menu-item>
-            </el-sub-menu>
-
-            <el-sub-menu index="newproduct">
-              <template #title>
-                <el-icon><Opportunity /></el-icon>
-                <span>新品质量管理</span>
-              </template>
-              <el-menu-item index="/quality/lesson-learned">经验教训库</el-menu-item>
-              <el-menu-item index="/newproduct/projects">项目管理</el-menu-item>
-              <el-menu-item index="/newproduct/stage-review">阶段评审</el-menu-item>
-              <el-menu-item index="/newproduct/lesson-check">经验教训检查</el-menu-item>
-              <el-menu-item index="/newproduct/trial">试产管理</el-menu-item>
-              <el-menu-item index="/newproduct/trial-issues">试产问题</el-menu-item>
-              <el-menu-item index="/newproduct/trial-summary">试产总结</el-menu-item>
-            </el-sub-menu>
-
-            <el-sub-menu index="audit">
-              <template #title>
-                <el-icon><Document /></el-icon>
-                <span>审核管理</span>
-              </template>
-              <el-menu-item index="/audit/plans">审核计划</el-menu-item>
-              <el-menu-item index="/audit/templates">审核模板</el-menu-item>
-              <el-menu-item index="/audit/execution">审核执行</el-menu-item>
-              <el-menu-item index="/audit/nc-list">不符合项</el-menu-item>
-              <el-menu-item index="/audit/report">审核报告</el-menu-item>
-              <el-menu-item index="/audit/customer">客户审核</el-menu-item>
-            </el-sub-menu>
-
-            <el-sub-menu v-if="authStore.isPlatformAdmin" index="admin">
-              <template #title>
-                <el-icon><Setting /></el-icon>
-                <span>系统管理</span>
-              </template>
-              <el-menu-item index="/admin/users">用户管理</el-menu-item>
-              <el-menu-item index="/admin/permissions">权限矩阵</el-menu-item>
-              <el-menu-item index="/admin/tasks">任务监控</el-menu-item>
-              <el-menu-item index="/admin/operation-logs">操作日志</el-menu-item>
-              <el-menu-item index="/admin/feature-flags">功能开关</el-menu-item>
-            </el-sub-menu>
-
-            <el-menu-item v-if="isInstrumentsEnabled" index="/instruments">
-              <el-icon><Tools /></el-icon>
-              <template #title>仪器量具管理</template>
-            </el-menu-item>
-
-            <el-menu-item v-if="isQualityCostsEnabled" index="/quality-costs">
-              <el-icon><Money /></el-icon>
-              <template #title>质量成本管理</template>
+            <el-menu-item v-for="item in visibleReservedItems" :key="item.index" :index="item.index">
+              <el-icon><component :is="item.icon" /></el-icon>
+              <template #title>{{ item.title }}</template>
             </el-menu-item>
           </el-menu>
         </el-scrollbar>
@@ -146,7 +66,7 @@
                   <el-dropdown-item v-if="canSwitchEnvironment" command="switch-environment">
                     {{ switchButtonText }}
                   </el-dropdown-item>
-                  <el-dropdown-item v-if="authStore.isPlatformAdmin" command="admin">
+                  <el-dropdown-item v-if="firstAdminPath" command="admin">
                     进入系统管理
                   </el-dropdown-item>
                   <el-dropdown-item command="profile">个人中心</el-dropdown-item>
@@ -156,6 +76,21 @@
             </el-dropdown>
           </div>
         </el-header>
+
+        <div v-if="authStore.passwordExpired" class="password-expired-banner">
+          <el-alert
+            type="warning"
+            :closable="false"
+            show-icon
+            title="当前账号密码已过期，请尽快修改密码。"
+          >
+            <template #default>
+              <el-button link type="warning" @click="openPasswordChange">
+                立即修改密码
+              </el-button>
+            </template>
+          </el-alert>
+        </div>
 
         <el-main
           ref="mainContentRef"
@@ -175,25 +110,13 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import {
-  DataLine,
-  Document,
-  Expand,
-  Fold,
-  HomeFilled,
-  Money,
-  Monitor,
-  OfficeBuilding,
-  Opportunity,
-  Setting,
-  Tools,
-  User,
-  UserFilled
-} from '@element-plus/icons-vue'
+import { Expand, Fold, User } from '@element-plus/icons-vue'
 import MobileLayout from './MobileLayout.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useEnvironment } from '@/composables/useEnvironment'
 import { useFeatureFlagStore } from '@/stores/featureFlag'
+import { NAV_SECTIONS, PRIMARY_NAV_ITEMS, RESERVED_NAV_ITEMS } from '@/config/navigation'
+import { canAccessRouteMeta, type RouteAccessMeta } from '@/utils/accessControl'
 import { getEnvironmentLabel, isPreviewEnvironment } from '@/utils/environment'
 
 const router = useRouter()
@@ -212,9 +135,43 @@ const currentEnvLabel = computed(() => getEnvironmentLabel(currentEnvironment.va
 const canSwitchEnvironment = computed(() => authStore.allowedEnvironments.length > 1)
 const currentPageTitle = computed(() => String(route.meta.title || ''))
 const shouldCompactContentTitle = computed(() => Boolean(currentPageTitle.value))
+const routeAccessContext = computed(() => ({
+  isAuthenticated: authStore.isAuthenticated,
+  isInternal: authStore.isInternal,
+  isSupplier: authStore.isSupplier,
+  isPlatformAdmin: authStore.isPlatformAdmin,
+  isFeatureEnabled: (featureKey: string) => featureFlagStore.isFeatureEnabled(featureKey),
+  hasPermission: (modulePath: string, operation: 'create' | 'read' | 'update' | 'delete' | 'export') =>
+    authStore.hasPermissionLocal(modulePath, operation),
+}))
 
-const isInstrumentsEnabled = computed(() => featureFlagStore.isFeatureEnabled('instruments.management'))
-const isQualityCostsEnabled = computed(() => featureFlagStore.isFeatureEnabled('quality_costs.management'))
+function canAccessPath(path: string) {
+  const resolved = router.resolve(path)
+  if (!resolved.matched.length) {
+    return false
+  }
+
+  return canAccessRouteMeta(resolved.meta as RouteAccessMeta, routeAccessContext.value)
+}
+
+const visiblePrimaryItems = computed(() =>
+  PRIMARY_NAV_ITEMS.filter((item) => canAccessPath(item.index))
+)
+
+const visibleSections = computed(() =>
+  NAV_SECTIONS.map((section) => ({
+    ...section,
+    children: section.children.filter((child) => canAccessPath(child.index)),
+  })).filter((section) => section.children.length > 0)
+)
+
+const visibleReservedItems = computed(() =>
+  RESERVED_NAV_ITEMS.filter((item) => canAccessPath(item.index))
+)
+
+const firstAdminPath = computed(
+  () => visibleSections.value.find((section) => section.index === 'admin')?.children[0]?.index ?? ''
+)
 
 function resolveMainContentElement() {
   return mainContentRef.value?.$el ?? mainContentRef.value ?? null
@@ -268,8 +225,7 @@ function markCompactTitleCandidate(pageRoot: Element | null) {
     heading.classList.add('page-title-compact-heading')
   }
 
-  const subcopy =
-    candidate.querySelector(':scope > p') ?? candidate.querySelector('p')
+  const subcopy = candidate.querySelector(':scope > p') ?? candidate.querySelector('p')
   if (subcopy instanceof HTMLElement) {
     subcopy.classList.add('page-title-compact-subcopy')
   }
@@ -315,11 +271,21 @@ function handleCommand(command: string) {
   }
 
   if (command === 'admin') {
-    router.push('/admin/users')
+    router.push(firstAdminPath.value || '/workbench')
     return
   }
 
   router.push('/workbench')
+}
+
+function openPasswordChange() {
+  router.push({
+    path: '/workbench',
+    query: {
+      ...route.query,
+      settings: 'password',
+    },
+  })
 }
 
 onMounted(async () => {
@@ -328,7 +294,10 @@ onMounted(async () => {
   syncEnvironmentState()
 
   if (authStore.isAuthenticated) {
-    await featureFlagStore.loadFeatureFlags()
+    await Promise.all([
+      featureFlagStore.loadFeatureFlags(),
+      authStore.loadPermissionTree(),
+    ])
   }
 
   await syncCompactPageTitle()
@@ -419,6 +388,14 @@ watch(
   border-bottom: 1px solid #e6e6e6;
   background-color: #fff;
   padding: 0 20px;
+}
+
+.password-expired-banner {
+  padding: 12px 20px 0;
+}
+
+.password-expired-banner :deep(.el-alert) {
+  border-radius: 12px;
 }
 
 .header-left,

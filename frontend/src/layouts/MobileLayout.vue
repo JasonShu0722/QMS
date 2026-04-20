@@ -21,95 +21,25 @@
 
     <el-drawer v-model="drawerVisible" direction="ltr" :size="280" title="菜单">
       <el-menu :default-active="activeMenu" router @select="handleMenuSelect">
-        <el-menu-item index="/workbench">
-          <el-icon><HomeFilled /></el-icon>
-          <template #title>工作台</template>
+        <el-menu-item v-for="item in visiblePrimaryItems" :key="item.index" :index="item.index">
+          <el-icon><component :is="item.icon" /></el-icon>
+          <template #title>{{ item.title }}</template>
         </el-menu-item>
 
-        <el-sub-menu index="quality-data">
+        <el-sub-menu v-for="section in visibleSections" :key="section.index" :index="section.index">
           <template #title>
-            <el-icon><DataLine /></el-icon>
-            <span>质量数据面板</span>
+            <el-icon><component :is="section.icon" /></el-icon>
+            <span>{{ section.title }}</span>
           </template>
-          <el-menu-item index="/quality-dashboard">数据仪表盘</el-menu-item>
-          <el-menu-item index="/quality-dashboard/analysis">专项数据分析</el-menu-item>
+          <el-menu-item v-for="child in section.children" :key="child.index" :index="child.index">
+            {{ child.title }}
+          </el-menu-item>
         </el-sub-menu>
 
-        <el-sub-menu index="supplier">
-          <template #title>
-            <el-icon><OfficeBuilding /></el-icon>
-            <span>供应商质量管理</span>
-          </template>
-          <el-menu-item index="/supplier/scar">SCAR 管理</el-menu-item>
-          <el-menu-item index="/supplier/eight-d">供应商 8D 报告</el-menu-item>
-          <el-menu-item index="/supplier/audit-plan">供应商审核</el-menu-item>
-          <el-menu-item index="/supplier/targets">目标管理</el-menu-item>
-          <el-menu-item index="/supplier/performance">绩效评价</el-menu-item>
-          <el-menu-item index="/supplier/meetings">供应商会议</el-menu-item>
-          <el-menu-item index="/supplier/ppap">PPAP 管理</el-menu-item>
-          <el-menu-item index="/supplier/inspection-specs">检验规范</el-menu-item>
-          <el-menu-item index="/supplier/barcode">防错扫码</el-menu-item>
-          <el-menu-item index="/supplier/claims">供应商索赔</el-menu-item>
-          <el-menu-item index="/supplier/change-management">供应商变更</el-menu-item>
-        </el-sub-menu>
-
-        <el-sub-menu index="process-quality">
-          <template #title>
-            <el-icon><Monitor /></el-icon>
-            <span>过程质量管理</span>
-          </template>
-          <el-menu-item index="/quality/process-defects">不合格品数据</el-menu-item>
-          <el-menu-item index="/quality/process-issues">过程问题管理</el-menu-item>
-        </el-sub-menu>
-
-        <el-sub-menu index="customer-quality">
-          <template #title>
-            <el-icon><UserFilled /></el-icon>
-            <span>客户质量管理</span>
-          </template>
-          <el-menu-item index="/quality/customer-complaints">客诉管理</el-menu-item>
-          <el-menu-item index="/quality/eight-d-customer">客户 8D 报告</el-menu-item>
-          <el-menu-item index="/quality/customer-claims">客户索赔</el-menu-item>
-        </el-sub-menu>
-
-        <el-sub-menu index="newproduct">
-          <template #title>
-            <el-icon><Opportunity /></el-icon>
-            <span>新品质量管理</span>
-          </template>
-          <el-menu-item index="/quality/lesson-learned">经验教训库</el-menu-item>
-          <el-menu-item index="/newproduct/projects">项目管理</el-menu-item>
-          <el-menu-item index="/newproduct/stage-review">阶段评审</el-menu-item>
-          <el-menu-item index="/newproduct/lesson-check">经验教训检查</el-menu-item>
-          <el-menu-item index="/newproduct/trial">试产管理</el-menu-item>
-          <el-menu-item index="/newproduct/trial-issues">试产问题</el-menu-item>
-          <el-menu-item index="/newproduct/trial-summary">试产总结</el-menu-item>
-        </el-sub-menu>
-
-        <el-sub-menu index="audit">
-          <template #title>
-            <el-icon><Document /></el-icon>
-            <span>审核管理</span>
-          </template>
-          <el-menu-item index="/audit/plans">审核计划</el-menu-item>
-          <el-menu-item index="/audit/templates">审核模板</el-menu-item>
-          <el-menu-item index="/audit/execution">审核执行</el-menu-item>
-          <el-menu-item index="/audit/nc-list">不符合项</el-menu-item>
-          <el-menu-item index="/audit/report">审核报告</el-menu-item>
-          <el-menu-item index="/audit/customer">客户审核</el-menu-item>
-        </el-sub-menu>
-
-        <el-sub-menu v-if="authStore.isPlatformAdmin" index="admin">
-          <template #title>
-            <el-icon><Setting /></el-icon>
-            <span>系统管理</span>
-          </template>
-          <el-menu-item index="/admin/users">用户管理</el-menu-item>
-          <el-menu-item index="/admin/permissions">权限矩阵</el-menu-item>
-          <el-menu-item index="/admin/tasks">任务监控</el-menu-item>
-          <el-menu-item index="/admin/operation-logs">操作日志</el-menu-item>
-          <el-menu-item index="/admin/feature-flags">功能开关</el-menu-item>
-        </el-sub-menu>
+        <el-menu-item v-for="item in visibleReservedItems" :key="item.index" :index="item.index">
+          <el-icon><component :is="item.icon" /></el-icon>
+          <template #title>{{ item.title }}</template>
+        </el-menu-item>
       </el-menu>
     </el-drawer>
 
@@ -117,12 +47,13 @@
       <div class="user-menu-content">
         <div class="user-info-section">
           <el-icon class="user-avatar"><User /></el-icon>
-          <div class="user-name">{{ userInfo?.full_name || '用户' }}</div>
+          <div class="user-name">{{ authStore.userInfo?.full_name || '用户' }}</div>
         </div>
         <el-divider />
         <el-button v-if="canSwitchEnvironment" type="primary" class="menu-button" @click="switchEnvironment">
           {{ switchButtonText }}
         </el-button>
+        <el-button v-if="firstAdminPath" class="menu-button" @click="goToAdmin">进入系统管理</el-button>
         <el-button class="menu-button" @click="goToProfile">个人中心</el-button>
         <el-button type="danger" class="menu-button" @click="handleLogout">退出登录</el-button>
       </div>
@@ -133,32 +64,61 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import {
-  DataLine,
-  Document,
-  HomeFilled,
-  Menu,
-  Monitor,
-  OfficeBuilding,
-  Opportunity,
-  Setting,
-  User,
-  UserFilled
-} from '@element-plus/icons-vue'
+import { Menu, User } from '@element-plus/icons-vue'
 import { useEnvironment } from '@/composables/useEnvironment'
 import { useAuthStore } from '@/stores/auth'
+import { useFeatureFlagStore } from '@/stores/featureFlag'
+import { NAV_SECTIONS, PRIMARY_NAV_ITEMS, RESERVED_NAV_ITEMS } from '@/config/navigation'
+import { canAccessRouteMeta, type RouteAccessMeta } from '@/utils/accessControl'
 
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
+const featureFlagStore = useFeatureFlagStore()
 
 const drawerVisible = ref(false)
 const showUserMenu = ref(false)
-const userInfo = ref<any>(null)
 
 const { isPreview, switchButtonText, switchEnvironment, syncEnvironmentState } = useEnvironment()
 const activeMenu = computed(() => route.path)
 const canSwitchEnvironment = computed(() => authStore.allowedEnvironments.length > 1)
+const routeAccessContext = computed(() => ({
+  isAuthenticated: authStore.isAuthenticated,
+  isInternal: authStore.isInternal,
+  isSupplier: authStore.isSupplier,
+  isPlatformAdmin: authStore.isPlatformAdmin,
+  isFeatureEnabled: (featureKey: string) => featureFlagStore.isFeatureEnabled(featureKey),
+  hasPermission: (modulePath: string, operation: 'create' | 'read' | 'update' | 'delete' | 'export') =>
+    authStore.hasPermissionLocal(modulePath, operation),
+}))
+
+function canAccessPath(path: string) {
+  const resolved = router.resolve(path)
+  if (!resolved.matched.length) {
+    return false
+  }
+
+  return canAccessRouteMeta(resolved.meta as RouteAccessMeta, routeAccessContext.value)
+}
+
+const visiblePrimaryItems = computed(() =>
+  PRIMARY_NAV_ITEMS.filter((item) => canAccessPath(item.index))
+)
+
+const visibleSections = computed(() =>
+  NAV_SECTIONS.map((section) => ({
+    ...section,
+    children: section.children.filter((child) => canAccessPath(child.index)),
+  })).filter((section) => section.children.length > 0)
+)
+
+const visibleReservedItems = computed(() =>
+  RESERVED_NAV_ITEMS.filter((item) => canAccessPath(item.index))
+)
+
+const firstAdminPath = computed(
+  () => visibleSections.value.find((section) => section.index === 'admin')?.children[0]?.index ?? ''
+)
 
 function toggleDrawer() {
   drawerVisible.value = !drawerVisible.value
@@ -173,17 +133,24 @@ function goToProfile() {
   router.push('/workbench')
 }
 
+function goToAdmin() {
+  showUserMenu.value = false
+  router.push(firstAdminPath.value || '/workbench')
+}
+
 function handleLogout() {
   authStore.logout()
   showUserMenu.value = false
   router.push('/login')
 }
 
-onMounted(() => {
+onMounted(async () => {
   syncEnvironmentState()
-  const userInfoStr = localStorage.getItem('user_info')
-  if (userInfoStr) {
-    userInfo.value = JSON.parse(userInfoStr)
+  if (authStore.isAuthenticated) {
+    await Promise.all([
+      featureFlagStore.loadFeatureFlags(),
+      authStore.loadPermissionTree(),
+    ])
   }
 })
 </script>

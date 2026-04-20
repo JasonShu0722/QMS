@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
-from app.models.user import User
+from app.models.user import User, UserType
 from app.models.supplier_performance import CooperationLevel
 from app.schemas.supplier_performance import (
     CooperationEvaluation,
@@ -23,6 +23,14 @@ from app.services.supplier_performance_service import SupplierPerformanceService
 
 
 router = APIRouter(prefix="/supplier-performance", tags=["Supplier Performance"])
+
+
+def _ensure_internal_user(current_user: User) -> None:
+    if current_user.user_type != UserType.INTERNAL:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="当前账号无法访问该页面",
+        )
 
 
 @router.get("", response_model=PerformanceListResponse)
@@ -42,8 +50,12 @@ async def get_performances(
     
     支持多条件筛选和分页
     """
+    effective_supplier_id = supplier_id
+    if current_user.user_type == UserType.SUPPLIER and current_user.supplier_id is not None:
+        effective_supplier_id = current_user.supplier_id
+
     params = PerformanceQueryParams(
-        supplier_id=supplier_id,
+        supplier_id=effective_supplier_id,
         year=year,
         month=month,
         grade=grade,
@@ -79,6 +91,12 @@ async def get_performance_by_id(
             detail=f"绩效记录ID {performance_id} 不存在"
         )
     
+    if current_user.user_type == UserType.SUPPLIER and current_user.supplier_id != performance.supplier_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"缁╂晥璁板綍ID {performance_id} 涓嶅瓨鍦?"
+        )
+
     return PerformanceResponse.model_validate(performance)
 
 
@@ -99,6 +117,9 @@ async def get_performance_card(
     - 历史趋势（最近6个月）
     - 是否需要参加改善会议
     """
+    if current_user.user_type == UserType.SUPPLIER and current_user.supplier_id is not None:
+        supplier_id = current_user.supplier_id
+
     try:
         card_data = await SupplierPerformanceService.get_performance_card(
             db, supplier_id, year, month
@@ -128,6 +149,8 @@ async def get_performance_statistics(
     - Top/Bottom供应商
     - 需要关注的供应商（C/D级）
     """
+    _ensure_internal_user(current_user)
+
     stats = await SupplierPerformanceService.get_performance_statistics(db, year, month)
     return PerformanceStatistics(**stats)
 
@@ -146,6 +169,8 @@ async def evaluate_cooperation(
     1. 更新配合度等级和说明
     2. 重新计算绩效（因为配合度扣分变化）
     """
+    _ensure_internal_user(current_user)
+
     try:
         performance = await SupplierPerformanceService.evaluate_cooperation(
             db, performance_id, evaluation, current_user.id
@@ -172,6 +197,8 @@ async def review_performance(
     1. 记录校核说明和人工调整分数
     2. 重新计算最终得分和等级
     """
+    _ensure_internal_user(current_user)
+
     try:
         performance = await SupplierPerformanceService.review_performance(
             db, performance_id, review, current_user.id
@@ -199,6 +226,8 @@ async def calculate_performance(
     
     用于测试或补算历史数据
     """
+    _ensure_internal_user(current_user)
+
     try:
         cooperation_enum = CooperationLevel(cooperation_level) if cooperation_level else None
         
@@ -231,6 +260,8 @@ async def batch_calculate_performances(
     
     用于每月1日自动计算所有供应商的绩效
     """
+    _ensure_internal_user(current_user)
+
     result = await SupplierPerformanceService.batch_calculate_monthly_performances(
         db, year, month
     )

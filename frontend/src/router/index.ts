@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory, RouteRecordRaw } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { ElMessage } from 'element-plus'
+import { matchesRouteAudience } from '@/utils/accessControl'
 
 /**
  * 路由元信息接口
@@ -11,6 +12,7 @@ declare module 'vue-router' {
     requiresAuth?: boolean
     requiresPlatformAdmin?: boolean
     featureKey?: string
+    audience?: 'all' | 'internal' | 'supplier'
     permission?: {
       modulePath: string
       operation: 'create' | 'read' | 'update' | 'delete' | 'export'
@@ -91,7 +93,7 @@ const routes: RouteRecordRaw[] = [
         path: 'supplier/barcode',
         name: 'BarcodeScanner',
         component: () => import('@/views/supplier/BarcodeScanner.vue'),
-        meta: { title: '条码扫描', requiresAuth: true }
+        meta: { title: '条码扫描', requiresAuth: true, permission: { modulePath: 'supplier.management', operation: 'read' } }
       },
       {
         path: 'supplier/claims',
@@ -161,13 +163,13 @@ const routes: RouteRecordRaw[] = [
         path: 'quality-dashboard',
         name: 'QualityDashboard',
         component: () => import('@/views/QualityDashboard.vue'),
-        meta: { title: '质量数据仪表盘', requiresAuth: true, permission: { modulePath: 'quality.data_panel', operation: 'read' } }
+        meta: { title: '质量数据仪表盘', requiresAuth: true }
       },
       {
         path: 'quality-dashboard/analysis',
         name: 'QualityDataAnalysis',
         component: () => import('@/views/QualityDataAnalysis.vue'),
-        meta: { title: '专项数据分析', requiresAuth: true, permission: { modulePath: 'quality.data_panel', operation: 'read' } }
+        meta: { title: '专项数据分析', requiresAuth: true, audience: 'internal' }
       },
       {
         path: 'quality/lesson-learned',
@@ -260,31 +262,37 @@ const routes: RouteRecordRaw[] = [
         path: 'admin/users',
         name: 'UserApproval',
         component: () => import('@/views/admin/UserApproval.vue'),
-        meta: { title: '用户管理', requiresAuth: true, requiresPlatformAdmin: true }
+        meta: { title: '用户管理', requiresAuth: true, audience: 'internal', permission: { modulePath: 'system.users', operation: 'read' } }
+      },
+      {
+        path: 'admin/suppliers',
+        name: 'SupplierMaster',
+        component: () => import('@/views/admin/SupplierMaster.vue'),
+        meta: { title: '供应商基础信息', requiresAuth: true, audience: 'internal', permission: { modulePath: 'system.master_data', operation: 'read' } }
       },
       {
         path: 'admin/permissions',
         name: 'PermissionMatrix',
         component: () => import('@/views/admin/PermissionMatrix.vue'),
-        meta: { title: '权限管理', requiresAuth: true, requiresPlatformAdmin: true }
+        meta: { title: '权限管理', requiresAuth: true, audience: 'internal', permission: { modulePath: 'system.permissions', operation: 'read' } }
       },
       {
         path: 'admin/tasks',
         name: 'TaskMonitor',
         component: () => import('@/views/admin/TaskMonitor.vue'),
-        meta: { title: '任务监控', requiresAuth: true, requiresPlatformAdmin: true }
+        meta: { title: '任务监控', requiresAuth: true, audience: 'internal', permission: { modulePath: 'system.tasks', operation: 'read' } }
       },
       {
         path: 'admin/operation-logs',
         name: 'OperationLogs',
         component: () => import('@/views/admin/OperationLogs.vue'),
-        meta: { title: '操作日志', requiresAuth: true, requiresPlatformAdmin: true }
+        meta: { title: '操作日志', requiresAuth: true, audience: 'internal', permission: { modulePath: 'system.logs', operation: 'read' } }
       },
       {
         path: 'admin/feature-flags',
         name: 'FeatureFlags',
         component: () => import('@/views/admin/FeatureFlags.vue'),
-        meta: { title: '功能开关', requiresAuth: true, requiresPlatformAdmin: true }
+        meta: { title: '功能开关', requiresAuth: true, audience: 'internal', permission: { modulePath: 'system.feature_flags', operation: 'read' } }
       },
       // ==================== 预留功能 ====================
       {
@@ -392,6 +400,23 @@ router.beforeEach(async (to, from, next) => {
 
   if (requiresAuth) {
     await featureFlagStore.loadFeatureFlags()
+    await authStore.loadPermissionTree()
+  }
+
+  if (
+    requiresAuth &&
+    !matchesRouteAudience(to.meta.audience, {
+      isAuthenticated: authStore.isAuthenticated,
+      isInternal: authStore.isInternal,
+      isSupplier: authStore.isSupplier,
+      isPlatformAdmin: authStore.isPlatformAdmin,
+      isFeatureEnabled: (featureKey: string) => featureFlagStore.isFeatureEnabled(featureKey),
+      hasPermission: (modulePath, operation) => authStore.hasPermissionLocal(modulePath, operation),
+    })
+  ) {
+    ElMessage.error('当前账号无法访问该页面')
+    next('/workbench')
+    return
   }
 
   if (requiresAuth && to.meta.requiresPlatformAdmin && !authStore.isPlatformAdmin) {

@@ -46,6 +46,52 @@ METRIC_NAMES = {
     MetricType.MIS_12_PPM: "12MIS售后不良PPM",
 }
 
+QUALITY_DASHBOARD_PERMISSION = "quality.data_panel"
+SUPPLIER_ANALYSIS_PERMISSION = "supplier.performance"
+PROCESS_ANALYSIS_PERMISSION = "quality.process"
+CUSTOMER_ANALYSIS_PERMISSION = "quality.customer"
+SUPPLIER_VISIBLE_METRIC_TYPES = {
+    MetricType.INCOMING_BATCH_PASS_RATE.value,
+    MetricType.MATERIAL_ONLINE_PPM.value,
+}
+
+
+async def _ensure_permission(
+    *,
+    current_user: User,
+    db: AsyncSession,
+    module_path: str,
+    operation: OperationType = OperationType.READ,
+) -> None:
+    has_perm = await has_permission(
+        user=current_user,
+        module_path=module_path,
+        operation=operation,
+        db=db,
+    )
+
+    if not has_perm:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"权限不足，需要 '{module_path}.{operation.value}' 权限",
+        )
+
+
+def _ensure_internal_user(current_user: User) -> None:
+    if current_user.user_type != UserType.INTERNAL:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="当前账号无法访问该分析视图",
+        )
+
+
+def _ensure_supplier_metric_access(current_user: User, metric_type: str) -> None:
+    if current_user.user_type == UserType.SUPPLIER and metric_type not in SUPPLIER_VISIBLE_METRIC_TYPES:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="当前账号仅可查看归属供应商的质量趋势数据",
+        )
+
 
 @router.get(
     "/dashboard",
@@ -81,19 +127,11 @@ async def get_dashboard(
 ):
     """获取仪表盘数据"""
     
-    # 检查权限
-    has_perm = await has_permission(
-        user=current_user,
-        module_path="quality.dashboard",
-        operation=OperationType.READ,
-        db=db
+    await _ensure_permission(
+        current_user=current_user,
+        db=db,
+        module_path=QUALITY_DASHBOARD_PERMISSION,
     )
-    
-    if not has_perm:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="权限不足：需要 'quality.dashboard.read' 权限"
-        )
     
     # 默认使用今天的日期
     if target_date is None:
@@ -104,9 +142,11 @@ async def get_dashboard(
         QualityMetric.metric_date == target_date
     )
     
-    # 供应商用户：仅查看关联到自己的数据
-    if current_user.user_type == UserType.SUPPLIER and current_user.supplier_id:
-        query = query.where(QualityMetric.supplier_id == current_user.supplier_id)
+    # 供应商用户：仅查看关联到自己的供应商质量走势数据
+    if current_user.user_type == UserType.SUPPLIER:
+        query = query.where(QualityMetric.metric_type.in_(SUPPLIER_VISIBLE_METRIC_TYPES))
+        if current_user.supplier_id:
+            query = query.where(QualityMetric.supplier_id == current_user.supplier_id)
     
     result = await db.execute(query)
     metrics = result.scalars().all()
@@ -208,19 +248,11 @@ async def get_metric_trend(
 ):
     """获取指标趋势"""
     
-    # 检查权限
-    has_perm = await has_permission(
-        user=current_user,
-        module_path="quality.metrics",
-        operation=OperationType.READ,
-        db=db
+    await _ensure_permission(
+        current_user=current_user,
+        db=db,
+        module_path=QUALITY_DASHBOARD_PERMISSION,
     )
-    
-    if not has_perm:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="权限不足：需要 'quality.metrics.read' 权限"
-        )
     
     # 验证指标类型
     try:
@@ -230,6 +262,8 @@ async def get_metric_trend(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"无效的指标类型: {metric_type}"
         )
+
+    _ensure_supplier_metric_access(current_user, metric_type)
     
     # 供应商用户：强制使用自己的supplier_id
     if current_user.user_type == UserType.SUPPLIER and current_user.supplier_id:
@@ -317,19 +351,11 @@ async def drill_down_metric(
 ):
     """下钻查询"""
     
-    # 检查权限
-    has_perm = await has_permission(
-        user=current_user,
-        module_path="quality.metrics",
-        operation=OperationType.READ,
-        db=db
+    await _ensure_permission(
+        current_user=current_user,
+        db=db,
+        module_path=QUALITY_DASHBOARD_PERMISSION,
     )
-    
-    if not has_perm:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="权限不足：需要 'quality.metrics.read' 权限"
-        )
     
     # 验证指标类型
     try:
@@ -339,6 +365,8 @@ async def drill_down_metric(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"无效的指标类型: {metric_type}"
         )
+
+    _ensure_supplier_metric_access(current_user, metric_type)
     
     # 供应商用户：强制使用自己的supplier_id
     if current_user.user_type == UserType.SUPPLIER and current_user.supplier_id:
@@ -446,19 +474,12 @@ async def get_top_suppliers(
 ):
     """获取Top5供应商清单"""
     
-    # 检查权限
-    has_perm = await has_permission(
-        user=current_user,
-        module_path="quality.supplier-analysis",
-        operation=OperationType.READ,
-        db=db
+    _ensure_internal_user(current_user)
+    await _ensure_permission(
+        current_user=current_user,
+        db=db,
+        module_path=QUALITY_DASHBOARD_PERMISSION,
     )
-    
-    if not has_perm:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="权限不足：需要 'quality.supplier-analysis.read' 权限"
-        )
     
     # 验证指标类型（仅支持供应商相关指标）
     if metric_type not in [
@@ -590,19 +611,12 @@ async def get_process_analysis(
 ):
     """制程质量分析"""
     
-    # 检查权限
-    has_perm = await has_permission(
-        user=current_user,
-        module_path="quality.process-analysis",
-        operation=OperationType.READ,
-        db=db
+    _ensure_internal_user(current_user)
+    await _ensure_permission(
+        current_user=current_user,
+        db=db,
+        module_path=QUALITY_DASHBOARD_PERMISSION,
     )
-    
-    if not has_perm:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="权限不足：需要 'quality.process-analysis.read' 权限"
-        )
     
     # 查询制程不合格率和直通率数据
     query = select(QualityMetric).where(
@@ -728,19 +742,12 @@ async def get_customer_analysis(
 ):
     """客户质量分析"""
     
-    # 检查权限
-    has_perm = await has_permission(
-        user=current_user,
-        module_path="quality.customer-analysis",
-        operation=OperationType.READ,
-        db=db
+    _ensure_internal_user(current_user)
+    await _ensure_permission(
+        current_user=current_user,
+        db=db,
+        module_path=QUALITY_DASHBOARD_PERMISSION,
     )
-    
-    if not has_perm:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="权限不足：需要 'quality.customer-analysis.read' 权限"
-        )
     
     # 查询客户质量指标数据
     query = select(QualityMetric).where(

@@ -522,27 +522,21 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Loading, MoreFilled, Plus, QuestionFilled, Refresh, Search } from '@element-plus/icons-vue'
 
 import { adminApi } from '@/api/admin'
-import { authApi } from '@/api/auth'
 import type { User, UserStatus, UserType } from '@/types/user'
 import type {
   AdminBulkUserCreateItem,
   AdminBulkUserCreateItemResponse,
   AdminBulkUserCreateRequest,
   AdminUserCreateRequest,
+  SupplierMaster,
   UserListQuery,
   UserUpdateRequest
 } from '@/types/admin'
 import type { RoleTagSummary } from '@/types/role'
+import { formatDateTimeInBeijing } from '@/utils/dateTime'
 
 type EnvironmentKey = 'stable' | 'preview'
 type CreateMode = 'single' | 'batch'
-
-interface SupplierOption {
-  id: number
-  name: string
-  code: string
-  status: string
-}
 
 const activeTab = ref<'approval' | 'directory'>('approval')
 const loadingPending = ref(false)
@@ -590,7 +584,7 @@ const createDialogVisible = ref(false)
 const createMode = ref<CreateMode>('single')
 const createSubmitting = ref(false)
 const supplierSearchLoading = ref(false)
-const supplierOptions = ref<SupplierOption[]>([])
+const supplierOptions = ref<SupplierMaster[]>([])
 const creationResultVisible = ref(false)
 const creationResults = ref<AdminBulkUserCreateItemResponse[]>([])
 
@@ -645,7 +639,7 @@ const batchCreateAssignableRoles = computed(() => filterRoleOptions(batchCreateF
 const batchPlaceholder = computed(() =>
   batchCreateForm.user_type === 'internal'
     ? '账号,姓名,邮箱,电话,部门,岗位'
-    : '账号,姓名,邮箱,电话,供应商标识,岗位'
+    : '账号,姓名,邮箱,电话,供应商代码(推荐)/名称,岗位'
 )
 const batchHelpTitle = computed(() =>
   batchCreateForm.user_type === 'internal' ? '内部员工批量创建指引' : '供应商账号批量创建指引'
@@ -653,17 +647,17 @@ const batchHelpTitle = computed(() =>
 const batchHelpColumnsText = computed(() =>
   batchCreateForm.user_type === 'internal'
     ? '账号、姓名、邮箱、电话、部门、岗位'
-    : '账号、姓名、邮箱、电话、供应商标识、岗位'
+    : '账号、姓名、邮箱、电话、供应商代码（推荐）/名称、岗位'
 )
 const batchHelpAccountTypeText = computed(() =>
   batchCreateForm.user_type === 'internal'
-    ? '当前是内部员工批量创建。第 5 列必须填写部门，系统会按内部账号处理，不关联供应商主数据。'
-    : '当前是供应商账号批量创建。第 5 列必须填写供应商标识，系统会按供应商 ID、代码或名称匹配主数据，不使用部门列。'
+    ? '当前是内部员工批量创建。第 5 列必须填写部门，系统会按内部账号处理。'
+    : '当前是供应商账号批量创建。供应商账号统一由管理员创建，第 5 列请优先填写已存在的供应商代码，也兼容供应商名称或 ID。'
 )
 const batchHelpNotesText = computed(() =>
   batchCreateForm.user_type === 'internal'
     ? '每行一位用户，可保留首行表头；电话和岗位允许留空，但要保留分隔位。'
-    : '每行一位用户，可保留首行表头；供应商标识支持供应商 ID、代码或名称，电话和岗位允许留空，但要保留分隔位。'
+    : '每行一位用户，可保留首行表头；供应商标识会自动关联到供应商基础信息。若同名供应商不唯一，系统会要求改用供应商代码。电话和岗位允许留空，但要保留分隔位。'
 )
 const batchHelpExample = computed(() =>
   batchCreateForm.user_type === 'internal'
@@ -879,7 +873,10 @@ async function loadSupplierOptions(query: string) {
 
   supplierSearchLoading.value = true
   try {
-    supplierOptions.value = await authApi.searchSuppliers(normalizedQuery)
+    supplierOptions.value = await adminApi.getSuppliers({
+      keyword: normalizedQuery,
+      status: 'active'
+    })
   } catch (error: any) {
     ElMessage.error(error.message || '搜索供应商失败')
   } finally {
@@ -1192,13 +1189,7 @@ function statusTagType(status: UserStatus) {
 }
 
 function formatDate(dateString: string) {
-  return new Date(dateString).toLocaleString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
+  return formatDateTimeInBeijing(dateString)
 }
 
 onMounted(() => {

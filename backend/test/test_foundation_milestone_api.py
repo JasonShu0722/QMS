@@ -162,7 +162,7 @@ async def test_register_approve_and_login_flow(async_client: AsyncClient, db_ses
             "username": "new_employee",
             "password": "RegisterPass123!",
             "full_name": "New Employee",
-            "email": "new_employee@example.com",
+            "email": "new_employee@ics-energy.com",
             "phone": "13900139000",
             "user_type": "internal",
             "department": "Quality",

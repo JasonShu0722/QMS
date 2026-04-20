@@ -3,7 +3,7 @@ import type { RequirementPanelCatalog } from './types'
 export const requirementsPanelCatalog: RequirementPanelCatalog = {
   metadata: {
     title: 'QMS 项目功能需求总览',
-    version: '2026-03-30',
+    version: '2026-04-18',
     owner: 'QMS 项目组',
     sources: [
       '.kiro/steering/product.md',
@@ -77,7 +77,16 @@ export const requirementsPanelCatalog: RequirementPanelCatalog = {
           scope: '核心需求',
           phase: '一期核心',
           status: 'verified',
-          acceptance: '支持内部/供应商注册审核、用户清单筛选、资料维护、角色分配、密码重置、冻结/解冻与删除保护。'
+          acceptance: '支持内部员工注册审核、用户清单筛选、资料维护、角色分配、密码重置、冻结/解冻与删除保护；供应商账号统一由管理员创建并绑定供应商主数据。'
+        },
+        {
+          id: 'foundation-supplier-master',
+          title: '供应商基础信息主数据',
+          priority: 'medium',
+          scope: '核心需求',
+          phase: '一期核心',
+          status: 'verified',
+          acceptance: '支持供应商代码/名称主数据的列表、搜索、单条创建、批量导入、编辑与启停用，并作为供应商账号创建与登录校验的绑定来源。'
         },
         {
           id: 'foundation-profile-signature',

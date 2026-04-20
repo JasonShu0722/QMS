@@ -1,19 +1,12 @@
 /**
- * 管理后台相关类型定义
+ * 管理后台相关类型定义。
  */
 import type { RoleTagSummary } from './role'
 
-// Re-export for external use
 export type { User, UserStatus } from './user'
 
-/**
- * 操作类型
- */
 export type OperationType = 'create' | 'read' | 'update' | 'delete' | 'export'
 
-/**
- * 权限配置项
- */
 export interface Permission {
   id: number
   user_id: number
@@ -24,17 +17,11 @@ export interface Permission {
   updated_at: string
 }
 
-/**
- * 权限矩阵行（用户维度）
- */
 export interface PermissionMatrixRow {
   role: RoleTagSummary
-  permissions: Record<string, boolean> // key: "module_path.operation_type"
+  permissions: Record<string, boolean>
 }
 
-/**
- * 权限矩阵列（功能-操作维度）
- */
 export interface PermissionMatrixColumn {
   module_path: string
   module_name: string
@@ -43,9 +30,6 @@ export interface PermissionMatrixColumn {
   operations: OperationType[]
 }
 
-/**
- * 操作日志
- */
 export interface OperationLog {
   id: number
   user_id: number
@@ -61,9 +45,6 @@ export interface OperationLog {
   created_at: string
 }
 
-/**
- * 操作日志查询参数
- */
 export interface OperationLogQuery {
   user_id?: number
   operation_type?: string
@@ -74,9 +55,6 @@ export interface OperationLogQuery {
   page_size?: number
 }
 
-/**
- * 待办任务
- */
 export interface TodoTask {
   id: string
   task_type: string
@@ -92,9 +70,6 @@ export interface TodoTask {
   handler_name: string
 }
 
-/**
- * 任务统计数据
- */
 export interface TaskStatistics {
   total_tasks: number
   overdue_tasks: number
@@ -104,18 +79,12 @@ export interface TaskStatistics {
   by_user: Record<string, number>
 }
 
-/**
- * 任务转派请求
- */
 export interface TaskReassignRequest {
   from_user_id: number
   to_user_id: number
   task_ids: string[]
 }
 
-/**
- * 功能开关
- */
 export interface FeatureFlag {
   id: number
   feature_key: string
@@ -131,9 +100,6 @@ export interface FeatureFlag {
   created_by?: number
 }
 
-/**
- * 功能开关更新请求
- */
 export interface FeatureFlagUpdateRequest {
   is_enabled: boolean
   scope?: 'global' | 'whitelist'
@@ -142,9 +108,6 @@ export interface FeatureFlagUpdateRequest {
   environment?: 'stable' | 'preview'
 }
 
-/**
- * 用户审核操作
- */
 export interface UserApprovalRequest {
   user_id: number
   action: 'approve' | 'reject'
@@ -218,4 +181,58 @@ export interface AdminBulkUserCreateResponse {
   total_count: number
   created_count: number
   results: AdminBulkUserCreateItemResponse[]
+}
+
+export type SupplierMasterStatus = 'active' | 'suspended'
+
+export interface SupplierListQuery {
+  keyword?: string
+  status?: SupplierMasterStatus
+}
+
+export interface SupplierMaster {
+  id: number
+  code: string
+  name: string
+  contact_person?: string
+  contact_email?: string
+  contact_phone?: string
+  status: SupplierMasterStatus
+  linked_user_count: number
+  active_user_count: number
+  created_at: string
+  updated_at: string
+}
+
+export interface SupplierMasterCreateRequest {
+  code: string
+  name: string
+  contact_person?: string
+  contact_email?: string
+  contact_phone?: string
+  status?: SupplierMasterStatus
+}
+
+export interface SupplierMasterUpdateRequest extends SupplierMasterCreateRequest {
+  status: SupplierMasterStatus
+}
+
+export interface SupplierMasterBulkCreateItem {
+  code: string
+  name: string
+  contact_person?: string
+  contact_email?: string
+  contact_phone?: string
+}
+
+export interface SupplierMasterBulkCreateRequest {
+  status?: SupplierMasterStatus
+  items: SupplierMasterBulkCreateItem[]
+}
+
+export interface SupplierMasterBulkCreateResponse {
+  message: string
+  total_count: number
+  created_count: number
+  suppliers: SupplierMaster[]
 }

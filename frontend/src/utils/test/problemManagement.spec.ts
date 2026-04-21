@@ -4,7 +4,8 @@ import type { ProblemCategoryItem, ProblemCategoryKey } from '@/types/problem-ma
 import {
   buildCustomerComplaintTypeOptions,
   getCustomerComplaintCategoryKey,
-  getCustomerComplaintTypeLabel
+  getCustomerComplaintTypeLabel,
+  getProblemCategoryLabel
 } from '@/utils/problemManagement'
 
 describe('problem management utility helpers', () => {
@@ -48,5 +49,20 @@ describe('problem management utility helpers', () => {
       { value: ComplaintType.ZERO_KM, label: '0KM客诉' },
       { value: ComplaintType.AFTER_SALES, label: '售后客诉' }
     ])
+  })
+  it('resolves customer-audit issue tasks to the shared AQ3 label', () => {
+    const resolveCategory = (categoryKey: ProblemCategoryKey): ProblemCategoryItem | null =>
+      categoryKey === 'AQ3'
+        ? {
+            key: 'AQ3',
+            category_code: 'AQ',
+            subcategory_code: '3',
+            module_key: 'audit_management' as const,
+            label: '瀹㈡埛瀹℃牳闂'
+          }
+        : null
+
+    expect(getProblemCategoryLabel('AQ3', '瀹㈡埛瀹℃牳闂', resolveCategory)).toBe('瀹㈡埛瀹℃牳闂')
+    expect(getProblemCategoryLabel('AQ3', '瀹㈡埛瀹℃牳闂')).toBe('瀹㈡埛瀹℃牳闂')
   })
 })

@@ -174,6 +174,9 @@ export interface AuditReportResponse {
 export interface AuditNC {
   id: number;
   audit_id: number;
+  audit_type?: AuditPlan['audit_type'];
+  problem_category_key?: 'AQ0' | 'AQ1' | 'AQ2' | 'AQ3';
+  problem_category_label?: string;
   nc_item: string;
   nc_description: string;
   evidence_photo_path?: string;
@@ -182,7 +185,7 @@ export interface AuditNC {
   root_cause?: string;
   corrective_action?: string;
   corrective_evidence?: string;
-  verification_status: 'pending' | 'assigned' | 'responded' | 'verified' | 'rejected' | 'closed';
+  verification_status: 'open' | 'assigned' | 'submitted' | 'verified' | 'rejected' | 'closed' | 'pending' | 'responded';
   verified_by?: number;
   verified_at?: string;
   verification_comment?: string;
@@ -220,6 +223,7 @@ export interface AuditNCQuery {
   audit_id?: number;
   assigned_to?: number;
   responsible_dept?: string;
+  problem_category_key?: 'AQ0' | 'AQ1' | 'AQ2' | 'AQ3';
   verification_status?: string;
   is_overdue?: boolean;
   page?: number;
@@ -310,7 +314,7 @@ export interface CustomerAuditIssueTaskResponse {
   responsible_dept: string;
   assigned_to?: number;
   deadline: string;
-  priority: string;
+  priority?: string;
   status: string;
   root_cause?: string;
   corrective_action?: string;
@@ -322,4 +326,6 @@ export interface CustomerAuditIssueTaskResponse {
   created_at: string;
   updated_at: string;
   created_by?: number;
+  problem_category_key?: 'AQ3';
+  problem_category_label?: string;
 }

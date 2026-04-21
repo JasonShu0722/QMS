@@ -325,7 +325,7 @@ export const requirementsPanelCatalog: RequirementPanelCatalog = {
       id: 'customer-quality',
       name: '客户质量管理',
       overallPriority: 'high',
-      summary: '聚焦出货数据、客诉 8D、索赔与问题归档，形成客户质量闭环和损失追踪。',
+      summary: '聚焦出货数据、客诉台账、实物处理与解析、问题发单 / 8D、索赔与归档，形成客户质量闭环和损失追踪。',
       items: [
         {
           id: 'customer-shipping-data',
@@ -337,13 +337,40 @@ export const requirementsPanelCatalog: RequirementPanelCatalog = {
           acceptance: '出货数据带客户代码、产品类型、出货日期标签并形成质量计算底座。'
         },
         {
-          id: 'customer-8d-loop',
-          title: '客诉 8D 闭环',
+          id: 'customer-master-data',
+          title: '客户主数据与终端客户口径',
+          priority: 'high',
+          scope: '核心需求',
+          phase: '一期核心',
+          status: 'done',
+          acceptance: '系统管理支持客户主数据维护；客诉录入强制选择客户并允许填写终端客户，后续统计复用统一客户口径。'
+        },
+        {
+          id: 'customer-complaint-ledger',
+          title: '客诉台账录入与分流',
+          priority: 'high',
+          scope: '核心需求',
+          phase: '一期核心',
+          status: 'doing',
+          acceptance: '支持 0KM / 售后客诉录入、退件标记、是否需要实物解析、客户名称必填、终端客户选填，并根据解析需求进行分流。'
+        },
+        {
+          id: 'customer-physical-analysis',
+          title: '实物处理与解析记录',
           priority: 'high',
           scope: '核心需求',
           phase: '一期核心',
           status: 'todo',
-          acceptance: '支持客诉等级、时效 SLA、8D 执行步骤、审批及归档检查表。'
+          acceptance: '支持无需解析时直接备案实物处理方案；需要解析时分派至失效分析 / 客户质量 / 工艺等角色，记录一次原因分析、责任部门、责任人和失效件料号。'
+        },
+        {
+          id: 'customer-8d-loop',
+          title: '问题发单与 8D 闭环',
+          priority: 'high',
+          scope: '核心需求',
+          phase: '一期核心',
+          status: 'todo',
+          acceptance: '支持从客诉台账选中一条或多条记录发起问题单 / 8D，处理中可增删客诉范围，并具备时效 SLA、8D 步骤、审批及归档检查表。'
         },
         {
           id: 'customer-claim-link',

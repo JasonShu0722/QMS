@@ -121,6 +121,7 @@
   - 结果：通过
 - 底座 smoke：
   - `& '.\.venv\Scripts\python.exe' backend/scripts/run_foundation_smoke.py`
+  - `& '.\.venv\Scripts\python.exe' -m pytest backend/test/test_customer_audit_issue_task_api.py backend/test/test_audit_nc_problem_category_api.py backend/test/test_problem_management_api.py`
   - 结果：67 passed
 - 契约补充：
   - `backend/test/test_foundation_milestone_api.py::test_permission_matrix_contract_and_mutations`
@@ -260,12 +261,19 @@
   - 已补后端共享能力：`backend/app/core/problem_management.py`、`backend/app/api/v1/problem_management.py`、`backend/app/schemas/problem_management.py`，对外提供统一分类字典、回复形式、处理分级和编号规则元数据接口。
   - 已补前端共享接入层：`frontend/src/types/problem-management.ts`、`frontend/src/api/problem-management.ts`、`frontend/src/stores/problemManagement.ts`，并在登录/刷新用户信息后预加载共享字典，避免后续问题页继续散落硬编码。
   - 已完成第一批页面接入：客户客诉列表页与新建表单改为复用统一分类字典，通过 `CQ0/CQ1` 映射驱动筛选项、标签文案和表单选项，不再在页面内重复硬编码 `0km/售后` 文案。
+  - 已完成审核 NC 首轮收口：前端 `audit` API 改为对齐后端 `/api/v1/audit-nc` 路径，`AuditNCList` 改为兼容后端 `open/assigned/submitted/verified/rejected/closed` 状态口径，并保留对旧 `pending/responded` 值的兼容映射，避免页面动作按钮和状态标签失真。
   - public registration was contracted to internal employees only
   - supplier self-registration and public supplier search were removed
   - internal registration now enforces the corporate email policy with outward-generic validation messaging
   - supplier login now depends on an existing active supplier master record
   - system management now includes supplier master maintenance with list/search/create/bulk-edit/status controls
   - admin supplier-account creation and batch creation now resolve against supplier master data only
+  - 已补审核 NC 后端分类增强：`AuditNCDetail` / 列表接口现在会基于 `AuditPlan.audit_type` 返回 `audit_type`、`problem_category_key`、`problem_category_label`，把审核类问题直接挂到统一 `AQ0-AQ3` 分类字典上，先为后续前端展示和统一问题中心聚合打底。
+  - 已完成审核 NC 分类前端接入：`AuditNCList` 新增“问题分类”列与筛选项，直接复用统一问题字典；后端 `/api/v1/audit-nc` 同步支持 `problem_category_key` 查询参数，形成“字典 -> 接口 -> 页面”的最小闭环。
+- Notes:
+  - customer-audit issue-task create/list APIs now adapt the shared `AuditNC` model into the customer-audit response shape and return unified `AQ3` category metadata
+  - customer-audit issue-task creation on the frontend now uses the real `customer-audits/{audit_id}/issue-tasks` contract and the dialog shows the shared `AQ3` category label from problem-management catalog data
+  - fixed the historical runtime failure where `AuditLogService` tried to write a non-existent `OperationLog.description` field; the current minimal fix restores the flow but still does not persist operation descriptions separately
 - Documentation synced:
   - `.kiro/steering/product.md`
   - `.kiro/specs/qms-foundation-and-auth/requirements.md`
@@ -276,13 +284,23 @@
   - `& '.\.venv\Scripts\python.exe' -m pytest backend/test/test_problem_management.py backend/test/test_problem_management_api.py`
   - `Set-Location frontend; npm run test -- src/stores/test/problemManagement.spec.ts src/stores/test/auth.spec.ts`
   - `Set-Location frontend; npm run test -- src/utils/test/problemManagement.spec.ts src/stores/test/problemManagement.spec.ts src/stores/test/auth.spec.ts`
+  - `Set-Location frontend; npm run test -- src/utils/test/auditNc.spec.ts src/utils/test/problemManagement.spec.ts src/stores/test/problemManagement.spec.ts src/stores/test/auth.spec.ts`
+  - `Set-Location frontend; npm run test -- src/utils/test/auditNc.spec.ts src/stores/test/problemManagement.spec.ts src/stores/test/auth.spec.ts`
   - `Set-Location frontend; npm run build`
+  - `& '.\.venv\Scripts\python.exe' -m pytest backend/test/test_audit_nc_problem_category_api.py backend/test/test_problem_management_api.py`
   - `Set-Location frontend; npm run test:foundation`
   - `& '.\.venv\Scripts\python.exe' -m pytest backend/test/test_user_registration.py backend/test/test_login.py backend/test/test_admin_suppliers_api.py backend/test/test_admin_users_api.py backend/test/test_foundation_milestone_api.py backend/test/test_profile_api.py`
   - `& '.\.venv\Scripts\python.exe' backend/scripts/run_foundation_smoke.py`
 - Residual notes:
   - backend still emits existing `datetime.utcnow()` / Pydantic deprecation warnings during test runs
   - frontend build still emits the existing Sass legacy API and large chunk warnings
+  - customer-quality planning has now been expanded to treat complaint intake as a source ledger, split physical disposition from physical analysis, and defer formal issue / 8D launch until customer-quality roles decide to escalate one or more complaint records
+  - customer master maintenance is now available in system management and customer complaint intake can consume that master list directly
+  - customer complaint ledger now records customer master reference, customer snapshot, end customer, return flag, and physical-analysis flag, but physical disposition and complaint-to-issue/8D escalation are still deferred to the next increments
+  - latest verification for this increment:
+    - `& '.\.venv\Scripts\python.exe' -m pytest backend/test/test_customer_complaint_simple.py backend/test/test_customer_complaint_module.py backend/test/test_admin_customers_api.py`
+    - `Set-Location frontend; npm run test -- src/utils/test/customerComplaint.spec.ts src/utils/test/problemManagement.spec.ts`
+    - `Set-Location frontend; npm run build`
 
 ## Task: Permission-Driven Surface Visibility And Supplier Quality Panel Access (2026-04-18)
 

@@ -259,6 +259,11 @@ async def create_customer_audit_issue_task(
             task_data=task_data,
             created_by=current_user.id
         )
+        response = CustomerAuditService.build_issue_task_response(
+            nc_task,
+            customer_audit_id=audit_id,
+            priority=task_data.priority,
+        )
         
         # 记录操作日志
         await AuditLogService.log_operation(
@@ -267,11 +272,11 @@ async def create_customer_audit_issue_task(
             operation_type="create",
             target_type="customer_audit_issue_task",
             target_id=nc_task.id,
-            after_data=nc_task.to_dict(),
+            after_data=response.model_dump(mode="json"),
             description=f"创建客户审核问题任务: {task_data.issue_description[:50]}"
         )
         
-        return nc_task
+        return response
     
     except ValueError as e:
         raise HTTPException(
@@ -316,7 +321,13 @@ async def get_customer_audit_issue_tasks(
             customer_audit_id=audit_id
         )
         
-        return [CustomerAuditIssueTaskResponse.model_validate(task) for task in tasks]
+        return [
+            CustomerAuditService.build_issue_task_response(
+                task,
+                customer_audit_id=audit_id,
+            )
+            for task in tasks
+        ]
     
     except HTTPException:
         raise

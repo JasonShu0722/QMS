@@ -35,9 +35,14 @@ class SeverityLevelEnum(str, Enum):
 class CustomerComplaintCreate(BaseModel):
     """创建客诉单请求模型"""
     complaint_type: ComplaintTypeEnum = Field(..., description="客诉类型：0km/售后")
-    customer_code: str = Field(..., min_length=1, max_length=50, description="客户代码")
+    customer_id: Optional[int] = Field(None, ge=1, description="客户主数据 ID")
+    customer_code: Optional[str] = Field(None, min_length=1, max_length=50, description="客户代码（兼容旧数据）")
+    customer_name: Optional[str] = Field(None, min_length=1, max_length=200, description="客户名称（兼容旧数据）")
+    end_customer_name: Optional[str] = Field(None, max_length=200, description="终端客户名称")
     product_type: str = Field(..., min_length=1, max_length=100, description="产品类型")
     defect_description: str = Field(..., min_length=10, description="缺陷描述（至少10字）")
+    is_return_required: bool = Field(False, description="是否涉及退件")
+    requires_physical_analysis: bool = Field(False, description="是否需要实物解析")
     
     # 售后客诉特有字段
     vin_code: Optional[str] = Field(None, max_length=50, description="VIN码（售后客诉必填）")
@@ -47,6 +52,8 @@ class CustomerComplaintCreate(BaseModel):
     @model_validator(mode='after')
     def validate_after_sales_fields(self) -> 'CustomerComplaintCreate':
         """售后客诉时，VIN码、里程、购车日期必填"""
+        if self.customer_id is None and not self.customer_code:
+            raise ValueError("请选择客户或填写客户代码")
         if self.complaint_type == ComplaintTypeEnum.AFTER_SALES:
             if not self.vin_code:
                 raise ValueError("售后客诉时，VIN码为必填项")
@@ -60,9 +67,12 @@ class CustomerComplaintCreate(BaseModel):
         json_schema_extra = {
             "example": {
                 "complaint_type": "after_sales",
-                "customer_code": "CUST001",
+                "customer_id": 1,
                 "product_type": "MCU控制器",
                 "defect_description": "客户反馈车辆行驶中突然断电，检查发现MCU主板烧毁",
+                "end_customer_name": "比亚迪终端项目",
+                "is_return_required": True,
+                "requires_physical_analysis": True,
                 "vin_code": "LSVAA4182E2123456",
                 "mileage": 15000,
                 "purchase_date": "2023-06-15"
@@ -114,10 +124,15 @@ class CustomerComplaintResponse(BaseModel):
     id: int
     complaint_number: str
     complaint_type: ComplaintTypeEnum
+    customer_id: Optional[int]
     customer_code: str
+    customer_name: Optional[str]
+    end_customer_name: Optional[str]
     product_type: str
     defect_description: str
     severity_level: SeverityLevelEnum
+    is_return_required: bool
+    requires_physical_analysis: bool
     
     # 售后客诉字段
     vin_code: Optional[str]
@@ -144,6 +159,15 @@ class CustomerComplaintListResponse(BaseModel):
     items: list[CustomerComplaintResponse]
     page: int
     page_size: int
+
+
+class CustomerComplaintCustomerOption(BaseModel):
+    id: int
+    code: str
+    name: str
+
+    class Config:
+        from_attributes = True
 
 
 class IMSTracebackRequest(BaseModel):

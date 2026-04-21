@@ -178,6 +178,9 @@
     <!-- 创建问题任务对话框 -->
     <el-dialog v-model="showIssueTaskDialog" title="创建问题任务" width="600px">
       <el-form :model="issueTaskForm" label-width="120px">
+        <el-form-item label="闂鍒嗙被">
+          <el-tag type="info">{{ issueTaskProblemCategoryKey }} / {{ issueTaskProblemCategoryLabel }}</el-tag>
+        </el-form-item>
         <el-form-item label="问题描述" required>
           <el-input v-model="issueTaskForm.issue_description" type="textarea" :rows="4" />
         </el-form-item>
@@ -216,7 +219,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue';
+import { computed, ref, reactive, onMounted } from 'vue';
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus';
 import { Plus } from '@element-plus/icons-vue';
 import {
@@ -227,6 +230,8 @@ import {
   createCustomerAuditIssueTask
 } from '@/api/audit';
 import type { CustomerAudit, CustomerAuditCreate, CustomerAuditIssueTaskCreate } from '@/types/audit';
+import { useProblemManagementStore } from '@/stores/problemManagement';
+import { getProblemCategoryLabel } from '@/utils/problemManagement';
 
 const loading = ref(false);
 const submitting = ref(false);
@@ -236,6 +241,15 @@ const showFormDialog = ref(false);
 const showIssueTaskDialog = ref(false);
 const editingAudit = ref<CustomerAudit | null>(null);
 const currentAudit = ref<CustomerAudit | null>(null);
+const problemManagementStore = useProblemManagementStore();
+const issueTaskProblemCategoryKey = 'AQ3' as const;
+const issueTaskProblemCategoryLabel = computed(() =>
+  getProblemCategoryLabel(
+    issueTaskProblemCategoryKey,
+    '瀹㈡埛瀹℃牳闂',
+    (categoryKey) => problemManagementStore.getCategory(categoryKey)
+  )
+);
 
 const formRef = ref<FormInstance>();
 
@@ -456,6 +470,7 @@ const formatDateTime = (dateStr: string): string => {
 };
 
 onMounted(() => {
+  void problemManagementStore.loadCatalog();
   loadAudits();
 });
 </script>

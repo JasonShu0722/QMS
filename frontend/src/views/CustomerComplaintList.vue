@@ -21,13 +21,21 @@
           </el-select>
         </el-form-item>
 
-        <el-form-item label="客户代码">
-          <el-input
-            v-model="queryParams.customer_code"
-            placeholder="请输入"
+        <el-form-item label="客户">
+          <el-select
+            v-model="queryParams.customer_id"
+            filterable
             clearable
-            class="w-full md:w-40"
-          />
+            placeholder="全部"
+            class="w-full md:w-56"
+          >
+            <el-option
+              v-for="item in customerOptions"
+              :key="item.id"
+              :label="`${item.name} (${item.code})`"
+              :value="item.id"
+            />
+          </el-select>
         </el-form-item>
 
         <el-form-item label="产品类型">
@@ -41,11 +49,12 @@
 
         <el-form-item label="状态">
           <el-select v-model="queryParams.status" placeholder="全部" clearable class="w-full md:w-40">
-            <el-option label="待一次因解析" value="pending_analysis" />
-            <el-option label="进行中" value="in_progress" />
-            <el-option label="待8D提交" value="pending_8d" />
-            <el-option label="审核中" value="under_review" />
-            <el-option label="已关闭" value="closed" />
+            <el-option
+              v-for="option in statusOptions"
+              :key="option.value"
+              :label="option.label"
+              :value="option.value"
+            />
           </el-select>
         </el-form-item>
 
@@ -70,35 +79,53 @@
 
     <el-card>
       <el-table v-loading="loading" :data="complaintList" stripe class="w-full">
-        <el-table-column prop="complaint_number" label="客诉编号" width="150" fixed />
-        <el-table-column prop="complaint_type" label="类型" width="100">
+        <el-table-column prop="complaint_number" label="客诉编号" width="160" fixed />
+        <el-table-column prop="complaint_type" label="类型" width="120">
           <template #default="{ row }">
             <el-tag :type="row.complaint_type === ComplaintType.ZERO_KM ? 'danger' : 'warning'">
               {{ getComplaintTypeLabel(row.complaint_type) }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="customer_code" label="客户代码" width="120" />
-        <el-table-column prop="product_type" label="产品类型" width="120" />
-        <el-table-column prop="defect_description" label="缺陷描述" min-width="200" show-overflow-tooltip />
-        <el-table-column prop="severity_level" label="严重度" width="100" />
-        <el-table-column prop="status" label="状态" width="120">
+        <el-table-column label="客户" min-width="220">
           <template #default="{ row }">
-            <el-tag :type="getStatusType(row.status)">
-              {{ getStatusLabel(row.status) }}
+            <div class="font-medium">{{ row.customer_name || row.customer_code }}</div>
+            <div class="text-xs text-gray-500">{{ row.customer_code }}</div>
+          </template>
+        </el-table-column>
+        <el-table-column prop="end_customer_name" label="终端客户" min-width="160">
+          <template #default="{ row }">{{ row.end_customer_name || '-' }}</template>
+        </el-table-column>
+        <el-table-column prop="product_type" label="产品类型" width="140" />
+        <el-table-column prop="defect_description" label="缺陷描述" min-width="220" show-overflow-tooltip />
+        <el-table-column label="退件" width="90">
+          <template #default="{ row }">
+            <el-tag :type="row.is_return_required ? 'warning' : 'info'">
+              {{ row.is_return_required ? '涉及' : '否' }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="cqe_name" label="CQE" width="100" />
-        <el-table-column prop="responsible_user_name" label="责任人" width="100" />
-        <el-table-column prop="created_at" label="创建时间" width="160" />
-        <el-table-column label="操作" width="200" fixed="right">
+        <el-table-column label="实物解析" width="110">
           <template #default="{ row }">
-            <el-button link type="primary" size="small" @click="handleView(row)">
-              查看
-            </el-button>
+            <el-tag :type="row.requires_physical_analysis ? 'primary' : 'success'">
+              {{ row.requires_physical_analysis ? '需解析' : '免解析' }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="severity_level" label="严重度" width="100" />
+        <el-table-column prop="status" label="状态" width="110">
+          <template #default="{ row }">
+            <el-tag :type="getCustomerComplaintStatusType(row.status)">
+              {{ getCustomerComplaintStatusLabel(row.status) }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="created_at" label="创建时间" width="170" />
+        <el-table-column label="操作" width="220" fixed="right">
+          <template #default="{ row }">
+            <el-button link type="primary" size="small" @click="handleView(row)">查看</el-button>
             <el-button
-              v-if="row.status === 'pending_analysis'"
+              v-if="canSubmitCustomerComplaintAnalysis(row)"
               link
               type="primary"
               size="small"
@@ -107,7 +134,7 @@
               一次因解析
             </el-button>
             <el-button
-              v-if="row.status === 'pending_8d' || row.status === 'in_progress'"
+              v-if="canOpenCustomerComplaintEightD(row)"
               link
               type="primary"
               size="small"
@@ -126,8 +153,8 @@
           :total="total"
           :page-sizes="[10, 20, 50, 100]"
           layout="total, sizes, prev, pager, next, jumper"
-          @size-change="handleSearch"
-          @current-change="handleSearch"
+          @size-change="loadComplaints"
+          @current-change="loadComplaints"
         />
       </div>
     </el-card>
@@ -139,10 +166,7 @@
       :close-on-click-modal="false"
       class="max-w-2xl"
     >
-      <CustomerComplaintForm
-        @success="handleCreateSuccess"
-        @cancel="showCreateDialog = false"
-      />
+      <CustomerComplaintForm @success="handleCreateSuccess" @cancel="showCreateDialog = false" />
     </el-dialog>
   </div>
 </template>
@@ -152,17 +176,36 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
-import { getCustomerComplaints } from '@/api/customer-quality'
+import {
+  getCustomerComplaintCustomerOptions,
+  getCustomerComplaints,
+} from '@/api/customer-quality'
 import CustomerComplaintForm from '@/components/CustomerComplaintForm.vue'
 import { useProblemManagementStore } from '@/stores/problemManagement'
-import { ComplaintType, type CustomerComplaint, type CustomerComplaintListQuery } from '@/types/customer-quality'
-import { buildCustomerComplaintTypeOptions, getCustomerComplaintTypeLabel as resolveCustomerComplaintTypeLabel } from '@/utils/problemManagement'
+import type {
+  CustomerComplaint,
+  CustomerComplaintCustomerOption,
+  CustomerComplaintListQuery,
+} from '@/types/customer-quality'
+import { ComplaintType } from '@/types/customer-quality'
+import {
+  buildCustomerComplaintTypeOptions,
+  getCustomerComplaintTypeLabel as resolveCustomerComplaintTypeLabel,
+} from '@/utils/problemManagement'
+import {
+  buildCustomerComplaintStatusOptions,
+  canOpenCustomerComplaintEightD,
+  canSubmitCustomerComplaintAnalysis,
+  getCustomerComplaintStatusLabel,
+  getCustomerComplaintStatusType,
+} from '@/utils/customerComplaint'
 
 const router = useRouter()
 const problemManagementStore = useProblemManagementStore()
 
 const loading = ref(false)
 const complaintList = ref<CustomerComplaint[]>([])
+const customerOptions = ref<CustomerComplaintCustomerOption[]>([])
 const total = ref(0)
 const showCreateDialog = ref(false)
 const dateRange = ref<[string, string] | null>(null)
@@ -171,43 +214,29 @@ const queryParams = reactive<CustomerComplaintListQuery>({
   page: 1,
   page_size: 20,
   complaint_type: undefined,
-  customer_code: undefined,
+  customer_id: undefined,
   product_type: undefined,
   status: undefined,
   start_date: undefined,
-  end_date: undefined
+  end_date: undefined,
 })
 
 const complaintTypeOptions = computed(() =>
   buildCustomerComplaintTypeOptions(problemManagementStore.getCategory)
 )
 
+const statusOptions = buildCustomerComplaintStatusOptions()
+
 function getComplaintTypeLabel(complaintType: ComplaintType): string {
   return resolveCustomerComplaintTypeLabel(complaintType, problemManagementStore.getCategory)
 }
 
-function getStatusLabel(status: string): string {
-  const statusMap: Record<string, string> = {
-    pending_analysis: '待一次因解析',
-    in_progress: '进行中',
-    pending_8d: '待8D提交',
-    under_review: '审核中',
-    closed: '已关闭'
+async function loadCustomerOptions() {
+  try {
+    customerOptions.value = await getCustomerComplaintCustomerOptions()
+  } catch (error: any) {
+    ElMessage.error(error.message || '加载客户清单失败')
   }
-
-  return statusMap[status] || status
-}
-
-function getStatusType(status: string): string {
-  const typeMap: Record<string, string> = {
-    pending_analysis: 'warning',
-    in_progress: 'primary',
-    pending_8d: 'warning',
-    under_review: 'info',
-    closed: 'success'
-  }
-
-  return typeMap[status] || 'info'
 }
 
 async function loadComplaints() {
@@ -225,8 +254,8 @@ async function loadComplaints() {
     const response = await getCustomerComplaints(queryParams)
     complaintList.value = response.items
     total.value = response.total
-  } catch (error) {
-    ElMessage.error('加载客诉单列表失败')
+  } catch (error: any) {
+    ElMessage.error(error.message || '加载客诉单列表失败')
     console.error('Load complaints error:', error)
   } finally {
     loading.value = false
@@ -235,18 +264,18 @@ async function loadComplaints() {
 
 function handleSearch() {
   queryParams.page = 1
-  loadComplaints()
+  void loadComplaints()
 }
 
 function handleReset() {
   queryParams.page = 1
   queryParams.page_size = 20
   queryParams.complaint_type = undefined
-  queryParams.customer_code = undefined
+  queryParams.customer_id = undefined
   queryParams.product_type = undefined
   queryParams.status = undefined
   dateRange.value = null
-  loadComplaints()
+  void loadComplaints()
 }
 
 function handleView(row: CustomerComplaint) {
@@ -264,12 +293,13 @@ function handle8D(row: CustomerComplaint) {
 function handleCreateSuccess() {
   showCreateDialog.value = false
   ElMessage.success('客诉单创建成功')
-  loadComplaints()
+  void loadComplaints()
 }
 
 onMounted(() => {
   void problemManagementStore.loadCatalog()
-  loadComplaints()
+  void loadCustomerOptions()
+  void loadComplaints()
 })
 </script>
 

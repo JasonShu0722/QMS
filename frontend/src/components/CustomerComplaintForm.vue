@@ -18,8 +18,30 @@
       </el-radio-group>
     </el-form-item>
 
-    <el-form-item label="客户代码" prop="customer_code">
-      <el-input v-model="formData.customer_code" placeholder="请输入客户代码" />
+    <el-form-item label="客户名称" prop="customer_id">
+      <el-select
+        v-model="formData.customer_id"
+        filterable
+        clearable
+        placeholder="请选择客户"
+        class="w-full"
+        :loading="customerLoading"
+      >
+        <el-option
+          v-for="item in customerOptions"
+          :key="item.id"
+          :label="`${item.name} (${item.code})`"
+          :value="item.id"
+        />
+      </el-select>
+    </el-form-item>
+
+    <el-form-item label="客户代码">
+      <el-input :model-value="selectedCustomerCode" disabled placeholder="选择客户后自动带出" />
+    </el-form-item>
+
+    <el-form-item label="终端客户">
+      <el-input v-model="formData.end_customer_name" placeholder="可选填写终端客户名称" />
     </el-form-item>
 
     <el-form-item label="产品类型" prop="product_type">
@@ -31,13 +53,16 @@
         v-model="formData.defect_description"
         type="textarea"
         :rows="4"
-        placeholder="请详细描述缺陷情况"
+        placeholder="请详细描述问题现象"
       />
     </el-form-item>
 
-    <el-form-item label="严重度等级" prop="severity_level">
-      <el-input v-model="formData.severity_level" placeholder="请输入严重度等级" />
-      <div class="mt-1 text-xs text-gray-500">具体分级方案待产品定义</div>
+    <el-form-item label="涉及退件">
+      <el-switch v-model="formData.is_return_required" />
+    </el-form-item>
+
+    <el-form-item label="实物解析">
+      <el-switch v-model="formData.requires_physical_analysis" />
     </el-form-item>
 
     <template v-if="formData.complaint_type === ComplaintType.AFTER_SALES">
@@ -78,9 +103,13 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
-import { createCustomerComplaint } from '@/api/customer-quality'
+import {
+  createCustomerComplaint,
+  getCustomerComplaintCustomerOptions,
+} from '@/api/customer-quality'
 import { useProblemManagementStore } from '@/stores/problemManagement'
-import { ComplaintType, type CustomerComplaintCreate } from '@/types/customer-quality'
+import type { CustomerComplaintCreate, CustomerComplaintCustomerOption } from '@/types/customer-quality'
+import { ComplaintType } from '@/types/customer-quality'
 import { buildCustomerComplaintTypeOptions } from '@/utils/problemManagement'
 
 const emit = defineEmits<{
@@ -90,40 +119,52 @@ const emit = defineEmits<{
 
 const formRef = ref<FormInstance>()
 const submitting = ref(false)
+const customerLoading = ref(false)
+const customerOptions = ref<CustomerComplaintCustomerOption[]>([])
 const problemManagementStore = useProblemManagementStore()
 
 const formData = reactive<CustomerComplaintCreate>({
   complaint_type: ComplaintType.ZERO_KM,
-  customer_code: '',
+  customer_id: undefined,
+  end_customer_name: '',
   product_type: '',
   defect_description: '',
-  severity_level: '',
+  is_return_required: false,
+  requires_physical_analysis: false,
   vin_code: undefined,
   mileage: undefined,
-  purchase_date: undefined
+  purchase_date: undefined,
 })
 
 const complaintTypeOptions = computed(() =>
   buildCustomerComplaintTypeOptions(problemManagementStore.getCategory)
 )
 
+const selectedCustomerCode = computed(() => {
+  const selectedCustomer = customerOptions.value.find((item) => item.id === formData.customer_id)
+  return selectedCustomer?.code ?? ''
+})
+
 const rules: FormRules = {
-  complaint_type: [
-    { required: true, message: '请选择客诉类型', trigger: 'change' }
-  ],
-  customer_code: [
-    { required: true, message: '请输入客户代码', trigger: 'blur' }
-  ],
-  product_type: [
-    { required: true, message: '请输入产品类型', trigger: 'blur' }
-  ],
+  complaint_type: [{ required: true, message: '请选择客诉类型', trigger: 'change' }],
+  customer_id: [{ required: true, message: '请选择客户', trigger: 'change' }],
+  product_type: [{ required: true, message: '请输入产品类型', trigger: 'blur' }],
   defect_description: [
     { required: true, message: '请输入缺陷描述', trigger: 'blur' },
-    { min: 10, message: '缺陷描述至少10个字符', trigger: 'blur' }
+    { min: 10, message: '缺陷描述至少 10 个字', trigger: 'blur' },
   ],
-  severity_level: [
-    { required: true, message: '请输入严重度等级', trigger: 'blur' }
-  ]
+}
+
+async function loadCustomerOptions() {
+  customerLoading.value = true
+
+  try {
+    customerOptions.value = await getCustomerComplaintCustomerOptions()
+  } catch (error: any) {
+    ElMessage.error(error.message || '加载客户清单失败')
+  } finally {
+    customerLoading.value = false
+  }
 }
 
 async function handleSubmit() {
@@ -135,7 +176,10 @@ async function handleSubmit() {
     await formRef.value.validate()
     submitting.value = true
 
-    await createCustomerComplaint(formData)
+    await createCustomerComplaint({
+      ...formData,
+      end_customer_name: formData.end_customer_name?.trim() || undefined,
+    })
     ElMessage.success('客诉单创建成功')
     emit('success')
   } catch (error: any) {
@@ -154,6 +198,7 @@ function handleCancel() {
 
 onMounted(() => {
   void problemManagementStore.loadCatalog()
+  void loadCustomerOptions()
 })
 </script>
 

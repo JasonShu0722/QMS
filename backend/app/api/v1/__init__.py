@@ -7,6 +7,7 @@ from app.api.v1 import auth, tasks, notifications, profile, announcements, featu
 from app.api.v1.admin import (
     permissions, 
     users, 
+    customers,
     suppliers,
     operation_logs, 
     tasks as admin_tasks, 
@@ -57,6 +58,7 @@ api_router.include_router(requirements_panel_auth.router)
 api_router.include_router(requirements_panel.router)
 api_router.include_router(permissions.router)
 api_router.include_router(users.router)
+api_router.include_router(customers.router)
 api_router.include_router(suppliers.router)
 api_router.include_router(operation_logs.router)
 api_router.include_router(admin_tasks.router)

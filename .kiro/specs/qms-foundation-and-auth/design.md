@@ -128,6 +128,30 @@
   - `switch_response_mode`
 - 待办卡片展示优先使用 `issue_no`；若当前节点属于 8D 正式处理环节，则同时支持展示 `report_no`。
 
+### 客户质量链路特化设计
+
+- 客户质量建议采用“客诉台账 -> 实物处理 / 实物解析 -> 正式问题单 / 8D”的三层结构，而不是让客诉台账天然等于 8D 主单。
+- 客诉台账层建议承载：
+  - `complaint_type`（`CQ0` / `CQ1`）
+  - `customer_id`
+  - `customer_name_snapshot`
+  - `end_customer_name`
+  - `is_return_involved`
+  - `requires_physical_analysis`
+  - `physical_disposition_plan`
+  - `physical_disposition_status`
+- 实物解析层建议独立为子记录或子任务，至少承载：
+  - 一次原因分析
+  - 责任部门 / 责任人
+  - 失效零部件料号
+  - 结论与证据附件
+- 正式问题单层建议复用统一 `IssueCase`，并通过关联表维护客诉范围，而不是在 8D 表上继续保持“一条客诉只能对应一张 8D”的单向唯一关系。
+- 数据关系建议优先按多对多设计：
+  - 一个客诉台账可在后续被关联到正式问题单
+  - 一个正式问题单可覆盖一条或多条客诉来源
+  - 问题范围允许在处理过程中增删客诉明细，但需要保留范围调整日志
+- 系统管理建议补充客户主数据治理能力，至少承载 `customer_code`、`customer_name`、状态和基础联络信息；客诉录入优先引用该主数据，终端客户在第一阶段允许文本输入。
+
 ### 技术栈选型
 
 - **后端**：Python 3.10+ / FastAPI / SQLAlchemy (Async) / Alembic / Celery + Redis

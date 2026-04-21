@@ -117,6 +117,7 @@ export const NAV_SECTIONS: NavigationSection[] = [
     children: [
       { index: '/admin/users', title: '用户管理' },
       { index: '/admin/suppliers', title: '供应商基础信息' },
+      { index: '/admin/customers', title: '客户基础信息' },
       { index: '/admin/permissions', title: '权限矩阵' },
       { index: '/admin/tasks', title: '任务监控' },
       { index: '/admin/operation-logs', title: '操作日志' },

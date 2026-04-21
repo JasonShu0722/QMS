@@ -2,7 +2,7 @@
 Customer Complaint Model
 客诉单模型 - 记录客户质量投诉信息
 """
-from sqlalchemy import Column, Integer, String, Text, Date, DateTime, Enum as SQLEnum, ForeignKey
+from sqlalchemy import Boolean, Column, Integer, String, Text, Date, DateTime, Enum as SQLEnum, ForeignKey
 from sqlalchemy.orm import relationship
 from datetime import datetime
 import enum
@@ -46,8 +46,13 @@ class CustomerComplaint(Base):
     
     # 基本信息
     complaint_type = Column(SQLEnum(ComplaintType), nullable=False, comment="客诉类型：0km/售后")
+    customer_id = Column(Integer, ForeignKey("customers.id"), nullable=True, index=True, comment="客户主数据ID")
     customer_code = Column(String(50), nullable=False, index=True, comment="客户代码")
+    customer_name_snapshot = Column(String(200), nullable=True, comment="客户名称快照")
+    end_customer_name = Column(String(200), nullable=True, comment="终端客户名称")
     product_type = Column(String(100), nullable=False, comment="产品类型")
+    is_return_required = Column(Boolean, nullable=False, default=False, comment="是否涉及退件")
+    requires_physical_analysis = Column(Boolean, nullable=False, default=False, comment="是否需要实物解析")
     
     # 缺陷描述
     defect_description = Column(Text, nullable=False, comment="缺陷描述")
@@ -69,11 +74,16 @@ class CustomerComplaint(Base):
     created_by = Column(Integer, ForeignKey("users.id"), nullable=True, comment="创建人ID")
     
     # 关系
+    customer_master = relationship("CustomerMaster", foreign_keys=[customer_id], backref="customer_complaints")
     cqe = relationship("User", foreign_keys=[cqe_id], backref="assigned_complaints")
     creator = relationship("User", foreign_keys=[created_by], backref="created_complaints")
     eight_d_report = relationship("EightDCustomer", back_populates="complaint", uselist=False)
     customer_claims = relationship("CustomerClaim", back_populates="complaint")
     supplier_claims = relationship("SupplierClaim", back_populates="complaint")
+
+    @property
+    def customer_name(self):
+        return self.customer_name_snapshot
     
     def __repr__(self):
         return f"<CustomerComplaint(id={self.id}, number={self.complaint_number}, type={self.complaint_type})>"

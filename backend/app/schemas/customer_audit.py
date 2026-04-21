@@ -134,7 +134,7 @@ class CustomerAuditIssueTaskResponse(BaseModel):
     responsible_dept: str
     assigned_to: Optional[int]
     deadline: datetime
-    priority: str
+    priority: Optional[str] = None
     status: str
     root_cause: Optional[str]
     corrective_action: Optional[str]
@@ -146,6 +146,8 @@ class CustomerAuditIssueTaskResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     created_by: Optional[int]
+    problem_category_key: Optional[str] = None
+    problem_category_label: Optional[str] = None
 
     class Config:
         from_attributes = True

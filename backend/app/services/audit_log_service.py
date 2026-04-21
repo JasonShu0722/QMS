@@ -50,7 +50,6 @@ class AuditLogService:
             target_id=target_id,
             before_data=before_data,
             after_data=after_data,
-            description=description,
             ip_address=ip_address,
             user_agent=user_agent,
             created_at=datetime.utcnow()

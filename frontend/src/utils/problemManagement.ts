@@ -17,6 +17,15 @@ function normalizeProblemCategoryLabel(label: string): string {
   return label.toLowerCase() === '0km' ? '0KM' : label
 }
 
+export function getProblemCategoryLabel(
+  categoryKey: ProblemCategoryKey,
+  fallbackLabel: string,
+  resolveCategory?: ProblemCategoryResolver
+): string {
+  const category = resolveCategory?.(categoryKey)
+  return normalizeProblemCategoryLabel(category?.label ?? fallbackLabel)
+}
+
 export function getCustomerComplaintCategoryKey(complaintType: ComplaintType): ProblemCategoryKey {
   return CUSTOMER_COMPLAINT_CATEGORY_MAP[complaintType]
 }
@@ -26,9 +35,10 @@ export function getCustomerComplaintTypeLabel(
   resolveCategory?: ProblemCategoryResolver,
   withSuffix = false
 ): string {
-  const category = resolveCategory?.(getCustomerComplaintCategoryKey(complaintType))
-  const baseLabel = normalizeProblemCategoryLabel(
-    category?.label ?? CUSTOMER_COMPLAINT_FALLBACK_LABEL_MAP[complaintType]
+  const baseLabel = getProblemCategoryLabel(
+    getCustomerComplaintCategoryKey(complaintType),
+    CUSTOMER_COMPLAINT_FALLBACK_LABEL_MAP[complaintType],
+    resolveCategory
   )
 
   return withSuffix ? `${baseLabel}客诉` : baseLabel

@@ -7,9 +7,11 @@ from typing import Optional, List, Tuple
 from sqlalchemy import select, func, or_, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.problem_management import get_problem_category_definition
 from app.models.audit import CustomerAudit, AuditNC
 from app.schemas.customer_audit import (
     CustomerAuditCreate,
+    CustomerAuditIssueTaskResponse,
     CustomerAuditUpdate,
     CustomerAuditQuery,
     CustomerAuditIssueTaskCreate
@@ -17,6 +19,7 @@ from app.schemas.customer_audit import (
 
 
 class CustomerAuditService:
+    CUSTOMER_AUDIT_PROBLEM_CATEGORY_KEY = "AQ3"
     """客户审核服务类"""
     
     @staticmethod
@@ -225,6 +228,41 @@ class CustomerAuditService:
         await db.refresh(nc_task)
         
         return nc_task
+
+    @staticmethod
+    def build_issue_task_response(
+        task: AuditNC,
+        *,
+        customer_audit_id: int,
+        priority: str | None = None,
+    ) -> CustomerAuditIssueTaskResponse:
+        """Build the customer-audit issue-task response from the shared AuditNC model."""
+
+        category = get_problem_category_definition(
+            CustomerAuditService.CUSTOMER_AUDIT_PROBLEM_CATEGORY_KEY
+        )
+        return CustomerAuditIssueTaskResponse(
+            id=task.id,
+            customer_audit_id=customer_audit_id,
+            issue_description=task.nc_description,
+            responsible_dept=task.responsible_dept,
+            assigned_to=task.assigned_to,
+            deadline=task.deadline,
+            priority=priority,
+            status=task.verification_status,
+            root_cause=task.root_cause,
+            corrective_action=task.corrective_action,
+            corrective_evidence=task.corrective_evidence,
+            verified_by=task.verified_by,
+            verified_at=task.verified_at,
+            verification_comment=task.verification_comment,
+            closed_at=task.closed_at,
+            created_at=task.created_at,
+            updated_at=task.updated_at,
+            created_by=task.created_by,
+            problem_category_key=category.key,
+            problem_category_label=category.label,
+        )
     
     @staticmethod
     async def get_customer_audit_issue_tasks(

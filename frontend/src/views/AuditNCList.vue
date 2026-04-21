@@ -1,20 +1,30 @@
 <template>
   <div class="audit-nc-list p-4 md:p-6">
     <div class="mb-6">
-      <h1 class="text-2xl font-bold">NC整改清单</h1>
-      <p class="text-sm text-gray-500 mt-1">Audit NC List - 审核不符合项整改跟踪</p>
+      <h1 class="text-2xl font-bold">NC 整改清单</h1>
+      <p class="mt-1 text-sm text-gray-500">审核不符合项整改跟踪</p>
     </div>
 
-    <!-- 筛选 -->
     <el-card class="mb-6">
       <el-form :inline="true" :model="queryForm">
+        <el-form-item label="问题分类">
+          <el-select v-model="queryForm.problem_category_key" placeholder="全部" clearable>
+            <el-option
+              v-for="option in auditProblemCategoryOptions"
+              :key="option.value"
+              :label="option.label"
+              :value="option.value"
+            />
+          </el-select>
+        </el-form-item>
         <el-form-item label="验证状态">
           <el-select v-model="queryForm.verification_status" placeholder="全部" clearable>
-            <el-option label="待指派" value="pending" />
-            <el-option label="已指派" value="assigned" />
-            <el-option label="已响应" value="responded" />
-            <el-option label="已验证" value="verified" />
-            <el-option label="已关闭" value="closed" />
+            <el-option
+              v-for="option in statusOptions"
+              :key="option.value"
+              :label="option.label"
+              :value="option.value"
+            />
           </el-select>
         </el-form-item>
         <el-form-item label="是否逾期">
@@ -29,25 +39,29 @@
       </el-form>
     </el-card>
 
-    <!-- NC列表 -->
     <el-card v-loading="loading">
       <el-table :data="ncs" stripe>
         <el-table-column prop="id" label="ID" width="80" />
+        <el-table-column label="问题分类" width="140">
+          <template #default="{ row }">
+            <span>{{ getProblemCategoryLabel(row) }}</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="nc_item" label="条款" width="120" />
         <el-table-column prop="nc_description" label="不符合项描述" min-width="250" show-overflow-tooltip />
         <el-table-column prop="responsible_dept" label="责任部门" width="120" />
-        
+
         <el-table-column label="状态" width="100">
           <template #default="{ row }">
-            <el-tag :type="getStatusType(row.verification_status)">
-              {{ getStatusLabel(row.verification_status) }}
+            <el-tag :type="getAuditNCStatusType(row.verification_status)">
+              {{ getAuditNCStatusLabel(row.verification_status) }}
             </el-tag>
           </template>
         </el-table-column>
 
         <el-table-column label="期限" width="180">
           <template #default="{ row }">
-            <div :class="row.is_overdue ? 'text-red-600 font-bold' : ''">
+            <div :class="row.is_overdue ? 'font-bold text-red-600' : ''">
               {{ formatDateTime(row.deadline) }}
               <el-tag v-if="row.is_overdue" type="danger" size="small" class="ml-1">
                 逾期
@@ -59,7 +73,7 @@
         <el-table-column label="操作" width="250" fixed="right">
           <template #default="{ row }">
             <el-button
-              v-if="row.verification_status === 'pending'"
+              v-if="canAssignAuditNC(row.verification_status)"
               link
               type="primary"
               @click="handleAssign(row)"
@@ -67,7 +81,7 @@
               指派
             </el-button>
             <el-button
-              v-if="row.verification_status === 'assigned'"
+              v-if="canRespondAuditNC(row.verification_status)"
               link
               type="primary"
               @click="handleRespond(row)"
@@ -75,7 +89,7 @@
               填写对策
             </el-button>
             <el-button
-              v-if="row.verification_status === 'responded'"
+              v-if="canVerifyAuditNC(row.verification_status)"
               link
               type="success"
               @click="handleVerify(row)"
@@ -83,7 +97,7 @@
               验证
             </el-button>
             <el-button
-              v-if="row.verification_status === 'verified'"
+              v-if="canCloseAuditNC(row.verification_status)"
               link
               type="success"
               @click="handleClose(row)"
@@ -106,11 +120,10 @@
       </div>
     </el-card>
 
-    <!-- 指派对话框 -->
-    <el-dialog v-model="showAssignDialog" title="指派NC" width="500px">
+    <el-dialog v-model="showAssignDialog" title="指派 NC" width="500px">
       <el-form :model="assignForm" label-width="100px">
         <el-form-item label="指派给">
-          <el-input-number v-model="assignForm.assigned_to" :min="1" placeholder="用户ID" class="w-full" />
+          <el-input-number v-model="assignForm.assigned_to" :min="1" placeholder="用户 ID" class="w-full" />
         </el-form-item>
         <el-form-item label="整改期限">
           <el-date-picker
@@ -128,18 +141,22 @@
       </el-form>
       <template #footer>
         <el-button @click="showAssignDialog = false">取消</el-button>
-        <el-button type="primary" @click="submitAssign" :loading="submitting">确定</el-button>
+        <el-button type="primary" :loading="submitting" @click="submitAssign">确定</el-button>
       </template>
     </el-dialog>
 
-    <!-- 响应对话框 -->
     <el-dialog v-model="showRespondDialog" title="填写整改对策" width="600px">
       <el-form :model="respondForm" label-width="100px">
         <el-form-item label="根本原因" required>
           <el-input v-model="respondForm.root_cause" type="textarea" :rows="4" placeholder="请详细分析根本原因" />
         </el-form-item>
         <el-form-item label="纠正措施" required>
-          <el-input v-model="respondForm.corrective_action" type="textarea" :rows="4" placeholder="请详细说明纠正措施" />
+          <el-input
+            v-model="respondForm.corrective_action"
+            type="textarea"
+            :rows="4"
+            placeholder="请详细说明纠正措施"
+          />
         </el-form-item>
         <el-form-item label="整改证据">
           <el-input v-model="respondForm.corrective_evidence" placeholder="证据文件路径" />
@@ -147,12 +164,11 @@
       </el-form>
       <template #footer>
         <el-button @click="showRespondDialog = false">取消</el-button>
-        <el-button type="primary" @click="submitRespond" :loading="submitting">提交</el-button>
+        <el-button type="primary" :loading="submitting" @click="submitRespond">提交</el-button>
       </template>
     </el-dialog>
 
-    <!-- 验证对话框 -->
-    <el-dialog v-model="showVerifyDialog" title="验证NC整改" width="500px">
+    <el-dialog v-model="showVerifyDialog" title="验证 NC 整改" width="500px">
       <el-form :model="verifyForm" label-width="100px">
         <el-form-item label="验证结果" required>
           <el-radio-group v-model="verifyForm.is_approved">
@@ -166,179 +182,201 @@
       </el-form>
       <template #footer>
         <el-button @click="showVerifyDialog = false">取消</el-button>
-        <el-button type="primary" @click="submitVerify" :loading="submitting">提交</el-button>
+        <el-button type="primary" :loading="submitting" @click="submitVerify">提交</el-button>
       </template>
     </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue';
-import { ElMessage } from 'element-plus';
+import { computed, onMounted, reactive, ref } from 'vue'
+import { ElMessage } from 'element-plus'
 import {
-  getAuditNCs,
   assignAuditNC,
+  closeAuditNC,
+  getAuditNCs,
   respondAuditNC,
-  verifyAuditNC,
-  closeAuditNC
-} from '@/api/audit';
-import type { AuditNC, AuditNCAssign, AuditNCResponse, AuditNCVerify } from '@/types/audit';
+  verifyAuditNC
+} from '@/api/audit'
+import { useProblemManagementStore } from '@/stores/problemManagement'
+import type { AuditNC, AuditNCAssign, AuditNCQuery, AuditNCResponse, AuditNCVerify } from '@/types/audit'
+import type { ProblemCategoryKey } from '@/types/problem-management'
+import {
+  buildAuditNCProblemCategoryOptions,
+  canAssignAuditNC,
+  canCloseAuditNC,
+  canRespondAuditNC,
+  canVerifyAuditNC,
+  getAuditNCProblemCategoryLabel,
+  getAuditNCStatusLabel,
+  getAuditNCStatusOptions,
+  getAuditNCStatusType
+} from '@/utils/auditNc'
 
-const loading = ref(false);
-const submitting = ref(false);
-const ncs = ref<AuditNC[]>([]);
-const total = ref(0);
-const currentNC = ref<AuditNC | null>(null);
+const problemManagementStore = useProblemManagementStore()
 
-const showAssignDialog = ref(false);
-const showRespondDialog = ref(false);
-const showVerifyDialog = ref(false);
+const loading = ref(false)
+const submitting = ref(false)
+const ncs = ref<AuditNC[]>([])
+const total = ref(0)
+const currentNC = ref<AuditNC | null>(null)
 
-const queryForm = reactive({
+const showAssignDialog = ref(false)
+const showRespondDialog = ref(false)
+const showVerifyDialog = ref(false)
+const statusOptions = getAuditNCStatusOptions()
+const auditProblemCategoryOptions = computed(() =>
+  buildAuditNCProblemCategoryOptions(problemManagementStore.categoriesByModule.audit_management ?? [])
+)
+
+const queryForm = reactive<AuditNCQuery>({
+  problem_category_key: undefined,
   verification_status: '',
-  is_overdue: undefined as boolean | undefined,
+  is_overdue: undefined,
   page: 1,
   page_size: 20
-});
+})
 
 const assignForm = reactive<AuditNCAssign>({
   assigned_to: 0,
   deadline: '',
   comment: ''
-});
+})
 
 const respondForm = reactive<AuditNCResponse>({
   root_cause: '',
   corrective_action: '',
   corrective_evidence: ''
-});
+})
 
 const verifyForm = reactive<AuditNCVerify>({
   is_approved: true,
   verification_comment: ''
-});
+})
 
-const loadNCs = async () => {
-  loading.value = true;
+function resolveProblemCategory(categoryKey: ProblemCategoryKey) {
+  return problemManagementStore.getCategory(categoryKey)
+}
+
+function getProblemCategoryLabel(nc: AuditNC): string {
+  return getAuditNCProblemCategoryLabel(
+    nc.problem_category_key,
+    nc.problem_category_label,
+    resolveProblemCategory
+  )
+}
+
+async function loadNCs() {
+  loading.value = true
+
   try {
-    const response = await getAuditNCs(queryForm);
-    ncs.value = response.items;
-    total.value = response.total;
+    const response = await getAuditNCs(queryForm)
+    ncs.value = response.items
+    total.value = response.total
   } catch (error: any) {
-    ElMessage.error(error.message || '加载失败');
+    ElMessage.error(error.message || '加载失败')
   } finally {
-    loading.value = false;
+    loading.value = false
   }
-};
+}
 
-const handleAssign = (nc: AuditNC) => {
-  currentNC.value = nc;
-  Object.assign(assignForm, { assigned_to: 0, deadline: '', comment: '' });
-  showAssignDialog.value = true;
-};
+function handleAssign(nc: AuditNC) {
+  currentNC.value = nc
+  Object.assign(assignForm, { assigned_to: 0, deadline: '', comment: '' })
+  showAssignDialog.value = true
+}
 
-const submitAssign = async () => {
-  if (!currentNC.value) return;
-  submitting.value = true;
+async function submitAssign() {
+  if (!currentNC.value) {
+    return
+  }
+
+  submitting.value = true
+
   try {
-    await assignAuditNC(currentNC.value.id, assignForm);
-    ElMessage.success('指派成功');
-    showAssignDialog.value = false;
-    await loadNCs();
+    await assignAuditNC(currentNC.value.id, assignForm)
+    ElMessage.success('指派成功')
+    showAssignDialog.value = false
+    await loadNCs()
   } catch (error: any) {
-    ElMessage.error(error.message || '指派失败');
+    ElMessage.error(error.message || '指派失败')
   } finally {
-    submitting.value = false;
+    submitting.value = false
   }
-};
+}
 
-const handleRespond = (nc: AuditNC) => {
-  currentNC.value = nc;
-  Object.assign(respondForm, { root_cause: '', corrective_action: '', corrective_evidence: '' });
-  showRespondDialog.value = true;
-};
+function handleRespond(nc: AuditNC) {
+  currentNC.value = nc
+  Object.assign(respondForm, { root_cause: '', corrective_action: '', corrective_evidence: '' })
+  showRespondDialog.value = true
+}
 
-const submitRespond = async () => {
-  if (!currentNC.value) return;
-  submitting.value = true;
+async function submitRespond() {
+  if (!currentNC.value) {
+    return
+  }
+
+  submitting.value = true
+
   try {
-    await respondAuditNC(currentNC.value.id, respondForm);
-    ElMessage.success('提交成功');
-    showRespondDialog.value = false;
-    await loadNCs();
+    await respondAuditNC(currentNC.value.id, respondForm)
+    ElMessage.success('提交成功')
+    showRespondDialog.value = false
+    await loadNCs()
   } catch (error: any) {
-    ElMessage.error(error.message || '提交失败');
+    ElMessage.error(error.message || '提交失败')
   } finally {
-    submitting.value = false;
+    submitting.value = false
   }
-};
+}
 
-const handleVerify = (nc: AuditNC) => {
-  currentNC.value = nc;
-  Object.assign(verifyForm, { is_approved: true, verification_comment: '' });
-  showVerifyDialog.value = true;
-};
+function handleVerify(nc: AuditNC) {
+  currentNC.value = nc
+  Object.assign(verifyForm, { is_approved: true, verification_comment: '' })
+  showVerifyDialog.value = true
+}
 
-const submitVerify = async () => {
-  if (!currentNC.value) return;
-  submitting.value = true;
+async function submitVerify() {
+  if (!currentNC.value) {
+    return
+  }
+
+  submitting.value = true
+
   try {
-    await verifyAuditNC(currentNC.value.id, verifyForm);
-    ElMessage.success('验证成功');
-    showVerifyDialog.value = false;
-    await loadNCs();
+    await verifyAuditNC(currentNC.value.id, verifyForm)
+    ElMessage.success('验证成功')
+    showVerifyDialog.value = false
+    await loadNCs()
   } catch (error: any) {
-    ElMessage.error(error.message || '验证失败');
+    ElMessage.error(error.message || '验证失败')
   } finally {
-    submitting.value = false;
+    submitting.value = false
   }
-};
+}
 
-const handleClose = async (nc: AuditNC) => {
+async function handleClose(nc: AuditNC) {
   try {
-    await closeAuditNC(nc.id);
-    ElMessage.success('关闭成功');
-    await loadNCs();
+    await closeAuditNC(nc.id)
+    ElMessage.success('关闭成功')
+    await loadNCs()
   } catch (error: any) {
-    ElMessage.error(error.message || '关闭失败');
+    ElMessage.error(error.message || '关闭失败')
   }
-};
+}
 
-const handleView = (_nc: AuditNC) => {
-  ElMessage.info('查看NC详情');
-};
+function handleView(_nc: AuditNC) {
+  ElMessage.info('查看 NC 详情')
+}
 
-const getStatusLabel = (status: string): string => {
-  const labels: Record<string, string> = {
-    pending: '待指派',
-    assigned: '已指派',
-    responded: '已响应',
-    verified: '已验证',
-    rejected: '已驳回',
-    closed: '已关闭'
-  };
-  return labels[status] || status;
-};
+function formatDateTime(dateStr: string): string {
+  return new Date(dateStr).toLocaleString('zh-CN')
+}
 
-const getStatusType = (status: string) => {
-  const types: Record<string, any> = {
-    pending: 'info',
-    assigned: 'warning',
-    responded: 'primary',
-    verified: 'success',
-    rejected: 'danger',
-    closed: 'success'
-  };
-  return types[status] || 'info';
-};
-
-const formatDateTime = (dateStr: string): string => {
-  return new Date(dateStr).toLocaleString('zh-CN');
-};
-
-onMounted(() => {
-  loadNCs();
-});
+onMounted(async () => {
+  await problemManagementStore.loadCatalog()
+  await loadNCs()
+})
 </script>
 
 <style scoped>

@@ -7,7 +7,8 @@ from datetime import date, datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.customer_complaint import CustomerComplaint, ComplaintType, ComplaintStatus, SeverityLevel
-from app.models.user import User, UserType
+from app.models.customer_master import CustomerMaster, CustomerStatus
+from app.models.user import User, UserStatus, UserType
 from app.schemas.customer_complaint import (
     CustomerComplaintCreate,
     PreliminaryAnalysisRequest,
@@ -22,18 +23,31 @@ async def test_user(db_session: AsyncSession):
     """创建测试用户（CQE）"""
     user = User(
         username="test_cqe",
-        hashed_password="hashed_password",
+        password_hash="hashed_password",
         full_name="测试CQE",
         email="cqe@test.com",
         user_type=UserType.INTERNAL,
         department="质量部",
         position="CQE工程师",
-        status="active"
+        status=UserStatus.ACTIVE
     )
     db_session.add(user)
     await db_session.commit()
     await db_session.refresh(user)
     return user
+
+
+@pytest.fixture
+async def customer_master(db_session: AsyncSession):
+    customer = CustomerMaster(
+        code="CUSTM001",
+        name="BYD Auto",
+        status=CustomerStatus.ACTIVE,
+    )
+    db_session.add(customer)
+    await db_session.commit()
+    await db_session.refresh(customer)
+    return customer
 
 
 @pytest.mark.asyncio
@@ -90,6 +104,35 @@ class TestCustomerComplaintCreation:
         assert complaint.vin_code == "LSVAA4182E2123456"
         assert complaint.mileage == 15000
         assert complaint.purchase_date == date(2023, 6, 15)
+
+    async def test_create_complaint_with_customer_master(
+        self,
+        db_session: AsyncSession,
+        test_user: User,
+        customer_master: CustomerMaster,
+    ):
+        complaint_data = CustomerComplaintCreate(
+            complaint_type=ComplaintTypeEnum.ZERO_KM,
+            customer_id=customer_master.id,
+            product_type="MCU控制器",
+            defect_description="客户产线发现批量功能异常，需进一步分析处理",
+            end_customer_name="终端项目A",
+            is_return_required=True,
+            requires_physical_analysis=True,
+        )
+
+        complaint = await CustomerComplaintService.create_complaint(
+            db=db_session,
+            complaint_data=complaint_data,
+            created_by_id=test_user.id,
+        )
+
+        assert complaint.customer_id == customer_master.id
+        assert complaint.customer_code == customer_master.code
+        assert complaint.customer_name_snapshot == customer_master.name
+        assert complaint.end_customer_name == "终端项目A"
+        assert complaint.is_return_required is True
+        assert complaint.requires_physical_analysis is True
     
     async def test_complaint_number_generation(self, db_session: AsyncSession, test_user: User):
         """测试客诉单号生成逻辑（同一天多个单据）"""
@@ -98,7 +141,7 @@ class TestCustomerComplaintCreation:
             complaint_type=ComplaintTypeEnum.ZERO_KM,
             customer_code="CUST001",
             product_type="产品A",
-            defect_description="测试缺陷描述1"
+            defect_description="测试缺陷描述001，需要进一步确认"
         )
         complaint_1 = await CustomerComplaintService.create_complaint(
             db=db_session,
@@ -111,7 +154,7 @@ class TestCustomerComplaintCreation:
             complaint_type=ComplaintTypeEnum.ZERO_KM,
             customer_code="CUST002",
             product_type="产品B",
-            defect_description="测试缺陷描述2"
+            defect_description="测试缺陷描述002，需要进一步确认"
         )
         complaint_2 = await CustomerComplaintService.create_complaint(
             db=db_session,
@@ -215,7 +258,7 @@ class TestPreliminaryAnalysis:
             complaint_type=ComplaintTypeEnum.ZERO_KM,
             customer_code="CUST001",
             product_type="MCU控制器",
-            defect_description="功能测试不通过"
+            defect_description="客户端功能测试不通过，需要一次因分析"
         )
         complaint = await CustomerComplaintService.create_complaint(
             db=db_session,
@@ -252,7 +295,7 @@ class TestPreliminaryAnalysis:
             complaint_type=ComplaintTypeEnum.ZERO_KM,
             customer_code="CUST001",
             product_type="产品A",
-            defect_description="批量不良"
+            defect_description="客户端批量不良，需要结合IMS追溯"
         )
         complaint = await CustomerComplaintService.create_complaint(
             db=db_session,
@@ -262,10 +305,10 @@ class TestPreliminaryAnalysis:
         
         # 提交一次因解析（包含IMS追溯信息）
         analysis_data = PreliminaryAnalysisRequest(
-            emergency_action="冻结库存",
-            team_members="团队成员",
-            problem_description_5w2h="问题描述",
-            containment_action="围堵措施",
+            emergency_action="立即冻结相关库存并通知现场隔离",
+            team_members="团队成员A, 团队成员B",
+            problem_description_5w2h="What: 批量不良; When: 今日; Where: 客户线体; Who: 客户检验; How Many: 多台",
+            containment_action="立即围堵库存并追溯在制与在途产品",
             containment_verification="验证结果",
             responsible_dept="制造部",
             ims_work_order="WO202401001",
@@ -333,7 +376,7 @@ class TestComplaintQuery:
                 complaint_type=ComplaintTypeEnum.ZERO_KM,
                 customer_code=f"CUST00{i+1}",
                 product_type="产品A",
-                defect_description=f"测试缺陷{i+1}"
+                defect_description=f"测试缺陷{i+1}，用于列表筛选验证"
             )
             await CustomerComplaintService.create_complaint(
                 db=db_session,
@@ -358,7 +401,7 @@ class TestComplaintQuery:
             complaint_type=ComplaintTypeEnum.ZERO_KM,
             customer_code="CUST001",
             product_type="产品A",
-            defect_description="0KM缺陷"
+            defect_description="0KM批量缺陷，需要按类型过滤"
         )
         await CustomerComplaintService.create_complaint(
             db=db_session,
@@ -371,7 +414,7 @@ class TestComplaintQuery:
             complaint_type=ComplaintTypeEnum.AFTER_SALES,
             customer_code="CUST002",
             product_type="产品B",
-            defect_description="售后缺陷",
+            defect_description="售后市场缺陷，需要按类型过滤",
             vin_code="VIN123",
             mileage=10000,
             purchase_date=date(2023, 1, 1)
@@ -400,7 +443,7 @@ class TestComplaintQuery:
             complaint_type=ComplaintTypeEnum.ZERO_KM,
             customer_code="CUST001",
             product_type="产品A",
-            defect_description="测试缺陷"
+            defect_description="测试缺陷内容，用于详情查询"
         )
         created_complaint = await CustomerComplaintService.create_complaint(
             db=db_session,
@@ -417,6 +460,34 @@ class TestComplaintQuery:
         assert found_complaint is not None
         assert found_complaint.id == created_complaint.id
         assert found_complaint.complaint_number == created_complaint.complaint_number
+
+    async def test_list_complaints_by_customer_id(
+        self,
+        db_session: AsyncSession,
+        test_user: User,
+        customer_master: CustomerMaster,
+    ):
+        complaint_data = CustomerComplaintCreate(
+            complaint_type=ComplaintTypeEnum.ZERO_KM,
+            customer_id=customer_master.id,
+            product_type="产品A",
+            defect_description="客户端发现装配不良，需要区分责任和处理方式",
+        )
+        await CustomerComplaintService.create_complaint(
+            db=db_session,
+            complaint_data=complaint_data,
+            created_by_id=test_user.id,
+        )
+
+        complaints, total = await CustomerComplaintService.list_complaints(
+            db=db_session,
+            customer_id=customer_master.id,
+            page=1,
+            page_size=10,
+        )
+
+        assert total >= 1
+        assert all(item.customer_id == customer_master.id for item in complaints)
 
 
 if __name__ == "__main__":

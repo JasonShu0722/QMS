@@ -235,6 +235,82 @@ class SupplierMasterBulkCreateResponse(BaseModel):
     suppliers: list[SupplierMasterResponse]
 
 
+class CustomerMasterBase(BaseModel):
+    code: str = Field(..., min_length=1, max_length=50, description="客户代码")
+    name: str = Field(..., min_length=1, max_length=200, description="客户名称")
+    contact_person: Optional[str] = Field(None, max_length=100, description="联系人")
+    contact_email: Optional[EmailStr] = Field(None, description="联系邮箱")
+    contact_phone: Optional[str] = Field(None, max_length=20, description="联系电话")
+
+    @field_validator("code")
+    @classmethod
+    def normalize_code(cls, value: str) -> str:
+        normalized = value.strip().upper()
+        if not normalized:
+            raise ValueError("客户代码不能为空")
+        return normalized
+
+    @field_validator("name")
+    @classmethod
+    def normalize_name(cls, value: str) -> str:
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("客户名称不能为空")
+        return normalized
+
+    @field_validator("contact_person", "contact_phone")
+    @classmethod
+    def normalize_optional_text(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return None
+        normalized = value.strip()
+        return normalized or None
+
+
+class CustomerMasterCreateRequest(CustomerMasterBase):
+    status: Literal["active", "suspended"] = Field(default="active", description="客户状态")
+
+
+class CustomerMasterUpdateRequest(CustomerMasterBase):
+    status: Literal["active", "suspended"] = Field(..., description="客户状态")
+
+
+class CustomerMasterBulkCreateItem(CustomerMasterBase):
+    pass
+
+
+class CustomerMasterBulkCreateRequest(BaseModel):
+    items: list[CustomerMasterBulkCreateItem] = Field(
+        ..., min_length=1, max_length=500, description="批量导入明细"
+    )
+    status: Literal["active", "suspended"] = Field(default="active", description="统一导入状态")
+
+
+class CustomerMasterResponse(BaseModel):
+    id: int
+    code: str
+    name: str
+    contact_person: Optional[str]
+    contact_email: Optional[str]
+    contact_phone: Optional[str]
+    status: str
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class CustomerMasterStatusUpdateRequest(BaseModel):
+    status: Literal["active", "suspended"] = Field(..., description="客户状态")
+
+
+class CustomerMasterBulkCreateResponse(BaseModel):
+    message: str
+    total_count: int
+    created_count: int
+    customers: list[CustomerMasterResponse]
+
+
 class UserRoleAssignmentRequest(BaseModel):
     """
     用户角色分配请求

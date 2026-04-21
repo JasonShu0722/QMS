@@ -9,6 +9,7 @@ from datetime import datetime, date
 import logging
 
 from app.models.customer_complaint import CustomerComplaint, ComplaintType, ComplaintStatus, SeverityLevel
+from app.models.customer_master import CustomerMaster, CustomerStatus
 from app.models.user import User
 from app.schemas.customer_complaint import (
     CustomerComplaintCreate,
@@ -38,6 +39,29 @@ class CustomerComplaintService:
         2. 根据缺陷描述自动界定严重度等级（内置分级逻辑）
         3. 创建客诉记录并设置初始状态为"待处理"
         """
+        customer_id = complaint_data.customer_id
+        customer_code = complaint_data.customer_code
+        customer_name = complaint_data.customer_name
+
+        if customer_id is not None:
+            customer_result = await db.execute(
+                select(CustomerMaster).where(CustomerMaster.id == customer_id)
+            )
+            customer = customer_result.scalar_one_or_none()
+            if not customer:
+                raise ValueError(f"客户不存在: ID={customer_id}")
+            if customer.status != CustomerStatus.ACTIVE:
+                raise ValueError(f"客户状态不可用: {customer.code}")
+
+            customer_code = customer.code
+            customer_name = customer.name
+
+        if not customer_code:
+            raise ValueError("客户代码不能为空")
+
+        if not customer_name:
+            customer_name = customer_code
+
         # 生成客诉单号
         complaint_number = await CustomerComplaintService._generate_complaint_number(db)
         
@@ -51,10 +75,15 @@ class CustomerComplaintService:
         complaint = CustomerComplaint(
             complaint_number=complaint_number,
             complaint_type=ComplaintType(complaint_data.complaint_type.value),
-            customer_code=complaint_data.customer_code,
+            customer_id=customer_id,
+            customer_code=customer_code,
+            customer_name_snapshot=customer_name,
+            end_customer_name=complaint_data.end_customer_name,
             product_type=complaint_data.product_type,
             defect_description=complaint_data.defect_description,
             severity_level=severity_level,
+            is_return_required=complaint_data.is_return_required,
+            requires_physical_analysis=complaint_data.requires_physical_analysis,
             vin_code=complaint_data.vin_code,
             mileage=complaint_data.mileage,
             purchase_date=complaint_data.purchase_date,
@@ -259,12 +288,32 @@ class CustomerComplaintService:
             select(CustomerComplaint).where(CustomerComplaint.id == complaint_id)
         )
         return result.scalar_one_or_none()
+
+    @staticmethod
+    async def list_customer_options(
+        db: AsyncSession,
+        keyword: Optional[str] = None
+    ) -> list[CustomerMaster]:
+        query = select(CustomerMaster).where(CustomerMaster.status == CustomerStatus.ACTIVE)
+
+        if keyword:
+            like_value = f"%{keyword.strip()}%"
+            query = query.where(
+                or_(
+                    CustomerMaster.code.ilike(like_value),
+                    CustomerMaster.name.ilike(like_value)
+                )
+            )
+
+        result = await db.execute(query.order_by(CustomerMaster.code.asc()))
+        return list(result.scalars().all())
     
     @staticmethod
     async def list_complaints(
         db: AsyncSession,
         complaint_type: Optional[str] = None,
         status: Optional[str] = None,
+        customer_id: Optional[int] = None,
         customer_code: Optional[str] = None,
         severity_level: Optional[str] = None,
         cqe_id: Optional[int] = None,
@@ -287,7 +336,10 @@ class CustomerComplaintService:
         
         if status:
             conditions.append(CustomerComplaint.status == ComplaintStatus(status))
-        
+
+        if customer_id:
+            conditions.append(CustomerComplaint.customer_id == customer_id)
+
         if customer_code:
             conditions.append(CustomerComplaint.customer_code == customer_code)
         

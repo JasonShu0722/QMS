@@ -180,10 +180,10 @@
 | `quality.process.engineer` | 制程质量工程师 | 主导制程质量问题跟进、统计分析、超标报警闭环，使用 AI 做趋势与回复诊断；对被分派的跨模块问题可执行应答 | 制程质量、质量数据面板、AI诊断 | `internal` |
 | `quality.process.pqc.lead` | 检验班长 | 审核检验员录入数据和问题，统筹现场检验，查阅负责工段质量数据 | 制程质量、待办、移动端/PDA | `internal` |
 | `quality.process.pqc.inspector` | 检验员（PQC） | 过程质量数据与问题录入，不具备已归档数据修改权 | 制程质量、扫码/PDA | `internal` |
-| `quality.customer.manager` | 客户质量室经理 | 查阅客户质量数据和趋势预警，把关客户审核结果及客户索赔审批 | 客户质量、客户审核、客户索赔、质量数据面板 | `internal` |
-| `quality.customer.engineer` | 客户质量工程师 | 主导客诉跟进、数据统计、客户审核问题闭环、发起客户索赔，利用 AI 诊断辅助回复；对被分派的跨模块问题可执行应答 | 客户质量、客户审核、客户索赔、AI诊断 | `internal` |
-| `quality.customer.failure_analyst` | 失效分析工程师 | 配合客户质量工程师进行专项技术分析，录入检测和分析数据 | 客户质量、经验教训 | `internal` |
-| `quality.customer.field_support` | 市场技术支持工程师（售后工程师） | 负责客户端现场问题登录和初步数据录入 | 客户质量、移动端/PDA 候选 | `internal` |
+| `quality.customer.manager` | 客户质量室经理 | 查阅客户质量数据和趋势预警，把关客户审核结果及客户索赔审批；可从客诉台账发起正式问题单 / 8D，并维护问题范围与关闭节点 | 客户质量、客户审核、客户索赔、质量数据面板 | `internal` |
+| `quality.customer.engineer` | 客户质量工程师 | 主导客诉跟进、数据统计、客诉台账录入、实物解析分派、客户审核问题闭环、发起客户索赔；可从客诉清单发起问题单 / 8D，利用 AI 诊断辅助回复；对被分派的跨模块问题可执行应答 | 客户质量、客户审核、客户索赔、AI诊断 | `internal` |
+| `quality.customer.failure_analyst` | 失效分析工程师 | 配合客户质量工程师进行实物解析和专项技术分析，录入一次原因分析、失效件信息和检测数据 | 客户质量、经验教训 | `internal` |
+| `quality.customer.field_support` | 市场技术支持工程师（售后工程师） | 负责客户端现场问题登录、退件/实物信息采集和初步数据录入 | 客户质量、移动端/PDA 候选 | `internal` |
 | `quality.project.manager` | 项目质量室经理 | 统筹新品质量，查看试产与初期流动数据，审批新品阶段重大质量问题 | 新品质量、质量数据面板 | `internal` |
 | `quality.project.engineer` | 项目质量工程师 | 负责新品试产和初期流动生产数据汇总与录入，执行经验教训点检，跟进新品超标问题；对被分派的跨模块问题可执行应答 | 新品质量、经验教训、试产管理 | `internal` |
 | `quality.supplier.manager` | 供应商质量室经理 | 查阅分供方绩效和来料趋势，审批供应商准入/年度审核、供应商索赔和供应商变更；对跨模块分派至本室的问题具备督办、驳回、关闭和重开候选权限 | 供应商质量、供应商审核、供应商索赔、供应商变更、质量数据面板 | `internal` |
@@ -247,7 +247,7 @@
 | 质量数据面板 | `leadership.executive`、`quality.minister`、各室经理、质量工程师 | 采购部长、研发/制造经理 | 看板查阅、趋势分析、异常关注 |
 | 供应商质量管理 | `quality.supplier.manager`、`quality.supplier.engineer`、`quality.supplier.iqc.lead`、`quality.supplier.iqc.inspector` | `procurement.minister`、`procurement.engineer`、`supplier.external` | SCAR/8D、绩效、目标、审核、索赔、变更 |
 | 制程质量管理 | `quality.process.manager`、`quality.process.engineer`、`quality.process.pqc.lead`、`quality.process.pqc.inspector` | `manufacturing.manager`、`manufacturing.engineer` | 过程数据录入、异常跟进、趋势分析 |
-| 客户质量管理 | `quality.customer.manager`、`quality.customer.engineer`、`quality.customer.failure_analyst`、`quality.customer.field_support` | `cross_function.manager`、`cross_function.engineer` | 客诉受理、8D、索赔、问题归档 |
+| 客户质量管理 | `quality.customer.manager`、`quality.customer.engineer`、`quality.customer.failure_analyst`、`quality.customer.field_support` | `cross_function.manager`、`cross_function.engineer` | 客诉台账、实物处理 / 解析、问题发单 / 8D、索赔、问题归档 |
 | 新品质量管理 | `quality.project.manager`、`quality.project.engineer` | `rd.manager`、`rd.engineer`、`manufacturing.engineer` | 试产数据、经验教训点检、阶段评审 |
 | 审核管理 | `quality.system.engineer`、各室经理 | 被审核部门负责人、责任工程师、`supplier.external` | 审核计划、执行、NC整改、验证关闭 |
 

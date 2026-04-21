@@ -123,6 +123,16 @@ PROBLEM_CATEGORY_CATALOG: dict[str, ProblemCategoryDefinition] = {
 
 ISSUE_NUMBER_PREFIX = "ZXQ"
 EIGHT_D_NUMBER_PREFIX = "ZX8D"
+AUDIT_TYPE_TO_PROBLEM_CATEGORY_KEY: dict[str, str] = {
+    "system_audit": "AQ0",
+    "process_audit": "AQ1",
+    "product_audit": "AQ2",
+    "customer_audit": "AQ3",
+}
+PROBLEM_CATEGORY_KEY_TO_AUDIT_TYPE: dict[str, str] = {
+    category_key: audit_type
+    for audit_type, category_key in AUDIT_TYPE_TO_PROBLEM_CATEGORY_KEY.items()
+}
 
 
 def get_problem_category_definition(category_key: str) -> ProblemCategoryDefinition:
@@ -132,6 +142,24 @@ def get_problem_category_definition(category_key: str) -> ProblemCategoryDefinit
     if definition is None:
         raise ValueError(f"Unsupported problem category: {category_key}")
     return definition
+
+
+def get_problem_category_by_audit_type(audit_type: str) -> ProblemCategoryDefinition:
+    """Resolve the unified problem category for an audit type."""
+
+    category_key = AUDIT_TYPE_TO_PROBLEM_CATEGORY_KEY.get(audit_type)
+    if category_key is None:
+        raise ValueError(f"Unsupported audit type: {audit_type}")
+    return get_problem_category_definition(category_key)
+
+
+def get_audit_type_by_problem_category(category_key: str) -> str:
+    """Resolve the audit type for an audit-management problem category key."""
+
+    audit_type = PROBLEM_CATEGORY_KEY_TO_AUDIT_TYPE.get(category_key)
+    if audit_type is None:
+        raise ValueError(f"Unsupported audit problem category: {category_key}")
+    return audit_type
 
 
 def build_problem_category_key(category_code: str, subcategory_code: str) -> str:

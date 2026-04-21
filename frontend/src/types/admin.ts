@@ -236,3 +236,55 @@ export interface SupplierMasterBulkCreateResponse {
   created_count: number
   suppliers: SupplierMaster[]
 }
+
+export type CustomerMasterStatus = 'active' | 'suspended'
+
+export interface CustomerListQuery {
+  keyword?: string
+  status?: CustomerMasterStatus
+}
+
+export interface CustomerMaster {
+  id: number
+  code: string
+  name: string
+  contact_person?: string
+  contact_email?: string
+  contact_phone?: string
+  status: CustomerMasterStatus
+  created_at: string
+  updated_at: string
+}
+
+export interface CustomerMasterCreateRequest {
+  code: string
+  name: string
+  contact_person?: string
+  contact_email?: string
+  contact_phone?: string
+  status?: CustomerMasterStatus
+}
+
+export interface CustomerMasterUpdateRequest extends CustomerMasterCreateRequest {
+  status: CustomerMasterStatus
+}
+
+export interface CustomerMasterBulkCreateItem {
+  code: string
+  name: string
+  contact_person?: string
+  contact_email?: string
+  contact_phone?: string
+}
+
+export interface CustomerMasterBulkCreateRequest {
+  status?: CustomerMasterStatus
+  items: CustomerMasterBulkCreateItem[]
+}
+
+export interface CustomerMasterBulkCreateResponse {
+  message: string
+  total_count: number
+  created_count: number
+  customers: CustomerMaster[]
+}

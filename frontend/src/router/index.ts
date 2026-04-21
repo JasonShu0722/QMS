@@ -271,6 +271,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '供应商基础信息', requiresAuth: true, audience: 'internal', permission: { modulePath: 'system.master_data', operation: 'read' } }
       },
       {
+        path: 'admin/customers',
+        name: 'CustomerMaster',
+        component: () => import('@/views/admin/CustomerMaster.vue'),
+        meta: { title: '客户基础信息', requiresAuth: true, audience: 'internal', permission: { modulePath: 'system.master_data', operation: 'read' } }
+      },
+      {
         path: 'admin/permissions',
         name: 'PermissionMatrix',
         component: () => import('@/views/admin/PermissionMatrix.vue'),

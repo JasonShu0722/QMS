@@ -4,6 +4,12 @@ import type {
   AdminBulkUserCreateResponse,
   AdminUserCreateRequest,
   AdminUserCreateResponse,
+  CustomerListQuery,
+  CustomerMaster,
+  CustomerMasterBulkCreateRequest,
+  CustomerMasterBulkCreateResponse,
+  CustomerMasterCreateRequest,
+  CustomerMasterUpdateRequest,
   FeatureFlag,
   FeatureFlagUpdateRequest,
   OperationLog,
@@ -105,6 +111,29 @@ export const adminApi = {
     status: 'active' | 'suspended'
   ): Promise<SupplierMaster> {
     return request.post(`/v1/admin/suppliers/${supplierId}/status`, { status })
+  },
+
+  getCustomers(params?: CustomerListQuery): Promise<CustomerMaster[]> {
+    return request.get('/v1/admin/customers', { params })
+  },
+
+  createCustomer(data: CustomerMasterCreateRequest): Promise<CustomerMaster> {
+    return request.post('/v1/admin/customers', data)
+  },
+
+  bulkCreateCustomers(data: CustomerMasterBulkCreateRequest): Promise<CustomerMasterBulkCreateResponse> {
+    return request.post('/v1/admin/customers/bulk', data)
+  },
+
+  updateCustomer(customerId: number, data: CustomerMasterUpdateRequest): Promise<CustomerMaster> {
+    return request.patch(`/v1/admin/customers/${customerId}`, data)
+  },
+
+  updateCustomerStatus(
+    customerId: number,
+    status: 'active' | 'suspended'
+  ): Promise<CustomerMaster> {
+    return request.post(`/v1/admin/customers/${customerId}/status`, { status })
   },
 
   getRoleTags(params?: {

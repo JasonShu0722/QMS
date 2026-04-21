@@ -165,6 +165,15 @@ class TestComplaintDataValidation:
             )
 
 
+    def test_customer_reference_validation_failure(self):
+        with pytest.raises(ValueError, match="请选择客户或填写客户代码"):
+            CustomerComplaintCreate(
+                complaint_type=ComplaintTypeEnum.ZERO_KM,
+                product_type="MCU控制器",
+                defect_description="客户端发现装配异常，需要后续跟踪处理"
+            )
+
+
 class TestPreliminaryAnalysisValidation:
     """测试一次因解析数据校验"""
     

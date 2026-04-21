@@ -261,7 +261,7 @@ export async function generateAuditReport(id: number, data?: AuditReportRequest)
  */
 export async function getAuditNCs(params: AuditNCQuery): Promise<AuditNCListResponse> {
   return request({
-    url: '/api/v1/audit-ncs',
+    url: '/api/v1/audit-nc',
     method: 'get',
     params
   });
@@ -272,7 +272,7 @@ export async function getAuditNCs(params: AuditNCQuery): Promise<AuditNCListResp
  */
 export async function getAuditNC(id: number): Promise<AuditNC> {
   return request({
-    url: `/api/v1/audit-ncs/${id}`,
+    url: `/api/v1/audit-nc/${id}`,
     method: 'get'
   });
 }
@@ -280,9 +280,9 @@ export async function getAuditNC(id: number): Promise<AuditNC> {
 /**
  * 指派审核NC
  */
-export async function assignAuditNC(id: number, data: AuditNCAssign): Promise<{ message: string }> {
+export async function assignAuditNC(id: number, data: AuditNCAssign): Promise<AuditNC> {
   return request({
-    url: `/api/v1/audit-ncs/${id}/assign`,
+    url: `/api/v1/audit-nc/${id}/assign`,
     method: 'post',
     data
   });
@@ -291,9 +291,9 @@ export async function assignAuditNC(id: number, data: AuditNCAssign): Promise<{ 
 /**
  * 响应审核NC（责任人填写原因和措施）
  */
-export async function respondAuditNC(id: number, data: AuditNCResponseData): Promise<{ message: string }> {
+export async function respondAuditNC(id: number, data: AuditNCResponseData): Promise<AuditNC> {
   return request({
-    url: `/api/v1/audit-ncs/${id}/response`,
+    url: `/api/v1/audit-nc/${id}/response`,
     method: 'post',
     data
   });
@@ -302,9 +302,9 @@ export async function respondAuditNC(id: number, data: AuditNCResponseData): Pro
 /**
  * 验证审核NC
  */
-export async function verifyAuditNC(id: number, data: AuditNCVerify): Promise<{ message: string }> {
+export async function verifyAuditNC(id: number, data: AuditNCVerify): Promise<AuditNC> {
   return request({
-    url: `/api/v1/audit-ncs/${id}/verify`,
+    url: `/api/v1/audit-nc/${id}/verify`,
     method: 'post',
     data
   });
@@ -313,9 +313,9 @@ export async function verifyAuditNC(id: number, data: AuditNCVerify): Promise<{ 
 /**
  * 关闭审核NC
  */
-export async function closeAuditNC(id: number, data?: AuditNCClose): Promise<{ message: string }> {
+export async function closeAuditNC(id: number, data?: AuditNCClose): Promise<AuditNC> {
   return request({
-    url: `/api/v1/audit-ncs/${id}/close`,
+    url: `/api/v1/audit-nc/${id}/close`,
     method: 'post',
     data: data || {}
   });
@@ -381,7 +381,7 @@ export async function deleteCustomerAudit(id: number): Promise<{ message: string
  */
 export async function createCustomerAuditIssueTask(data: CustomerAuditIssueTaskCreate): Promise<CustomerAuditIssueTaskResponse> {
   return request({
-    url: '/api/v1/customer-audits/issue-tasks',
+    url: `/api/v1/customer-audits/${data.customer_audit_id}/issue-tasks`,
     method: 'post',
     data
   });

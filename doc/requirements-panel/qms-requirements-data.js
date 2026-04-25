@@ -29,7 +29,7 @@ window.QMS_REQUIREMENTS_DASHBOARD = {
           priority: "high",
           scope: "核心需求",
           phase: "一期核心",
-          status: "dev-done",
+          status: "doing",
           acceptance: "支持按一级/二级/三级模块与录入/查阅/修改/删除/导出维度实时配置权限。",
         },
         {
@@ -129,6 +129,15 @@ window.QMS_REQUIREMENTS_DASHBOARD = {
           phase: "一期核心",
           status: "doing",
           acceptance: "可汇总来料、制程、客户、供应商绩效相关指标并形成统一口径。",
+        },
+        {
+          id: "dashboard-problem-center",
+          title: "统一问题中心聚合视图",
+          priority: "high",
+          scope: "核心需求",
+          phase: "一期核心",
+          status: "doing",
+          acceptance: "内部人员可按模块、问题分类、统一状态查看跨版块问题清单，并可从问题中心跳转回来源业务单据；第一批先覆盖客户质量、制程质量、新品质量与审核管理。",
         },
         {
           id: "dashboard-visual-board",
@@ -331,7 +340,7 @@ window.QMS_REQUIREMENTS_DASHBOARD = {
           priority: "high",
           scope: "核心需求",
           phase: "一期核心",
-          status: "done",
+          status: "verified",
           acceptance: "系统管理支持客户主数据维护；客诉录入强制选择客户并允许填写终端客户，后续统计复用统一客户口径。",
         },
         {
@@ -349,7 +358,7 @@ window.QMS_REQUIREMENTS_DASHBOARD = {
           priority: "high",
           scope: "核心需求",
           phase: "一期核心",
-          status: "todo",
+          status: "verified",
           acceptance: "支持无需解析时直接备案实物处理方案；需要解析时分派至失效分析 / 客户质量 / 工艺等角色，记录一次原因分析、责任部门、责任人和失效件料号。",
         },
         {

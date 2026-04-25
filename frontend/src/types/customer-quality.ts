@@ -17,6 +17,9 @@ export type ComplaintStatus =
   | 'closed'
   | 'rejected'
 
+export type CustomerComplaintPhysicalDispositionStatus = 'pending' | 'in_progress' | 'completed'
+export type CustomerComplaintPhysicalAnalysisStatus = 'pending' | 'assigned' | 'completed'
+
 export interface CustomerComplaint {
   id: number
   complaint_number: string
@@ -30,6 +33,21 @@ export interface CustomerComplaint {
   severity_level: string
   is_return_required: boolean
   requires_physical_analysis: boolean
+  physical_disposition_status: CustomerComplaintPhysicalDispositionStatus
+  physical_disposition_plan?: string
+  physical_disposition_notes?: string
+  physical_disposition_updated_at?: string
+  physical_disposition_updated_by?: number
+  physical_analysis_status: CustomerComplaintPhysicalAnalysisStatus
+  physical_analysis_responsible_dept?: string
+  physical_analysis_responsible_user_id?: number
+  failed_part_number?: string
+  physical_analysis_summary?: string
+  physical_analysis_notes?: string
+  physical_analysis_updated_at?: string
+  physical_analysis_updated_by?: number
+  eight_d_report_id?: number
+  eight_d_status?: EightDStatus
   vin_code?: string
   mileage?: number
   purchase_date?: string
@@ -83,6 +101,14 @@ export interface CustomerComplaintCustomerOption {
   name: string
 }
 
+export interface CustomerComplaintInternalUserOption {
+  id: number
+  username: string
+  full_name: string
+  department?: string
+  position?: string
+}
+
 export interface PreliminaryAnalysis {
   root_cause_analysis: string
   responsible_dept: string
@@ -90,32 +116,76 @@ export interface PreliminaryAnalysis {
   containment_actions: string
 }
 
+export interface CustomerComplaintPhysicalDispositionRecord {
+  disposition_plan: string
+  disposition_status: CustomerComplaintPhysicalDispositionStatus
+  disposition_notes?: string
+}
+
+export interface CustomerComplaintPhysicalAnalysisRecord {
+  responsible_dept: string
+  responsible_user_id: number
+  analysis_status: CustomerComplaintPhysicalAnalysisStatus
+  failed_part_number?: string
+  analysis_summary?: string
+  analysis_notes?: string
+}
+
+export interface EightDBatchInitRequest {
+  complaint_ids: number[]
+  primary_complaint_id?: number
+}
+
+export interface EightDScopeAppendRequest {
+  complaint_ids: number[]
+}
+
+export interface EightDPrimaryComplaintSwitchRequest {
+  primary_complaint_id: number
+}
+
 // Customer 8D
 
 export enum EightDStatus {
   DRAFT = 'draft',
   D0_D3_COMPLETED = 'd0_d3_completed',
-  D4_D7_PENDING = 'd4_d7_pending',
+  D4_D7_IN_PROGRESS = 'd4_d7_in_progress',
   D4_D7_COMPLETED = 'd4_d7_completed',
-  D8_PENDING = 'd8_pending',
-  UNDER_REVIEW = 'under_review',
+  D8_IN_PROGRESS = 'd8_in_progress',
+  IN_REVIEW = 'in_review',
   APPROVED = 'approved',
   REJECTED = 'rejected',
+  CLOSED = 'closed',
 }
 
 export enum ApprovalLevel {
+  NONE = 'none',
   SECTION_MANAGER = 'section_manager',
   DEPARTMENT_HEAD = 'department_head',
+}
+
+export interface EightDComplaintLinkSummary {
+  complaint_id: number
+  complaint_number: string
+  complaint_type?: ComplaintType | string
+  customer_code: string
+  customer_name?: string
+  is_primary: boolean
 }
 
 export interface EightDCustomer {
   id: number
   complaint_id: number
-  d0_d3_cqe: Record<string, any>
-  d4_d7_responsible: Record<string, any>
-  d8_horizontal: Record<string, any>
+  related_complaints: EightDComplaintLinkSummary[]
+  d0_d3_cqe?: Record<string, any>
+  d4_d7_responsible?: D4D7Data
+  d8_horizontal?: D8Data
   status: EightDStatus
   approval_level: ApprovalLevel
+  submitted_at?: string
+  reviewed_at?: string
+  reviewed_by?: number
+  review_comments?: string
   created_at: string
   updated_at: string
 }
@@ -154,6 +224,18 @@ export interface EightDD8Submit {
 export interface EightDReview {
   approved: boolean
   review_comments: string
+}
+
+export interface EightDSLAStatus {
+  complaint_id: number
+  complaint_number: string
+  eight_d_status: EightDStatus
+  days_since_creation: number
+  submission_deadline: number
+  archive_deadline: number
+  is_submission_overdue: boolean
+  is_archive_overdue: boolean
+  remaining_days: number
 }
 
 // Claims

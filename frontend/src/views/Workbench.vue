@@ -100,6 +100,108 @@
             </div>
             <el-empty v-else description="暂无快捷入口" :image-size="90" />
           </el-card>
+          <el-card v-if="showProblemIssueCard" class="dashboard-card" shadow="hover">
+            <template #header>
+              <div class="card-header">
+                <span class="card-header-title">问题中心</span>
+                <el-button link type="primary" @click="openProblemIssueCenter()">
+                  查看全部
+                </el-button>
+              </div>
+            </template>
+
+            <div v-if="problemIssueSnapshotLoading" class="problem-issue-card problem-issue-card--loading">
+              <el-skeleton :rows="3" animated />
+            </div>
+            <div v-else class="problem-issue-card">
+              <div class="problem-issue-card__stats">
+                <button type="button" class="problem-issue-card__stat" @click="openProblemIssueCenter()">
+                  <strong>{{ problemIssueSnapshot.total }}</strong>
+                  <span>全部问题</span>
+                </button>
+                <button
+                  type="button"
+                  class="problem-issue-card__stat problem-issue-card__stat--success"
+                  @click="openProblemIssueCenter('actionable')"
+                >
+                  <strong>{{ problemIssueSnapshot.actionable }}</strong>
+                  <span>我可处理</span>
+                </button>
+                <button
+                  type="button"
+                  class="problem-issue-card__stat problem-issue-card__stat--danger"
+                  @click="openProblemIssueCenter('overdue')"
+                >
+                  <strong>{{ problemIssueSnapshot.overdue }}</strong>
+                  <span>超期问题</span>
+                </button>
+              </div>
+
+              <div class="problem-issue-card__actions">
+                <el-button size="small" plain @click="openProblemIssueCenter('created')">
+                  只看我发起的
+                  <el-tag size="small" effect="plain" class="problem-issue-card__action-tag">
+                    {{ problemIssueSnapshot.created }}
+                  </el-tag>
+                </el-button>
+                <el-button size="small" @click="openProblemIssueCenter('actionable')">只看我可处理</el-button>
+                <el-button size="small" type="danger" plain @click="openProblemIssueCenter('overdue')">
+                  只看超期
+                </el-button>
+              </div>
+
+              <div v-if="problemIssuePreviewItems.length" class="problem-issue-preview-list">
+                <div class="problem-issue-preview-list__hint">
+                  {{ problemIssuePreviewHint }}
+                </div>
+                <div
+                  v-if="problemIssuePreviewModuleSummaries.length"
+                  class="problem-issue-preview-list__modules"
+                >
+                  <button
+                    v-for="summary in problemIssuePreviewModuleSummaries"
+                    :key="`problem-issue-module-${summary.moduleKey}`"
+                    type="button"
+                    class="problem-issue-preview-list__module-chip"
+                    @click="openProblemIssueCenter(problemIssuePreviewFilter, summary.moduleKey)"
+                  >
+                    <span>{{ summary.label }}</span>
+                    <strong>{{ summary.count }}</strong>
+                  </button>
+                </div>
+                <button
+                  v-for="item in problemIssuePreviewItems"
+                  :key="`problem-issue-${item.source_type}-${item.source_id}`"
+                  type="button"
+                  class="problem-issue-preview-item"
+                  @click="handleProblemIssuePreviewClick(item)"
+                >
+                  <div class="problem-issue-preview-item__header">
+                    <div class="problem-issue-preview-item__title">
+                      {{ item.title }}
+                    </div>
+                    <el-tag
+                      size="small"
+                      :type="problemIssuePreviewFilter === 'overdue' ? 'warning' : 'success'"
+                      effect="plain"
+                    >
+                      {{ getProblemIssueWorkbenchPreviewActionLabel(item, currentProblemIssueUserId) }}
+                    </el-tag>
+                  </div>
+                  <div class="problem-issue-preview-item__meta">
+                    <span>{{ getProblemIssueModuleLabel(item.module_key) }}</span>
+                    <span>{{ item.reference_no || '-' }}</span>
+                    <span>{{ getUnifiedProblemStatusLabel(item.unified_status) }}</span>
+                  </div>
+                </button>
+              </div>
+              <el-empty
+                v-else
+                description="当前没有可直接处理的问题"
+                :image-size="68"
+              />
+            </div>
+          </el-card>
         </el-col>
 
         <el-col v-if="featureBlocks.metrics && authStore.isInternal" :xs="24" :lg="10">
@@ -474,6 +576,7 @@ import { Bell, Check, Search, Setting, UploadFilled, User } from '@element-plus/
 import { VueCropper } from 'vue-cropper'
 import 'vue-cropper/dist/index.css'
 import { announcementApi } from '@/api/announcement'
+import { problemManagementApi } from '@/api/problem-management'
 import { workbenchApi } from '@/api/workbench'
 import AnnouncementDialog from '@/components/AnnouncementDialog.vue'
 import AnnouncementList from '@/components/AnnouncementList.vue'
@@ -499,8 +602,20 @@ import type {
   TodoSummary,
   TodoTask
 } from '@/types/workbench'
+import type { ProblemIssueSummaryItem, ProblemModuleKey } from '@/types/problem-management'
 import { getEnvironmentLabel, isPreviewEnvironment } from '@/utils/environment'
 import { canAccessRouteMeta, type RouteAccessMeta } from '@/utils/accessControl'
+import {
+  buildProblemIssueModuleSummaries,
+  getProblemIssueModuleLabel,
+  getProblemIssueQuickActionRoute,
+  getProblemIssueSourceRoute,
+  getProblemIssueWorkbenchPreviewActionLabel,
+  getUnifiedProblemStatusLabel,
+  getProblemIssueCenterRoute,
+  normalizeProblemIssueModuleCounts,
+  type ProblemIssueCenterQuickFilter,
+} from '@/utils/problemIssueSummary'
 
 interface ProfileFormState {
   full_name: string
@@ -508,6 +623,13 @@ interface ProfileFormState {
   phone: string
   department: string
   position: string
+}
+
+interface ProblemIssueWorkbenchSnapshot {
+  total: number
+  actionable: number
+  overdue: number
+  created: number
 }
 
 type SettingsTabName = 'profile' | 'avatar' | 'password' | 'signature'
@@ -524,6 +646,16 @@ const showQuickActionDialog = ref(false)
 const quickActionDraft = ref<string[]>([])
 const selectedQuickActionIds = ref<string[]>([])
 const quickActionKeyword = ref('')
+const problemIssueSnapshotLoading = ref(false)
+const problemIssueSnapshot = ref<ProblemIssueWorkbenchSnapshot>({
+  total: 0,
+  actionable: 0,
+  overdue: 0,
+  created: 0,
+})
+const problemIssuePreviewItems = ref<ProblemIssueSummaryItem[]>([])
+const problemIssuePreviewModuleCounts = ref<Partial<Record<ProblemModuleKey, number>>>({})
+const problemIssuePreviewFilter = ref<ProblemIssueCenterQuickFilter>('actionable')
 
 const showAnnouncementDialog = ref(false)
 const unreadImportantAnnouncements = ref<Announcement[]>([])
@@ -640,6 +772,21 @@ const canAccessRoute = (path: string) => {
     hasPermission: (modulePath, operation) => authStore.hasPermissionLocal(modulePath, operation),
   })
 }
+const canAccessProblemIssueCenter = computed(() =>
+  authStore.isInternal && canAccessRoute('/quality/problem-center')
+)
+const showProblemIssueCard = computed(() => canAccessProblemIssueCenter.value)
+const currentProblemIssueUserId = computed(() => sessionUser.value?.id || authStore.userInfo?.id || null)
+const problemIssuePreviewHint = computed(() =>
+  problemIssuePreviewFilter.value === 'overdue'
+    ? '暂无可直接处理项，优先展示超期问题'
+    : problemIssuePreviewFilter.value === 'created'
+      ? '暂无可直接处理项和超期项，展示我发起的问题'
+      : '优先展示当前可直接处理的问题'
+)
+const problemIssuePreviewModuleSummaries = computed(() =>
+  buildProblemIssueModuleSummaries(problemIssuePreviewModuleCounts.value)
+)
 const quickActionContext = computed<WorkbenchQuickActionContext>(() => ({
   isInternal: authStore.isInternal,
   isSupplier: authStore.isSupplier,
@@ -950,10 +1097,96 @@ async function loadDashboardData() {
   try {
     dashboardData.value = await workbenchApi.getDashboardData()
     initializeQuickActions()
+    void loadProblemIssueSnapshot()
   } catch (error: any) {
     ElMessage.error(error.message || '加载工作台数据失败')
   } finally {
     loading.value = false
+  }
+}
+
+async function loadProblemIssueSnapshot() {
+  if (!canAccessProblemIssueCenter.value) {
+    problemIssueSnapshot.value = {
+      total: 0,
+      actionable: 0,
+      overdue: 0,
+      created: 0,
+    }
+    problemIssuePreviewItems.value = []
+    problemIssuePreviewModuleCounts.value = {}
+    problemIssuePreviewFilter.value = 'actionable'
+    return
+  }
+
+  problemIssueSnapshotLoading.value = true
+
+  try {
+    const baseQuery = { page: 1, page_size: 1 }
+    const [allResponse, actionableResponse, overdueResponse, createdResponse] = await Promise.all([
+      problemManagementApi.getIssueSummaries(baseQuery),
+      problemManagementApi.getIssueSummaries({
+        page: 1,
+        page_size: 3,
+        only_actionable_to_me: true,
+      }),
+      problemManagementApi.getIssueSummaries({
+        page: 1,
+        page_size: 3,
+        only_overdue: true,
+      }),
+      problemManagementApi.getIssueSummaries({
+        page: 1,
+        page_size: 3,
+        only_created_by_me: true,
+      }),
+    ])
+
+    problemIssueSnapshot.value = {
+      total: allResponse.total,
+      actionable: actionableResponse.total,
+      overdue: overdueResponse.total,
+      created: createdResponse.total,
+    }
+    if (actionableResponse.items.length) {
+      problemIssuePreviewItems.value = actionableResponse.items
+      problemIssuePreviewModuleCounts.value = normalizeProblemIssueModuleCounts(
+        actionableResponse.module_counts,
+        actionableResponse.items,
+      )
+      problemIssuePreviewFilter.value = 'actionable'
+    } else if (overdueResponse.items.length) {
+      problemIssuePreviewItems.value = overdueResponse.items
+      problemIssuePreviewModuleCounts.value = normalizeProblemIssueModuleCounts(
+        overdueResponse.module_counts,
+        overdueResponse.items,
+      )
+      problemIssuePreviewFilter.value = 'overdue'
+    } else if (createdResponse.items.length) {
+      problemIssuePreviewItems.value = createdResponse.items
+      problemIssuePreviewModuleCounts.value = normalizeProblemIssueModuleCounts(
+        createdResponse.module_counts,
+        createdResponse.items,
+      )
+      problemIssuePreviewFilter.value = 'created'
+    } else {
+      problemIssuePreviewItems.value = []
+      problemIssuePreviewModuleCounts.value = {}
+      problemIssuePreviewFilter.value = 'actionable'
+    }
+  } catch (error) {
+    console.error('Failed to load problem-issue snapshot:', error)
+    problemIssueSnapshot.value = {
+      total: 0,
+      actionable: 0,
+      overdue: 0,
+      created: 0,
+    }
+    problemIssuePreviewItems.value = []
+    problemIssuePreviewModuleCounts.value = {}
+    problemIssuePreviewFilter.value = 'actionable'
+  } finally {
+    problemIssueSnapshotLoading.value = false
   }
 }
 
@@ -1068,6 +1301,22 @@ function handleAllAnnouncementsRead() {
 
 function handleTaskClick(task: TodoTask) {
   router.push(task.link)
+}
+
+function openProblemIssueCenter(
+  filter: ProblemIssueCenterQuickFilter = 'all',
+  moduleKey?: ProblemModuleKey
+) {
+  router.push(getProblemIssueCenterRoute(filter, moduleKey))
+}
+
+function handleProblemIssuePreviewClick(item: ProblemIssueSummaryItem) {
+  const target =
+    getProblemIssueQuickActionRoute(item, currentProblemIssueUserId.value) ||
+    getProblemIssueSourceRoute(item) ||
+    getProblemIssueCenterRoute(problemIssuePreviewFilter.value)
+
+  router.push(target)
 }
 
 function handleTodoDialogTaskClick(task: TodoTask) {
@@ -1377,6 +1626,156 @@ watch(() => route.query.settings, () => {
   gap: 6px;
   font-size: 16px;
   font-weight: 600;
+}
+
+.problem-issue-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.problem-issue-card__stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.problem-issue-card__stat {
+  display: flex;
+  min-height: 96px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid #e6edf8;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.problem-issue-card__stat:hover {
+  border-color: #bfd9ff;
+  box-shadow: 0 10px 24px rgba(64, 158, 255, 0.08);
+  transform: translateY(-1px);
+}
+
+.problem-issue-card__stat strong {
+  color: #1f2a37;
+  font-size: 24px;
+  line-height: 1;
+}
+
+.problem-issue-card__stat span {
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.problem-issue-card__stat--success {
+  background: linear-gradient(180deg, #f5fbf4 0%, #fcfffb 100%);
+}
+
+.problem-issue-card__stat--danger {
+  background: linear-gradient(180deg, #fff7f7 0%, #fffafa 100%);
+}
+
+.problem-issue-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.problem-issue-card__action-tag {
+  margin-left: 6px;
+}
+
+.problem-issue-preview-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.problem-issue-preview-list__hint {
+  color: #6b7280;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.problem-issue-preview-list__modules {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.problem-issue-preview-list__module-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border: 1px solid #dbe7f5;
+  border-radius: 999px;
+  background: #f8fbff;
+  color: #4b5563;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.problem-issue-preview-list__module-chip:hover {
+  border-color: #bfd9ff;
+  color: #1d4ed8;
+  background: #eef6ff;
+}
+
+.problem-issue-preview-list__module-chip strong {
+  color: #1f2a37;
+  font-weight: 600;
+}
+
+.problem-issue-preview-item {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px;
+  border: 1px solid #e6edf8;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.problem-issue-preview-item:hover {
+  border-color: #bfd9ff;
+  box-shadow: 0 10px 24px rgba(64, 158, 255, 0.08);
+  transform: translateY(-1px);
+}
+
+.problem-issue-preview-item__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.problem-issue-preview-item__title {
+  color: #1f2a37;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.6;
+}
+
+.problem-issue-preview-item__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.problem-issue-card--loading {
+  min-height: 156px;
 }
 
 .quick-action-grid {
@@ -1925,7 +2324,8 @@ watch(() => route.query.settings, () => {
   }
 
   .todo-summary-grid,
-  .todo-dialog-summary {
+  .todo-dialog-summary,
+  .problem-issue-card__stats {
     grid-template-columns: 1fr;
   }
 

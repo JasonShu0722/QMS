@@ -1,5 +1,5 @@
 """
-跨模块问题管理共享常量与编号工具
+跨模块问题管理共享常量与编号工具。
 """
 from __future__ import annotations
 
@@ -9,14 +9,14 @@ from enum import Enum
 
 
 class ResponseMode(str, Enum):
-    """问题回复形式"""
+    """问题回复形式。"""
 
     BRIEF = "brief"
     EIGHT_D = "eight_d"
 
 
 class HandlingLevel(str, Enum):
-    """问题处理复杂度"""
+    """问题处理复杂度。"""
 
     SIMPLE = "simple"
     COMPLEX = "complex"
@@ -25,7 +25,7 @@ class HandlingLevel(str, Enum):
 
 @dataclass(frozen=True)
 class ProblemCategoryDefinition:
-    """统一问题分类定义"""
+    """统一问题分类定义。"""
 
     key: str
     category_code: str
@@ -133,10 +133,94 @@ PROBLEM_CATEGORY_KEY_TO_AUDIT_TYPE: dict[str, str] = {
     category_key: audit_type
     for audit_type, category_key in AUDIT_TYPE_TO_PROBLEM_CATEGORY_KEY.items()
 }
+CUSTOMER_COMPLAINT_TYPE_TO_PROBLEM_CATEGORY_KEY: dict[str, str] = {
+    "0km": "CQ0",
+    "after_sales": "CQ1",
+}
+PROBLEM_CATEGORY_KEY_TO_CUSTOMER_COMPLAINT_TYPE: dict[str, str] = {
+    category_key: complaint_type
+    for complaint_type, category_key in CUSTOMER_COMPLAINT_TYPE_TO_PROBLEM_CATEGORY_KEY.items()
+}
+PROCESS_PROBLEM_PCBA_KEYWORDS = (
+    "pcba",
+    "smt",
+    "dip",
+    "spi",
+    "aoi",
+    "reflow",
+    "wave",
+    "焊",
+    "锡",
+    "贴片",
+    "回流",
+    "波峰",
+)
+PROCESS_PROBLEM_ASSEMBLY_TEST_KEYWORDS = (
+    "assy",
+    "assembly",
+    "test",
+    "fct",
+    "ict",
+    "burn",
+    "pack",
+    "组装",
+    "装配",
+    "测试",
+    "包装",
+    "老化",
+    "功能",
+)
+INCOMING_QUALITY_STRUCTURE_KEYWORDS = (
+    "housing",
+    "case",
+    "cover",
+    "shell",
+    "bracket",
+    "frame",
+    "metal",
+    "plastic",
+    "rubber",
+    "screw",
+    "label",
+    "结构",
+    "五金",
+    "塑胶",
+    "胶件",
+    "外壳",
+    "支架",
+    "边框",
+    "螺丝",
+    "标签",
+)
+INCOMING_QUALITY_ELECTRONIC_KEYWORDS = (
+    "pcb",
+    "pcba",
+    "ic",
+    "chip",
+    "connector",
+    "wire",
+    "cable",
+    "fpc",
+    "sensor",
+    "resistor",
+    "capacitor",
+    "inductor",
+    "mos",
+    "电子",
+    "电路",
+    "芯片",
+    "连接器",
+    "线束",
+    "线缆",
+    "电阻",
+    "电容",
+    "电感",
+    "传感器",
+)
 
 
 def get_problem_category_definition(category_key: str) -> ProblemCategoryDefinition:
-    """获取分类定义，不存在时抛出异常"""
+    """获取分类定义，不存在时抛出异常。"""
 
     definition = PROBLEM_CATEGORY_CATALOG.get(category_key)
     if definition is None:
@@ -162,8 +246,85 @@ def get_audit_type_by_problem_category(category_key: str) -> str:
     return audit_type
 
 
+def get_problem_category_by_customer_complaint_type(complaint_type: str) -> ProblemCategoryDefinition:
+    """Resolve the unified problem category for a customer complaint type."""
+
+    category_key = CUSTOMER_COMPLAINT_TYPE_TO_PROBLEM_CATEGORY_KEY.get(complaint_type)
+    if category_key is None:
+        raise ValueError(f"Unsupported customer complaint type: {complaint_type}")
+    return get_problem_category_definition(category_key)
+
+
+def get_customer_complaint_type_by_problem_category(category_key: str) -> str:
+    """Resolve the complaint type for a customer-quality problem category key."""
+
+    complaint_type = PROBLEM_CATEGORY_KEY_TO_CUSTOMER_COMPLAINT_TYPE.get(category_key)
+    if complaint_type is None:
+        raise ValueError(f"Unsupported customer problem category: {category_key}")
+    return complaint_type
+
+
+def get_problem_category_by_process_context(*context_values: str | None) -> ProblemCategoryDefinition:
+    """Infer the process-quality category from existing process context values.
+
+    Current process issues do not yet persist an explicit PQ0/PQ1 stage field, so the
+    unified issue center uses a lightweight compatibility inference:
+    1. match explicit PCBA keywords
+    2. match assembly/testing keywords
+    3. default to PQ1 until a structured stage field is added
+    """
+
+    normalized_values = [str(value).strip().lower() for value in context_values if value and str(value).strip()]
+
+    for value in normalized_values:
+        if any(keyword in value for keyword in PROCESS_PROBLEM_PCBA_KEYWORDS):
+            return get_problem_category_definition("PQ0")
+
+    for value in normalized_values:
+        if any(keyword in value for keyword in PROCESS_PROBLEM_ASSEMBLY_TEST_KEYWORDS):
+            return get_problem_category_definition("PQ1")
+
+    return get_problem_category_definition("PQ1")
+
+
+def get_problem_category_by_trial_issue_type(issue_type: str | None = None) -> ProblemCategoryDefinition:
+    """Resolve the current unified category for trial-issue records.
+
+    Existing `TrialIssue` data only covers internal trial/debug findings, so the first
+    unified issue-center slice maps them to DQ0. DQ1 remains reserved for future
+    customer-sourced new-product issues once that source record exists.
+    """
+
+    _ = issue_type
+    return get_problem_category_definition("DQ0")
+
+
+def get_problem_category_by_scar_context(*context_values: str | None) -> ProblemCategoryDefinition:
+    """Infer the incoming-quality category from currently available SCAR context.
+
+    Existing SCAR records do not yet persist a structured IQ0/IQ1 material-class
+    field. The first unified issue-center slice therefore uses a lightweight
+    compatibility inference based on material code and defect description. When
+    no structure-specific keyword is present, the mapping falls back to IQ1 so
+    supplier issues remain filterable until the source model gains an explicit
+    material-class field.
+    """
+
+    normalized_values = [str(value).strip().lower() for value in context_values if value and str(value).strip()]
+
+    for value in normalized_values:
+        if any(keyword in value for keyword in INCOMING_QUALITY_STRUCTURE_KEYWORDS):
+            return get_problem_category_definition("IQ0")
+
+    for value in normalized_values:
+        if any(keyword in value for keyword in INCOMING_QUALITY_ELECTRONIC_KEYWORDS):
+            return get_problem_category_definition("IQ1")
+
+    return get_problem_category_definition("IQ1")
+
+
 def build_problem_category_key(category_code: str, subcategory_code: str) -> str:
-    """根据分类码与子类码拼接标准分类键"""
+    """根据分类码与子类码拼接标准分类键。"""
 
     category_code = category_code.strip().upper()
     subcategory_code = subcategory_code.strip()
@@ -173,7 +334,7 @@ def build_problem_category_key(category_code: str, subcategory_code: str) -> str
 
 
 def default_response_mode(level: HandlingLevel) -> ResponseMode:
-    """根据处理复杂度返回默认回复形式"""
+    """根据处理复杂度返回默认回复形式。"""
 
     if level == HandlingLevel.MAJOR:
         return ResponseMode.EIGHT_D
@@ -187,7 +348,7 @@ def format_problem_number(
     sequence: int,
     occurred_at: date | datetime | None = None,
 ) -> str:
-    """格式化统一问题编号"""
+    """格式化统一问题编号。"""
 
     if sequence < 1 or sequence > 999:
         raise ValueError("Sequence must be between 1 and 999")
@@ -208,7 +369,7 @@ def build_issue_number(
     sequence: int,
     occurred_at: date | datetime | None = None,
 ) -> str:
-    """生成统一问题主单号"""
+    """生成统一问题主单号。"""
 
     return format_problem_number(
         prefix=ISSUE_NUMBER_PREFIX,
@@ -223,7 +384,7 @@ def build_8d_number(
     sequence: int,
     occurred_at: date | datetime | None = None,
 ) -> str:
-    """生成 8D 报告号"""
+    """生成 8D 报告号。"""
 
     return format_problem_number(
         prefix=EIGHT_D_NUMBER_PREFIX,

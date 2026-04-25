@@ -1,12 +1,10 @@
 <template>
   <div class="process-issue-list">
-    <!-- 页面标题 -->
     <div class="page-header mb-6">
       <h1 class="text-2xl font-bold">制程问题清单</h1>
-      <p class="text-gray-500 mt-2">制程质量问题发单与闭环管理</p>
+      <p class="text-gray-500 mt-2">制程质量问题发单与闭环跟踪</p>
     </div>
 
-    <!-- 筛选条件 -->
     <el-card class="filter-card mb-4">
       <el-form :model="filterForm" inline>
         <el-form-item label="问题状态">
@@ -16,10 +14,12 @@
             clearable
             class="w-40"
           >
-            <el-option label="待处理" value="open" />
-            <el-option label="处理中" value="in_progress" />
-            <el-option label="验证中" value="verifying" />
-            <el-option label="已关闭" value="closed" />
+            <el-option
+              v-for="option in statusOptions"
+              :key="option.value"
+              :label="option.label"
+              :value="option.value"
+            />
           </el-select>
         </el-form-item>
 
@@ -31,10 +31,10 @@
             class="w-48"
           >
             <el-option
-              v-for="cat in responsibilityCategories"
-              :key="cat.value"
-              :label="cat.label"
-              :value="cat.value"
+              v-for="category in responsibilityCategories"
+              :key="category.value"
+              :label="category.label"
+              :value="category.value"
             />
           </el-select>
         </el-form-item>
@@ -72,13 +72,12 @@
       </el-form>
     </el-card>
 
-    <!-- 统计卡片 -->
     <el-row :gutter="16" class="mb-4">
       <el-col :span="6" :xs="12">
         <el-card class="stat-card">
           <div class="stat-content">
             <div class="stat-value text-blue-600">{{ statistics.total }}</div>
-            <div class="stat-label">总问题数</div>
+            <div class="stat-label">当前页问题数</div>
           </div>
         </el-card>
       </el-col>
@@ -93,7 +92,7 @@
       <el-col :span="6" :xs="12">
         <el-card class="stat-card">
           <div class="stat-content">
-            <div class="stat-value text-yellow-600">{{ statistics.in_progress }}</div>
+            <div class="stat-value text-yellow-600">{{ statistics.active }}</div>
             <div class="stat-label">处理中</div>
           </div>
         </el-card>
@@ -108,7 +107,6 @@
       </el-col>
     </el-row>
 
-    <!-- 数据表格 -->
     <el-card>
       <el-table
         v-loading="loading"
@@ -118,11 +116,11 @@
         style="width: 100%"
       >
         <el-table-column prop="issue_number" label="问题单号" width="180" fixed="left" />
-        
-        <el-table-column label="状态" width="100">
+
+        <el-table-column label="状态" width="110">
           <template #default="{ row }">
-            <el-tag :type="getStatusTagType(row.status)">
-              {{ getStatusLabel(row.status) }}
+            <el-tag :type="getProcessIssueStatusType(row.status)">
+              {{ getProcessIssueStatusLabel(row.status) }}
             </el-tag>
           </template>
         </el-table-column>
@@ -134,8 +132,13 @@
           </template>
         </el-table-column>
 
-        <el-table-column prop="issue_description" label="问题描述" min-width="250" show-overflow-tooltip />
-        
+        <el-table-column
+          prop="issue_description"
+          label="问题描述"
+          min-width="250"
+          show-overflow-tooltip
+        />
+
         <el-table-column label="责任类别" width="120">
           <template #default="{ row }">
             <el-tag :type="getResponsibilityTagType(row.responsibility_category)">
@@ -150,7 +153,7 @@
           </template>
         </el-table-column>
 
-        <el-table-column prop="verification_end_date" label="验证截止日期" width="120" />
+        <el-table-column prop="verification_end_date" label="验证截止日期" width="140" />
 
         <el-table-column label="操作" width="150" fixed="right">
           <template #default="{ row }">
@@ -170,7 +173,6 @@
         </el-table-column>
       </el-table>
 
-      <!-- 分页 -->
       <div class="pagination-container mt-4 flex justify-end">
         <el-pagination
           v-model:current-page="pagination.page"
@@ -187,217 +189,165 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, computed } from 'vue';
-import { ElMessage } from 'element-plus';
-import { Search, Refresh, Plus } from '@element-plus/icons-vue';
-import { useRouter } from 'vue-router';
-import {
-  getProcessIssues,
-  getResponsibilityCategories
-} from '@/api/process-quality';
+import { computed, onMounted, reactive, ref } from 'vue'
+import { ElMessage } from 'element-plus'
+import { Plus, Refresh, Search } from '@element-plus/icons-vue'
+import { useRouter } from 'vue-router'
+
+import { getProcessIssues, getResponsibilityCategories } from '@/api/process-quality'
+import { useAuthStore } from '@/stores/auth'
 import type {
   ProcessIssue,
   ProcessIssueFilter,
-  ProcessIssueStatus,
+  ProcessIssueListResponse,
   ResponsibilityCategory,
   ResponsibilityCategoryOption,
-  ProcessIssueListResponse
-} from '@/types/process-quality';
-import { useAuthStore } from '@/stores/auth';
+} from '@/types/process-quality'
+import {
+  buildProcessIssueStatistics,
+  buildProcessIssueStatusOptions,
+  canRespondToProcessIssue,
+  getProcessIssueStatusLabel,
+  getProcessIssueStatusType,
+} from '@/utils/processIssue'
 
-const router = useRouter();
-const authStore = useAuthStore();
+const router = useRouter()
+const authStore = useAuthStore()
 
-// 状态
-const loading = ref(false);
-const tableData = ref<ProcessIssue[]>([]);
-const responsibilityCategories = ref<ResponsibilityCategoryOption[]>([]);
+const loading = ref(false)
+const tableData = ref<ProcessIssue[]>([])
+const responsibilityCategories = ref<ResponsibilityCategoryOption[]>([])
+const dateRange = ref<[string, string] | null>(null)
+const statusOptions = buildProcessIssueStatusOptions()
 
-// 日期范围
-const dateRange = ref<[string, string] | null>(null);
-
-// 筛选表单
 const filterForm = reactive<ProcessIssueFilter>({
   status: undefined,
   responsibility_category: undefined,
   is_overdue: undefined,
   page: 1,
-  page_size: 20
-});
+  page_size: 20,
+})
 
-// 分页
 const pagination = reactive({
   page: 1,
   page_size: 20,
-  total: 0
-});
+  total: 0,
+})
 
-// 统计数据
-const statistics = computed(() => {
-  const stats = {
-    total: tableData.value.length,
-    open: 0,
-    in_progress: 0,
-    overdue: 0
-  };
+const statistics = computed(() => buildProcessIssueStatistics(tableData.value))
 
-  tableData.value.forEach(item => {
-    if (item.status === 'open') stats.open++;
-    if (item.status === 'in_progress') stats.in_progress++;
-    if (item.is_overdue) stats.overdue++;
-  });
-
-  return stats;
-});
-
-// 获取状态标签类型
-const getStatusTagType = (status: ProcessIssueStatus): string => {
-  const typeMap: Record<ProcessIssueStatus, string> = {
-    open: 'warning',
-    in_progress: 'primary',
-    verifying: 'info',
-    closed: 'success'
-  };
-  return typeMap[status] || 'info';
-};
-
-// 获取状态标签文本
-const getStatusLabel = (status: ProcessIssueStatus): string => {
-  const labelMap: Record<ProcessIssueStatus, string> = {
-    open: '待处理',
-    in_progress: '处理中',
-    verifying: '验证中',
-    closed: '已关闭'
-  };
-  return labelMap[status] || status;
-};
-
-// 获取责任类别标签类型
 const getResponsibilityTagType = (category: ResponsibilityCategory): string => {
   const typeMap: Record<ResponsibilityCategory, string> = {
     material_defect: 'danger',
     operation_defect: 'warning',
     equipment_defect: 'info',
     process_defect: 'primary',
-    design_defect: 'success'
-  };
-  return typeMap[category] || 'info';
-};
+    design_defect: 'success',
+  }
+  return typeMap[category] || 'info'
+}
 
-// 获取责任类别标签文本
 const getResponsibilityLabel = (category: ResponsibilityCategory): string => {
-  const cat = responsibilityCategories.value.find(c => c.value === category);
-  return cat?.label || category;
-};
+  const current = responsibilityCategories.value.find((item) => item.value === category)
+  return current?.label || category
+}
 
-// 格式化日期时间
-const formatDateTime = (dateTime: string): string => {
-  return new Date(dateTime).toLocaleString('zh-CN', {
+const formatDateTime = (dateTime: string): string =>
+  new Date(dateTime).toLocaleString('zh-CN', {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
     hour: '2-digit',
-    minute: '2-digit'
-  });
-};
+    minute: '2-digit',
+  })
 
-// 判断是否可以填写对策
-const canRespond = (row: ProcessIssue): boolean => {
-  // 只有待处理状态且当前用户是指派人才能填写对策
-  return row.status === 'open' && row.assigned_to === authStore.userInfo?.id;
-};
+const canRespond = (issue: ProcessIssue): boolean =>
+  canRespondToProcessIssue(issue, authStore.userInfo?.id)
 
-// 加载责任类别选项
 const loadResponsibilityCategories = async () => {
   try {
-    const response = await getResponsibilityCategories() as { categories: ResponsibilityCategoryOption[] };
-    responsibilityCategories.value = response.categories;
+    const response = (await getResponsibilityCategories()) as {
+      categories: ResponsibilityCategoryOption[]
+    }
+    responsibilityCategories.value = response.categories
   } catch (error) {
-    console.error('Failed to load responsibility categories:', error);
+    console.error('Failed to load responsibility categories:', error)
   }
-};
+}
 
-// 加载数据
 const loadData = async () => {
-  loading.value = true;
+  loading.value = true
   try {
     const params: ProcessIssueFilter = {
       ...filterForm,
       start_date: dateRange.value?.[0],
       end_date: dateRange.value?.[1],
       page: pagination.page,
-      page_size: pagination.page_size
-    };
+      page_size: pagination.page_size,
+    }
 
-    const response = await getProcessIssues(params) as ProcessIssueListResponse;
-    tableData.value = response.items;
-    pagination.total = response.total;
+    const response = (await getProcessIssues(params)) as ProcessIssueListResponse
+    tableData.value = response.items
+    pagination.total = response.total
   } catch (error) {
-    console.error('Failed to load process issues:', error);
-    ElMessage.error('加载制程问题单失败');
+    console.error('Failed to load process issues:', error)
+    ElMessage.error('加载制程问题单失败')
   } finally {
-    loading.value = false;
+    loading.value = false
   }
-};
+}
 
-// 查询
 const handleSearch = () => {
-  pagination.page = 1;
-  loadData();
-};
+  pagination.page = 1
+  loadData()
+}
 
-// 重置
 const handleReset = () => {
   Object.assign(filterForm, {
     status: undefined,
     responsibility_category: undefined,
     is_overdue: undefined,
     page: 1,
-    page_size: 20
-  });
-  dateRange.value = null;
-  handleSearch();
-};
+    page_size: 20,
+  })
+  dateRange.value = null
+  handleSearch()
+}
 
-// 创建
 const handleCreate = () => {
-  router.push({ name: 'ProcessIssueCreate' });
-};
+  router.push({ name: 'ProcessIssueCreate' })
+}
 
-// 查看详情
-const handleView = (row: ProcessIssue) => {
+const handleView = (issue: ProcessIssue) => {
   router.push({
     name: 'ProcessIssueDetail',
-    params: { id: row.id }
-  });
-};
+    params: { id: issue.id },
+  })
+}
 
-// 填写对策
-const handleRespond = (row: ProcessIssue) => {
+const handleRespond = (issue: ProcessIssue) => {
   router.push({
     name: 'ProcessIssueDetail',
-    params: { id: row.id },
-    query: { action: 'respond' }
-  });
-};
+    params: { id: issue.id },
+    query: { action: 'respond' },
+  })
+}
 
-// 分页变化
 const handleSizeChange = (size: number) => {
-  pagination.page_size = size;
-  pagination.page = 1;
-  loadData();
-};
+  pagination.page_size = size
+  pagination.page = 1
+  loadData()
+}
 
 const handlePageChange = (page: number) => {
-  pagination.page = page;
-  loadData();
-};
+  pagination.page = page
+  loadData()
+}
 
-// 生命周期
 onMounted(() => {
-  loadResponsibilityCategories();
-  loadData();
-});
+  loadResponsibilityCategories()
+  loadData()
+})
 </script>
 
 <style scoped>
@@ -445,7 +395,6 @@ onMounted(() => {
   margin-top: 16px;
 }
 
-/* 移动端适配 */
 @media (max-width: 768px) {
   .process-issue-list {
     padding: 12px;

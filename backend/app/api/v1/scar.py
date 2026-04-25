@@ -312,6 +312,8 @@ async def get_8d_report(
         raise HTTPException(status_code=404, detail=str(e))
     except BusinessException as e:
         raise HTTPException(status_code=403, detail=str(e))
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get 8D report: {str(e)}")
 
@@ -366,6 +368,8 @@ async def review_8d_report(
         raise HTTPException(status_code=404, detail=str(e))
     except BusinessException as e:
         raise HTTPException(status_code=400, detail=str(e))
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to review 8D report: {str(e)}")
 

@@ -1,28 +1,22 @@
 <template>
   <div class="scar-list">
-    <!-- 页面标题 -->
     <div class="page-header">
-      <h2>SCAR 单据管理</h2>
-      <el-button 
-        v-if="canCreate" 
-        type="primary" 
-        @click="showCreateDialog = true"
-      >
+      <h2>SCAR 管理</h2>
+      <el-button v-if="canCreate" type="primary" @click="showCreateDialog = true">
         <el-icon><Plus /></el-icon>
         创建 SCAR
       </el-button>
     </div>
 
-    <!-- 筛选条件 -->
     <el-card class="filter-card" shadow="never">
       <el-form :model="filterForm" inline>
         <el-form-item label="状态">
           <el-select v-model="filterForm.status" placeholder="全部" clearable>
-            <el-option label="待处理" value="pending" />
-            <el-option label="进行中" value="in_progress" />
-            <el-option label="已提交" value="submitted" />
-            <el-option label="已批准" value="approved" />
+            <el-option label="待处理" value="open" />
+            <el-option label="供应商回复中" value="supplier_responding" />
+            <el-option label="待审核" value="under_review" />
             <el-option label="已驳回" value="rejected" />
+            <el-option label="已批准" value="approved" />
             <el-option label="已关闭" value="closed" />
           </el-select>
         </el-form-item>
@@ -67,19 +61,20 @@
       </el-form>
     </el-card>
 
-    <!-- SCAR 列表 -->
     <el-card class="table-card" shadow="never">
-      <el-table 
+      <el-table
         v-loading="loading"
-        :data="scarList" 
+        :data="scarList"
         stripe
+        row-key="id"
+        :row-class-name="getRowClassName"
+        style="cursor: pointer"
         @row-click="handleRowClick"
-        style="cursor: pointer;"
       >
         <el-table-column prop="scar_number" label="单据编号" width="150" fixed />
         <el-table-column prop="supplier_name" label="供应商" width="150" />
-        <el-table-column prop="material_code" label="物料编码" width="120" />
-        <el-table-column prop="defect_description" label="缺陷描述" min-width="200" show-overflow-tooltip />
+        <el-table-column prop="material_code" label="物料编码" width="140" />
+        <el-table-column prop="defect_description" label="缺陷描述" min-width="220" show-overflow-tooltip />
         <el-table-column prop="defect_qty" label="不良数量" width="100" align="right" />
         <el-table-column prop="severity" label="严重度" width="100">
           <template #default="{ row }">
@@ -88,7 +83,7 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="status" label="状态" width="100">
+        <el-table-column prop="status" label="状态" width="120">
           <template #default="{ row }">
             <el-tag :type="getStatusType(row.status)" size="small">
               {{ getStatusLabel(row.status) }}
@@ -102,16 +97,16 @@
             </span>
           </template>
         </el-table-column>
-        <el-table-column prop="current_handler_name" label="当前处理人" width="100" />
-        <el-table-column label="操作" width="150" fixed="right">
+        <el-table-column prop="current_handler_name" label="当前处理人" width="120" />
+        <el-table-column label="操作" width="170" fixed="right">
           <template #default="{ row }">
             <el-button type="primary" size="small" @click.stop="handleView(row)">
               查看
             </el-button>
-            <el-button 
-              v-if="canSubmit8D(row)" 
-              type="success" 
-              size="small" 
+            <el-button
+              v-if="canSubmit8D(row)"
+              type="success"
+              size="small"
               @click.stop="handleSubmit8D(row)"
             >
               提交8D
@@ -120,7 +115,6 @@
         </el-table-column>
       </el-table>
 
-      <!-- 分页 -->
       <div class="pagination-container">
         <el-pagination
           v-model:current-page="pagination.page"
@@ -134,20 +128,15 @@
       </div>
     </el-card>
 
-    <!-- 创建 SCAR 对话框（仅内部用户） -->
-    <el-dialog
-      v-model="showCreateDialog"
-      title="创建 SCAR 单据"
-      width="600px"
-    >
-      <el-form :model="createForm" :rules="createRules" ref="createFormRef" label-width="120px">
+    <el-dialog v-model="showCreateDialog" title="创建 SCAR" width="600px">
+      <el-form ref="createFormRef" :model="createForm" :rules="createRules" label-width="120px">
         <el-form-item label="供应商" prop="supplier_id">
           <el-select v-model="createForm.supplier_id" placeholder="请选择供应商" filterable>
-            <el-option 
-              v-for="supplier in suppliers" 
-              :key="supplier.id" 
-              :label="supplier.name" 
-              :value="supplier.id" 
+            <el-option
+              v-for="supplier in suppliers"
+              :key="supplier.id"
+              :label="supplier.name"
+              :value="supplier.id"
             />
           </el-select>
         </el-form-item>
@@ -157,9 +146,9 @@
         </el-form-item>
 
         <el-form-item label="缺陷描述" prop="defect_description">
-          <el-input 
-            v-model="createForm.defect_description" 
-            type="textarea" 
+          <el-input
+            v-model="createForm.defect_description"
+            type="textarea"
             :rows="4"
             placeholder="请详细描述缺陷情况"
           />
@@ -190,7 +179,7 @@
 
       <template #footer>
         <el-button @click="showCreateDialog = false">取消</el-button>
-        <el-button type="primary" @click="handleCreate" :loading="creating">
+        <el-button type="primary" :loading="creating" @click="handleCreate">
           创建
         </el-button>
       </template>
@@ -199,14 +188,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { Plus, Search, Refresh } from '@element-plus/icons-vue'
+import { Plus, Refresh, Search } from '@element-plus/icons-vue'
+
 import { supplierApi } from '@/api/supplier'
 import { useAuthStore } from '@/stores/auth'
 import type { SCAR, SCARListParams } from '@/types/supplier'
 
+const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 
@@ -216,120 +207,147 @@ const showCreateDialog = ref(false)
 const scarList = ref<SCAR[]>([])
 const suppliers = ref<any[]>([])
 
-// 筛选表单
 const filterForm = reactive<SCARListParams>({
   status: undefined,
   severity: undefined,
   start_date: undefined,
-  end_date: undefined
+  end_date: undefined,
 })
 
-// 分页
 const pagination = reactive({
   page: 1,
   page_size: 20,
-  total: 0
+  total: 0,
 })
 
-// 创建表单
 const createForm = reactive<any>({
   supplier_id: undefined,
   material_code: '',
   defect_description: '',
   defect_qty: 1,
   severity: 'medium',
-  deadline: ''
+  deadline: '',
 })
 
 const createFormRef = ref()
 
-// 创建表单验证规则
 const createRules = {
   supplier_id: [{ required: true, message: '请选择供应商', trigger: 'change' }],
   material_code: [{ required: true, message: '请输入物料编码', trigger: 'blur' }],
   defect_description: [{ required: true, message: '请输入缺陷描述', trigger: 'blur' }],
   defect_qty: [{ required: true, message: '请输入不良数量', trigger: 'blur' }],
   severity: [{ required: true, message: '请选择严重度', trigger: 'change' }],
-  deadline: [{ required: true, message: '请选择截止日期', trigger: 'change' }]
+  deadline: [{ required: true, message: '请选择截止日期', trigger: 'change' }],
 }
 
-// 是否可以创建（仅内部用户）
 const canCreate = computed(() => authStore.isInternal)
+const focusedScarId = computed(() => parseFocusId(route.query.focusId))
+const currentRouteName = computed(() => (authStore.isInternal ? 'ScarManagement' : 'SCARList'))
 
-// 是否可以提交8D（供应商用户且状态为待处理或进行中）
 const canSubmit8D = (row: SCAR) => {
-  return authStore.isSupplier && ['pending', 'in_progress'].includes(row.status)
+  return authStore.isSupplier && ['open', 'supplier_responding', 'rejected'].includes(row.status)
 }
 
-// 获取严重度类型
-const getSeverityType = (severity: string) => {
+function parseFocusId(value: unknown): number | null {
+  const raw = Array.isArray(value) ? value[0] : value
+  if (!raw) {
+    return null
+  }
+
+  const parsed = Number(raw)
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null
+}
+
+function getSeverityType(severity: string) {
   switch (severity) {
-    case 'critical': return 'danger'
-    case 'high': return 'warning'
-    case 'medium': return 'primary'
-    default: return 'info'
+    case 'critical':
+      return 'danger'
+    case 'high':
+      return 'warning'
+    case 'medium':
+      return 'primary'
+    default:
+      return 'info'
   }
 }
 
-// 获取严重度标签
-const getSeverityLabel = (severity: string) => {
+function getSeverityLabel(severity: string) {
   const labels: Record<string, string> = {
     critical: '严重',
     high: '高',
     medium: '中',
-    low: '低'
+    low: '低',
   }
   return labels[severity] || severity
 }
 
-// 获取状态类型
-const getStatusType = (status: string) => {
+function getStatusType(status: string) {
   switch (status) {
-    case 'closed': return 'success'
-    case 'approved': return 'success'
-    case 'rejected': return 'danger'
-    case 'in_progress': return 'warning'
-    default: return 'info'
+    case 'approved':
+    case 'closed':
+      return 'success'
+    case 'rejected':
+      return 'danger'
+    case 'supplier_responding':
+      return 'primary'
+    case 'under_review':
+      return 'warning'
+    default:
+      return 'info'
   }
 }
 
-// 获取状态标签
-const getStatusLabel = (status: string) => {
+function getStatusLabel(status: string) {
   const labels: Record<string, string> = {
-    pending: '待处理',
-    in_progress: '进行中',
-    submitted: '已提交',
-    approved: '已批准',
+    open: '待处理',
+    supplier_responding: '供应商回复中',
+    under_review: '待审核',
     rejected: '已驳回',
-    closed: '已关闭'
+    approved: '已批准',
+    closed: '已关闭',
   }
   return labels[status] || status
 }
 
-// 格式化日期
-const formatDate = (date: string) => {
-  if (!date) return ''
+function formatDate(date: string) {
+  if (!date) {
+    return ''
+  }
   return new Date(date).toLocaleDateString('zh-CN')
 }
 
-// 判断是否逾期
-const isOverdue = (deadline: string) => {
-  if (!deadline) return false
+function isOverdue(deadline: string) {
+  if (!deadline) {
+    return false
+  }
   return new Date(deadline) < new Date()
 }
 
-// 加载 SCAR 列表
-const loadSCARList = async () => {
+async function loadFocusedScar() {
+  if (!focusedScarId.value || scarList.value.some((item) => item.id === focusedScarId.value)) {
+    return
+  }
+
+  try {
+    const focusedScar = await supplierApi.getSCAR(focusedScarId.value)
+    scarList.value = [focusedScar, ...scarList.value]
+  } catch (error) {
+    console.error('Failed to load focused SCAR:', error)
+  }
+}
+
+async function loadSCARList() {
   try {
     loading.value = true
     const params: SCARListParams = {
       page: pagination.page,
       page_size: pagination.page_size,
-      ...filterForm
+      ...filterForm,
     }
     const response = await supplierApi.getSCARList(params)
     scarList.value = response.items
     pagination.total = response.total
+    await loadFocusedScar()
   } catch (error) {
     console.error('Failed to load SCAR list:', error)
     ElMessage.error('加载 SCAR 列表失败')
@@ -338,61 +356,71 @@ const loadSCARList = async () => {
   }
 }
 
-// 查询
-const handleSearch = () => {
+async function handleSearch() {
   pagination.page = 1
-  loadSCARList()
+  await loadSCARList()
 }
 
-// 重置
-const handleReset = () => {
+async function handleReset() {
   Object.assign(filterForm, {
     status: undefined,
     severity: undefined,
     start_date: undefined,
-    end_date: undefined
+    end_date: undefined,
   })
-  handleSearch()
+  await handleSearch()
 }
 
-// 分页大小变化
-const handleSizeChange = () => {
+async function handleSizeChange() {
   pagination.page = 1
-  loadSCARList()
+  await loadSCARList()
 }
 
-// 页码变化
-const handlePageChange = () => {
-  loadSCARList()
+async function handlePageChange() {
+  await loadSCARList()
 }
 
-// 行点击
-const handleRowClick = (row: SCAR) => {
+function navigateToFocusedScar(scarId: number) {
+  router.push({
+    name: currentRouteName.value,
+    query: {
+      ...route.query,
+      focusId: String(scarId),
+    },
+  })
+}
+
+function handleRowClick(row: SCAR) {
   handleView(row)
 }
 
-// 查看详情
-const handleView = (row: SCAR) => {
-  router.push(`/supplier/scar/${row.id}`)
+function handleView(row: SCAR) {
+  navigateToFocusedScar(row.id)
 }
 
-// 提交8D
-const handleSubmit8D = (row: SCAR) => {
-  router.push(`/supplier/scar/${row.id}/8d`)
+function handleSubmit8D(row: SCAR) {
+  router.push({
+    name: 'EightDForm',
+    params: { id: String(row.id) },
+    query: { action: 'submit' },
+  })
 }
 
-// 创建 SCAR
-const handleCreate = async () => {
+function getRowClassName({ row }: { row: SCAR }) {
+  return focusedScarId.value === row.id ? 'focused-row' : ''
+}
+
+async function handleCreate() {
   try {
     await createFormRef.value.validate()
     creating.value = true
     await supplierApi.createSCAR(createForm)
     ElMessage.success('创建成功')
     showCreateDialog.value = false
-    loadSCARList()
+    await loadSCARList()
   } catch (error) {
     console.error('Failed to create SCAR:', error)
-    if (error !== false) { // 不是表单验证错误
+    if (error !== false) {
       ElMessage.error('创建失败')
     }
   } finally {
@@ -400,8 +428,18 @@ const handleCreate = async () => {
   }
 }
 
-onMounted(() => {
-  loadSCARList()
+watch(
+  () => route.query.focusId,
+  async (current, previous) => {
+    if (current === previous) {
+      return
+    }
+    await loadSCARList()
+  }
+)
+
+onMounted(async () => {
+  await loadSCARList()
 })
 </script>
 
@@ -438,7 +476,10 @@ onMounted(() => {
     color: #f56c6c;
   }
 
-  // 响应式布局
+  :deep(.focused-row td) {
+    background-color: #ecf5ff !important;
+  }
+
   @media (max-width: 768px) {
     padding: 10px;
 

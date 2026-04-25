@@ -10,6 +10,7 @@ from app.models.user import User, UserType, UserStatus
 from app.models.supplier import Supplier, SupplierStatus
 from app.models.scar import SCAR, SCARStatus, SCARSeverity
 from app.models.eight_d import EightD, EightDStatus
+from app.core.auth_strategy import LocalAuthStrategy
 
 
 @pytest.mark.asyncio
@@ -216,7 +217,7 @@ async def test_internal_user(db_session: AsyncSession) -> User:
     """创建测试内部用户"""
     user = User(
         username="sqe001",
-        hashed_password="hashed_password",
+        password_hash="hashed_password",
         full_name="SQE工程师",
         email="sqe@company.com",
         user_type=UserType.INTERNAL,
@@ -238,7 +239,7 @@ async def test_supplier_user(
     """创建测试供应商用户"""
     user = User(
         username="supplier001",
-        hashed_password="hashed_password",
+        password_hash="hashed_password",
         full_name="供应商联系人",
         email="contact@supplier.com",
         user_type=UserType.SUPPLIER,
@@ -304,12 +305,12 @@ async def test_eight_d(
 @pytest.fixture
 def auth_headers_internal(test_internal_user: User) -> dict:
     """内部用户认证头"""
-    # 这里应该生成真实的 JWT token
-    # 简化处理，实际应该调用 auth service
-    return {"Authorization": "Bearer test_token_internal"}
+    token = LocalAuthStrategy().create_access_token(test_internal_user.id)
+    return {"Authorization": f"Bearer {token}"}
 
 
 @pytest.fixture
 def auth_headers_supplier(test_supplier_user: User) -> dict:
     """供应商用户认证头"""
-    return {"Authorization": "Bearer test_token_supplier"}
+    token = LocalAuthStrategy().create_access_token(test_supplier_user.id)
+    return {"Authorization": f"Bearer {token}"}

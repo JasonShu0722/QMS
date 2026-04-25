@@ -164,12 +164,43 @@ class EightDReviewRequest(BaseModel):
 
 # ==================== 响应模型 ====================
 
+class EightDComplaintLinkSummary(BaseModel):
+    """Related complaint summary for a customer 8D report."""
+
+    complaint_id: int
+    complaint_number: str
+    complaint_type: Optional[str] = None
+    customer_code: str
+    customer_name: Optional[str] = None
+    is_primary: bool = False
+
+
+class EightDBatchInitRequest(BaseModel):
+    """Initialize one customer 8D report from one or more complaints."""
+
+    complaint_ids: List[int] = Field(..., min_length=1, description="Complaint ids to include in the 8D report")
+    primary_complaint_id: Optional[int] = Field(None, ge=1, description="Primary complaint id for the report")
+
+
+class EightDScopeAppendRequest(BaseModel):
+    """Append one or more complaint ledger records into an existing customer 8D scope."""
+
+    complaint_ids: List[int] = Field(..., min_length=1, description="Complaint ids to append into the 8D report")
+
+
+class EightDPrimaryComplaintSwitchRequest(BaseModel):
+    """Switch the primary complaint anchor within an existing customer 8D scope."""
+
+    primary_complaint_id: int = Field(..., ge=1, description="Complaint id to promote as the primary source record")
+
+
 class EightDCustomerResponse(BaseModel):
     """8D报告响应模型"""
     id: int
     complaint_id: int
     status: EightDStatusEnum
     approval_level: ApprovalLevelEnum
+    related_complaints: List[EightDComplaintLinkSummary] = Field(default_factory=list)
     
     # D0-D3数据
     d0_d3_cqe: Optional[dict] = None

@@ -13,10 +13,13 @@ from app.models.user import User
 from app.schemas.customer_complaint import (
     CustomerComplaintCreate,
     CustomerComplaintCustomerOption,
+    CustomerComplaintInternalUserOption,
     CustomerComplaintListResponse,
     CustomerComplaintResponse,
     IMSTracebackRequest,
     IMSTracebackResponse,
+    PhysicalAnalysisRecordRequest,
+    PhysicalDispositionRecordRequest,
     PreliminaryAnalysisRequest,
 )
 from app.services.customer_complaint_service import CustomerComplaintService
@@ -38,6 +41,19 @@ async def list_customer_options(
     return await CustomerComplaintService.list_customer_options(db=db, keyword=keyword)
 
 
+@router.get(
+    "/internal-users",
+    response_model=list[CustomerComplaintInternalUserOption],
+    summary="获取客诉解析责任人列表",
+)
+async def list_internal_user_options(
+    keyword: Optional[str] = Query(None, description="按用户名、姓名或部门搜索"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return await CustomerComplaintService.list_internal_user_options(db=db, keyword=keyword)
+
+
 @router.post(
     "",
     response_model=CustomerComplaintResponse,
@@ -50,12 +66,11 @@ async def create_complaint(
     current_user: User = Depends(get_current_user),
 ):
     try:
-        complaint = await CustomerComplaintService.create_complaint(
+        return await CustomerComplaintService.create_complaint(
             db=db,
             complaint_data=complaint_data,
             created_by_id=current_user.id,
         )
-        return complaint
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     except Exception as exc:
@@ -71,7 +86,7 @@ async def create_complaint(
     summary="获取客诉单列表",
 )
 async def list_complaints(
-    complaint_type: Optional[str] = Query(None, description="客诉类型：0km/after_sales"),
+    complaint_type: Optional[str] = Query(None, description="客诉类型：0km / after_sales"),
     status_filter: Optional[str] = Query(None, alias="status", description="客诉状态"),
     customer_id: Optional[int] = Query(None, description="客户主数据 ID"),
     customer_code: Optional[str] = Query(None, description="客户代码"),
@@ -100,13 +115,7 @@ async def list_complaints(
             page=page,
             page_size=page_size,
         )
-
-        return CustomerComplaintListResponse(
-            total=total,
-            items=complaints,
-            page=page,
-            page_size=page_size,
-        )
+        return CustomerComplaintListResponse(total=total, items=complaints, page=page, page_size=page_size)
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -124,12 +133,64 @@ async def get_complaint(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    complaint = await CustomerComplaintService.get_complaint_by_id(db, complaint_id)
-
+    complaint = await CustomerComplaintService.get_complaint_by_id(db=db, complaint_id=complaint_id)
     if not complaint:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"客诉单不存在: ID={complaint_id}")
-
     return complaint
+
+
+@router.post(
+    "/{complaint_id}/physical-disposition",
+    response_model=CustomerComplaintResponse,
+    summary="更新实物处理备案",
+)
+async def record_physical_disposition(
+    complaint_id: int,
+    disposition_data: PhysicalDispositionRecordRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        return await CustomerComplaintService.record_physical_disposition(
+            db=db,
+            complaint_id=complaint_id,
+            disposition_data=disposition_data,
+            updated_by_id=current_user.id,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"更新实物处理备案失败: {exc}",
+        ) from exc
+
+
+@router.post(
+    "/{complaint_id}/physical-analysis",
+    response_model=CustomerComplaintResponse,
+    summary="更新实物解析任务",
+)
+async def record_physical_analysis(
+    complaint_id: int,
+    analysis_data: PhysicalAnalysisRecordRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        return await CustomerComplaintService.record_physical_analysis(
+            db=db,
+            complaint_id=complaint_id,
+            analysis_data=analysis_data,
+            updated_by_id=current_user.id,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"更新实物解析任务失败: {exc}",
+        ) from exc
 
 
 @router.post(
@@ -144,13 +205,12 @@ async def submit_preliminary_analysis(
     current_user: User = Depends(get_current_user),
 ):
     try:
-        complaint = await CustomerComplaintService.submit_preliminary_analysis(
+        return await CustomerComplaintService.submit_preliminary_analysis(
             db=db,
             complaint_id=complaint_id,
             analysis_data=analysis_data,
             cqe_id=current_user.id,
         )
-        return complaint
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     except Exception as exc:
@@ -171,13 +231,12 @@ async def traceback_ims(
     current_user: User = Depends(get_current_user),
 ):
     try:
-        result = await CustomerComplaintService.auto_traceback_ims(
+        return await CustomerComplaintService.auto_traceback_ims(
             db=db,
             work_order=traceback_request.work_order,
             batch_number=traceback_request.batch_number,
             material_code=traceback_request.material_code,
         )
-        return result
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

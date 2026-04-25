@@ -296,10 +296,93 @@
   - frontend build still emits the existing Sass legacy API and large chunk warnings
   - customer-quality planning has now been expanded to treat complaint intake as a source ledger, split physical disposition from physical analysis, and defer formal issue / 8D launch until customer-quality roles decide to escalate one or more complaint records
   - customer master maintenance is now available in system management and customer complaint intake can consume that master list directly
-  - customer complaint ledger now records customer master reference, customer snapshot, end customer, return flag, and physical-analysis flag, but physical disposition and complaint-to-issue/8D escalation are still deferred to the next increments
+  - customer complaint ledger now records customer master reference, customer snapshot, end customer, return flag, and physical-analysis flag
+  - customer complaints that do not require physical analysis now support in-list physical disposition filing, with `pending / in_progress / completed` status, plan/notes recording, and close-on-completion behavior
+  - customer complaints that require physical analysis now support in-list task dispatch and update, with responsible department/user assignment, failed-part tracking, one-time cause summary capture, and `pending / assigned / completed` status progression
+  - customer complaint list now supports single-record 8D launch, shows 8D status, and routes directly into the customer 8D page by complaint id
+  - the legacy customer 8D page is now contract-aligned with the current backend status values and uses a frontend adapter layer to translate the old flat form shape into the backend D4-D7 / D8 payload structure
+  - the customer 8D page now exposes an empty-state “发起 8D” entry when the complaint already满足前置条件, auto-prefills D4-D7 / D8 forms from normalized data, and jumps to the most relevant tab based on the current 8D status
+  - the customer 8D page now shows a lightweight report summary with current status, approval level, submit/review timestamps, review comments, and next-step hints so users can read the current closing posture without re-parsing each tab
+  - the customer 8D page now consumes the existing backend archive and SLA endpoints: approved reports can be archived/closed directly from the page, and the summary card now shows remaining SLA days / overdue state
+  - customer complaints now have a read-only detail page that consolidates ledger data, physical disposition / analysis status, 8D progress, and next-step hints; the list “查看” entry routes into that page and can continue to launch/view 8D from there
+  - the customer complaint detail page now reuses the existing physical disposition / analysis dialogs, so complaint handlers can continue updating实物处理和实物解析而不必回到列表页
+  - process-quality issue list/detail now align to the backend workflow states (`open / in_analysis / in_verification / closed / cancelled`) through a shared frontend helper, so filtering, tags, action buttons, and status counts no longer rely on the old `in_progress / verifying` aliases
+  - process-quality issue detail now opens the response dialog correctly when routed with `?action=respond`, and same-component issue switches reset temporary form state before reloading the next record
   - latest verification for this increment:
-    - `& '.\.venv\Scripts\python.exe' -m pytest backend/test/test_customer_complaint_simple.py backend/test/test_customer_complaint_module.py backend/test/test_admin_customers_api.py`
-    - `Set-Location frontend; npm run test -- src/utils/test/customerComplaint.spec.ts src/utils/test/problemManagement.spec.ts`
+    - `& '.\.venv\Scripts\python.exe' -m pytest backend/test/test_customer_complaint_simple.py backend/test/test_customer_complaint_module.py backend/test/test_customer_complaint_api.py backend/test/test_admin_customers_api.py`
+    - `Set-Location frontend; npm run test -- src/utils/test/customerEightD.spec.ts src/utils/test/customerComplaint.spec.ts src/utils/test/problemManagement.spec.ts`
+    - `Set-Location frontend; npm run build`
+
+  - customer 8D backend now supports aggregate initialization from multiple complaint ledger records through `/api/v1/customer-complaints/8d/init`, with a dedicated complaint-link table that keeps the old single-record route compatible
+  - aggregate 8D initialization currently enforces same customer + same complaint-type scope, supports an explicit primary complaint anchor, and makes secondary complaints resolve the same 8D status/report id in complaint detail APIs
+  - customer 8D service updates now fan out status changes across all linked complaints for D4-D7 submission, rejection, and archive-closing, which keeps the multi-complaint ledger view internally consistent before the batch frontend entry is added
+  - customer complaint list now supports table-selection based batch 8D launch, reuses the shared batch eligibility rules on the frontend, and routes into the existing customer 8D page using the backend-returned primary complaint anchor
+  - customer 8D page now shows the full related complaint scope after batch launch, including a summary sentence plus linked complaint rows with primary/current markers and complaint-type labels, so handlers can confirm the aggregation range without returning to the ledger
+  - customer 8D now supports minimal in-page scope maintenance: while the report is still in `D4-D7` progress, handlers can append additional same-customer/same-type complaint records and remove non-primary non-current complaints from the aggregation scope without leaving the report page
+  - customer complaint detail now pulls the linked 8D scope when a complaint has already entered 8D tracking, so handlers can review all related complaints and jump across the aggregated scope directly from any single complaint detail page
+  - customer 8D now exposes a direct “view complaint” jump for every related complaint in the aggregation scope, and the report overview surfaces the D0-D3 source-complaint range metadata so handlers can confirm provenance without leaving the 8D page
+  - customer 8D now supports switching the primary complaint anchor while the report is still in `D4-D7` progress; the backend updates both the primary link and the D0-D3 source metadata, and the frontend exposes a minimal in-page action so later cross-module aggregate issue forms can reuse the same “main record switch” pattern
+  - latest verification for this increment:
+    - `& '.\.venv\Scripts\python.exe' -m pytest backend/test/test_customer_complaint_api.py backend/test/test_customer_complaint_simple.py backend/test/test_customer_complaint_module.py`
+    - `Set-Location frontend; npm run test -- src/utils/test/processIssue.spec.ts src/utils/test/customerComplaint.spec.ts src/utils/test/customerEightD.spec.ts src/utils/test/problemManagement.spec.ts`
+    - `Set-Location frontend; npm run build`
+  - unified problem center now has a first internal read-only frontend entry at `/quality/problem-center`, consuming the shared `/v1/problem-management/issues` API for the first confirmed modules (`customer_quality` + `audit_management`)
+  - the first page slice supports shared filters (module / problem category / unified status / keyword), shows response mode and overdue hints, and routes back to source records so later incoming/process/new-product modules can extend the same shell instead of building separate list scaffolds
+  - requirement panel sync:
+    - `frontend/src/features/requirements-panel/catalog.ts`: added `dashboard-problem-center` and marked it `doing`
+    - `doc/requirements-panel/qms-requirements-data.js`: mirrored the same requirement item for the document-side panel data
+  - latest verification for this increment:
+    - `& '.\.venv\Scripts\python.exe' -m pytest backend/test/test_problem_management_api.py`
+    - `Set-Location frontend; npm run test -- src/utils/test/problemIssueSummary.spec.ts src/utils/test/processIssue.spec.ts src/utils/test/customerComplaint.spec.ts src/utils/test/customerEightD.spec.ts src/utils/test/problemManagement.spec.ts`
+    - `Set-Location frontend; npm run build`
+  - process-quality issues are now included in the unified problem-center aggregation, so the first shared list slice covers `customer_quality + process_quality + audit_management` instead of stopping at customer/audit only
+  - current process-category resolution is a compatibility inference, not a new source-of-truth field: the problem center first inspects related defect `process_id/line_id`, then falls back to issue-number / description keywords to distinguish `PQ0` vs `PQ1` until process issues get a structured stage field
+  - the problem-center frontend now supports jumping from `process_issue` summary rows back into `ProcessIssueDetail`, keeping the new process entries actionable instead of read-only dead ends
+  - new-product trial issues are now included in the unified problem-center aggregation as the first `DQ0` slice, so the current shared list covers `customer_quality + process_quality + new_product_quality + audit_management`
+  - current new-product category resolution is intentionally conservative: existing `TrialIssue` records all map to `DQ0` because the current source model only represents internal trial/debug issues; `DQ1` remains reserved for future customer-sourced new-product problem records
+  - the problem-center frontend now supports jumping from `trial_issue` summary rows back into `TrialIssueList`, and the trial-issue page accepts a lightweight `focusId` query so the target issue opens directly in the detail dialog
+  - requirement panel sync:
+    - `frontend/src/features/requirements-panel/catalog.ts`: updated `dashboard-problem-center` acceptance to include process-quality and new-product coverage
+    - `doc/requirements-panel/qms-requirements-data.js`: mirrored the same acceptance update for the document-side panel data
+  - latest verification for this increment:
+    - `& '.\.venv\Scripts\python.exe' -m pytest backend/test/test_problem_management_api.py backend/test/test_audit_nc_problem_category_api.py backend/test/test_customer_complaint_api.py`
+    - `Set-Location frontend; npm run test -- src/utils/test/problemIssueSummary.spec.ts src/utils/test/processIssue.spec.ts src/utils/test/customerComplaint.spec.ts src/utils/test/customerEightD.spec.ts src/utils/test/problemManagement.spec.ts`
+    - `Set-Location frontend; npm run build`
+  - supplier-quality SCAR summaries are now included in the first unified problem-center slice as `incoming_quality`, so the current shared list covers `supplier_quality + customer_quality + process_quality + new_product_quality + audit_management`
+  - current supplier category resolution is intentionally a compatibility inference: the problem center inspects SCAR `material_code` and `defect_description` keywords to distinguish `IQ0` vs `IQ1`, and falls back to `IQ1` until SCAR gains an explicit material-class field
+  - the problem-center frontend now supports jumping from `scar` summary rows back to `SCAR` management, and the SCAR list accepts a lightweight `focusId` query so the target record is highlighted and visible without adding a new detail page in this round
+  - the unified problem center now supports `only_assigned_to_me`, so internal users can narrow the first-batch cross-module list down to items currently assigned to themselves before a true shared todo engine is wired in
+  - the unified problem center now supports `only_created_by_me`, backed by a normalized `created_by_id` in the shared summary model, so internal users can quickly slice back to the problem records they originally raised across all currently connected modules
+  - the unified problem center now also supports `only_overdue`, reusing the existing per-module overdue flags to quickly surface overdue audit NC, process issues, SCAR, and trial issues without changing source workflows
+  - the unified problem center now supports `only_actionable_to_me`, using the same cross-module quick-action rules as the row-level entry buttons so internal users can narrow the list to items they can handle directly from the shared problem-center surface
+  - the problem-center page itself was cleaned up while adding the new filter toggles, so the current list view no longer carries mojibake copy in its title, filters, or action labels
+  - the problem-center header now shows lightweight current-page actionable and overdue counts, which makes the page behave more like a shared todo intake surface without introducing a brand-new backend task engine in this round
+  - the shared problem-center helper now also provides quick-entry routes and route-query parsing, so other pages can open the problem center directly into `only_actionable_to_me` / `only_overdue` slices without duplicating query-shaping logic
+  - workbench now includes a lightweight internal-only problem-center card that reads total/actionable/overdue counts from the existing unified issue-summary API and jumps straight into the corresponding problem-center filtered view
+  - the workbench problem-center card now falls back to overdue previews when there are no directly actionable items, so the lightweight entry no longer collapses to an empty state on active but unassigned cross-module follow-up days
+  - the workbench problem-center card now also exposes a direct “只看我发起的” entry and falls back to created-by-me previews after actionable/overdue are exhausted, so cross-module follow-up can stay inside the shared problem surface without reopening each source module first
+  - the workbench problem-center card now shows a lightweight per-module summary for the current preview slice and can jump straight into the problem center with both the current quick filter and module preset, so the first shared issue入口 starts behaving like a real cross-board traffic router instead of a flat list teaser
+  - the unified problem summary API now returns pre-pagination `module_counts`, and the workbench problem-center card prefers those backend counts for its module summary while keeping preview-item counting as a compatibility fallback
+  - the problem center page now consumes the same normalized module-count helper as the workbench and shows clickable module distribution chips above the shared list, making backend `module_counts` visible in the main issue surface as well as the entry card
+  - SCAR pending-review items now participate in the unified actionable rules: submitted SCAR 8D reports reassign the current handler back to the internal creator for review, and the incoming-quality review route exposes a minimal approve/reject panel from the shared problem center while supplier-side 8D submission remains anchored in the SCAR list
+  - while wiring SCAR review, the legacy SCAR service notification calls were aligned with the existing `NotificationHub.send_notification` contract and their links were corrected to the current supplier/internal 8D routes
+  - latest verification for this increment:
+    - `& '.\.venv\Scripts\python.exe' -m pytest backend/test/test_problem_management_api.py backend/test/test_scar_api.py`
+    - `Set-Location frontend; npm run test -- src/utils/test/problemIssueSummary.spec.ts src/utils/test/processIssue.spec.ts src/utils/test/customerComplaint.spec.ts src/utils/test/customerEightD.spec.ts src/utils/test/problemManagement.spec.ts`
+    - `Set-Location frontend; npm run build`
+  - customer-complaint items in the unified problem summary now carry the `requires_physical_analysis` branch flag, and non-analysis complaints resolve their actionable owner back to the CQE/creator so direct physical-disposition follow-up can appear in shared actionable views instead of disappearing from the cross-module surface
+  - the problem-center quick action for customer quality now distinguishes `实物解析` and `实物处理`, routing complaint rows into the matching detail-dialog action (`analysis` vs `disposition`) instead of assuming every customer complaint must go through analysis first
+  - latest verification for this increment:
+    - `& '.\.venv\Scripts\python.exe' -m pytest backend/test/test_problem_management_api.py backend/test/test_customer_complaint_api.py`
+    - `Set-Location frontend; npm run test -- src/utils/test/problemIssueSummary.spec.ts src/utils/test/processIssue.spec.ts src/utils/test/customerComplaint.spec.ts src/utils/test/customerEightD.spec.ts src/utils/test/problemManagement.spec.ts`
+    - `Set-Location frontend; npm run build`
+
+  - the unified problem summary now exposes a stage-aware `action_owner_id`, so the problem center can distinguish "record assignee" from "current stage operator" without inventing a new workflow engine
+  - second-stage quick actions are now wired into existing source pages instead of a new shell: process issues support `respond / verify / close`, audit NC supports `respond / verify / close`, and trial issues support `solution / close` when opened from the problem center
+  - the actionable filter now includes internal second-stage items owned by the current user in their active stage, including audit NC pending review/closure, process issue verification/closure, and trial issue closure
+  - latest verification for this increment:
+    - `& '.\.venv\Scripts\python.exe' -m pytest backend/test/test_problem_management_api.py`
+    - `Set-Location frontend; npm run test -- src/utils/test/problemIssueSummary.spec.ts src/utils/test/processIssue.spec.ts src/utils/test/customerComplaint.spec.ts src/utils/test/customerEightD.spec.ts src/utils/test/problemManagement.spec.ts`
     - `Set-Location frontend; npm run build`
 
 ## Task: Permission-Driven Surface Visibility And Supplier Quality Panel Access (2026-04-18)

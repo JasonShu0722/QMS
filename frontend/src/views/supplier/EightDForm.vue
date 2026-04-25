@@ -6,7 +6,7 @@
         <el-icon><ArrowLeft /></el-icon>
       </el-button>
       <h2>8D 报告填写</h2>
-      <div class="header-actions">
+      <div v-if="authStore.isSupplier" class="header-actions">
         <el-button @click="handleSaveDraft" :loading="saving">
           <el-icon><Document /></el-icon>
           保存草稿
@@ -44,7 +44,7 @@
     </el-card>
 
     <!-- 8D 报告表单 -->
-    <el-form :model="formData" :rules="rules" ref="formRef" label-width="120px">
+    <el-form :model="formData" :rules="rules" ref="formRef" label-width="120px" :disabled="!authStore.isSupplier">
       <!-- D0-D3: 紧急响应措施 -->
       <el-card class="form-section" shadow="never">
         <template #header>
@@ -208,6 +208,59 @@
       </el-card>
     </el-form>
 
+    <el-card v-if="authStore.isInternal" class="review-card" shadow="never">
+      <template #header>
+        <span>8D 审核</span>
+      </template>
+
+      <el-alert
+        v-if="!eightDReport"
+        title="尚未查询到供应商提交的 8D 报告"
+        type="info"
+        show-icon
+        :closable="false"
+      />
+      <template v-else>
+        <el-descriptions :column="2" border class="review-summary">
+          <el-descriptions-item label="报告状态">
+            <el-tag :type="eightDReport.status === 'submitted' ? 'warning' : 'info'">
+              {{ getEightDStatusLabel(eightDReport.status) }}
+            </el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label="提交人">{{ eightDReport.submitter_name || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="提交时间">{{ formatDate(eightDReport.submitted_at) }}</el-descriptions-item>
+          <el-descriptions-item label="审核人">{{ eightDReport.reviewer_name || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="审核意见" :span="2">
+            {{ eightDReport.review_comments || '-' }}
+          </el-descriptions-item>
+        </el-descriptions>
+
+        <el-form
+          v-if="eightDReport.status === 'submitted'"
+          :model="reviewForm"
+          label-width="120px"
+          class="review-form"
+        >
+          <el-form-item label="审核意见" required>
+            <el-input
+              v-model="reviewForm.review_comments"
+              type="textarea"
+              :rows="3"
+              placeholder="请填写本次 8D 审核意见"
+            />
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" :loading="reviewing" @click="handleReview(true)">
+              批准 8D
+            </el-button>
+            <el-button type="danger" plain :loading="reviewing" @click="handleReview(false)">
+              驳回 8D
+            </el-button>
+          </el-form-item>
+        </el-form>
+      </template>
+    </el-card>
+
     <!-- AI 预审结果（如果有） -->
     <el-card v-if="aiReviewResult" class="ai-review-card" shadow="never">
       <template #header>
@@ -236,18 +289,25 @@ import {
   InfoFilled 
 } from '@element-plus/icons-vue'
 import { supplierApi } from '@/api/supplier'
-import type { SCAR } from '@/types/supplier'
+import { useAuthStore } from '@/stores/auth'
+import type { EightDReport, SCAR } from '@/types/supplier'
 
 const route = useRoute()
 const router = useRouter()
+const authStore = useAuthStore()
 
 const scarId = computed(() => Number(route.params.id))
 const scarData = ref<SCAR | null>(null)
+const eightDReport = ref<EightDReport | null>(null)
 const saving = ref(false)
 const submitting = ref(false)
+const reviewing = ref(false)
 const fileList = ref<any[]>([])
 const d7FileList = ref<any[]>([])
 const aiReviewResult = ref<any>(null)
+const reviewForm = reactive({
+  review_comments: ''
+})
 
 // 表单数据
 const formData = reactive({
@@ -311,6 +371,16 @@ const getSeverityLabel = (severity?: string) => {
 const formatDate = (date?: string) => {
   if (!date) return ''
   return new Date(date).toLocaleDateString('zh-CN')
+}
+
+const getEightDStatusLabel = (status?: string) => {
+  const labels: Record<string, string> = {
+    draft: '草稿',
+    submitted: '待审核',
+    approved: '已批准',
+    rejected: '已驳回'
+  }
+  return labels[status || ''] || status || '-'
 }
 
 // 判断是否逾期
@@ -406,7 +476,10 @@ const handleSubmit = async () => {
     }
     await supplierApi.submit8DReport(scarId.value, reportData)
     ElMessage.success('8D报告提交成功')
-    router.push(`/supplier/scar/${scarId.value}`)
+    router.push({
+      name: 'SCARList',
+      query: { focusId: String(scarId.value) }
+    })
   } catch (error) {
     if (error !== 'cancel') {
       console.error('Failed to submit 8D report:', error)
@@ -417,24 +490,71 @@ const handleSubmit = async () => {
   }
 }
 
+const applyEightDReportToForm = (report: EightDReport) => {
+  if (report.d0_d3_data) {
+    Object.assign(formData, report.d0_d3_data)
+  }
+  if (report.d4_d7_data) {
+    Object.assign(formData, report.d4_d7_data)
+  }
+  if (report.d8_data) {
+    Object.assign(formData, report.d8_data)
+  }
+}
+
+const loadEightDReport = async () => {
+  eightDReport.value = null
+
+  if (!scarData.value?.has_8d_report && route.query.action !== 'review') {
+    return
+  }
+
+  try {
+    const report = await supplierApi.get8DReport(scarId.value)
+    eightDReport.value = report
+    applyEightDReportToForm(report)
+  } catch (error) {
+    console.error('Failed to load 8D report:', error)
+    if (route.query.action === 'review') {
+      ElMessage.warning('尚未查询到可审核的 8D 报告')
+    }
+  }
+}
+
+const handleReview = async (approved: boolean) => {
+  const reviewComments = reviewForm.review_comments.trim()
+  if (!reviewComments) {
+    ElMessage.warning('请先填写审核意见')
+    return
+  }
+
+  try {
+    reviewing.value = true
+    const payload = {
+      approved,
+      review_comments: reviewComments
+    }
+    const report = approved
+      ? await supplierApi.review8DReport(scarId.value, payload)
+      : await supplierApi.reject8DReport(scarId.value, payload)
+
+    eightDReport.value = report
+    reviewForm.review_comments = ''
+    ElMessage.success(approved ? '8D 审核已批准' : '8D 审核已驳回')
+    await loadSCARData()
+  } catch (error) {
+    console.error('Failed to review 8D report:', error)
+    ElMessage.error('8D 审核操作失败')
+  } finally {
+    reviewing.value = false
+  }
+}
+
 // 加载 SCAR 数据
 const loadSCARData = async () => {
   try {
     scarData.value = await supplierApi.getSCAR(scarId.value)
-    
-    // 如果已有8D报告草稿，加载数据
-    if (scarData.value.eight_d_report) {
-      const report = scarData.value.eight_d_report
-      if (report.d0_d3_data) {
-        Object.assign(formData, report.d0_d3_data)
-      }
-      if (report.d4_d7_data) {
-        Object.assign(formData, report.d4_d7_data)
-      }
-      if (report.d8_data) {
-        Object.assign(formData, report.d8_data)
-      }
-    }
+    await loadEightDReport()
   } catch (error) {
     console.error('Failed to load SCAR data:', error)
     ElMessage.error('加载SCAR数据失败')
@@ -495,6 +615,18 @@ onMounted(() => {
 
     .upload-section {
       margin-top: 12px;
+    }
+  }
+
+  .review-card {
+    margin-bottom: 20px;
+
+    .review-summary {
+      margin-bottom: 18px;
+    }
+
+    .review-form {
+      margin-top: 18px;
     }
   }
 

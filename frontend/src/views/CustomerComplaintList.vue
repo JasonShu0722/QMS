@@ -39,12 +39,7 @@
         </el-form-item>
 
         <el-form-item label="产品类型">
-          <el-input
-            v-model="queryParams.product_type"
-            placeholder="请输入"
-            clearable
-            class="w-full md:w-40"
-          />
+          <el-input v-model="queryParams.product_type" placeholder="请输入" clearable class="w-full md:w-40" />
         </el-form-item>
 
         <el-form-item label="状态">
@@ -78,7 +73,30 @@
     </el-card>
 
     <el-card>
-      <el-table v-loading="loading" :data="complaintList" stripe class="w-full">
+      <div class="mb-4 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+        <div class="text-sm text-gray-500">
+          {{ batchLaunchSummary }}
+        </div>
+        <el-button
+          type="primary"
+          plain
+          :disabled="!canBatchLaunchEightD"
+          :loading="batchLaunchingEightD"
+          @click="handleBatch8D"
+        >
+          批量发起8D
+        </el-button>
+      </div>
+
+      <el-table
+        v-loading="loading"
+        :data="complaintList"
+        stripe
+        class="w-full"
+        row-key="id"
+        @selection-change="handleSelectionChange"
+      >
+        <el-table-column type="selection" width="48" fixed="left" />
         <el-table-column prop="complaint_number" label="客诉编号" width="160" fixed />
         <el-table-column prop="complaint_type" label="类型" width="120">
           <template #default="{ row }">
@@ -105,11 +123,31 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="实物解析" width="110">
+        <el-table-column label="实物解析" width="120">
           <template #default="{ row }">
-            <el-tag :type="row.requires_physical_analysis ? 'primary' : 'success'">
-              {{ row.requires_physical_analysis ? '需解析' : '免解析' }}
+            <el-tag
+              v-if="row.requires_physical_analysis"
+              :type="getCustomerComplaintPhysicalAnalysisStatusType(row.physical_analysis_status)"
+            >
+              {{ getCustomerComplaintPhysicalAnalysisStatusLabel(row.physical_analysis_status) }}
             </el-tag>
+            <el-tag v-else type="success">免解析</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="实物处理" width="110">
+          <template #default="{ row }">
+            <span v-if="row.requires_physical_analysis" class="text-gray-400">-</span>
+            <el-tag v-else :type="getCustomerComplaintDispositionStatusType(row.physical_disposition_status)">
+              {{ getCustomerComplaintDispositionStatusLabel(row.physical_disposition_status) }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="8D状态" width="140">
+          <template #default="{ row }">
+            <el-tag v-if="row.eight_d_report_id" type="primary">
+              {{ getEightDDisplayStatus(row) }}
+            </el-tag>
+            <span v-else class="text-gray-400">未发起</span>
           </template>
         </el-table-column>
         <el-table-column prop="severity_level" label="严重度" width="100" />
@@ -121,26 +159,36 @@
           </template>
         </el-table-column>
         <el-table-column prop="created_at" label="创建时间" width="170" />
-        <el-table-column label="操作" width="220" fixed="right">
+        <el-table-column label="操作" width="320" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" size="small" @click="handleView(row)">查看</el-button>
             <el-button
-              v-if="canSubmitCustomerComplaintAnalysis(row)"
+              v-if="canHandleCustomerComplaintDisposition(row)"
+              link
+              type="primary"
+              size="small"
+              @click="handleDisposition(row)"
+            >
+              实物处理
+            </el-button>
+            <el-button
+              v-if="canHandleCustomerComplaintAnalysis(row)"
               link
               type="primary"
               size="small"
               @click="handleAnalysis(row)"
             >
-              一次因解析
+              实物解析
             </el-button>
             <el-button
               v-if="canOpenCustomerComplaintEightD(row)"
               link
               type="primary"
               size="small"
+              :loading="launchingEightDId === row.id"
               @click="handle8D(row)"
             >
-              8D报告
+              {{ getEightDActionLabel(row) }}
             </el-button>
           </template>
         </el-table-column>
@@ -168,6 +216,18 @@
     >
       <CustomerComplaintForm @success="handleCreateSuccess" @cancel="showCreateDialog = false" />
     </el-dialog>
+
+    <CustomerComplaintDispositionDialog
+      v-model="showDispositionDialog"
+      :complaint="selectedComplaint"
+      @success="handleDispositionSuccess"
+    />
+
+    <CustomerComplaintAnalysisDialog
+      v-model="showAnalysisDialog"
+      :complaint="selectedComplaint"
+      @success="handleAnalysisSuccess"
+    />
   </div>
 </template>
 
@@ -179,7 +239,11 @@ import { Plus } from '@element-plus/icons-vue'
 import {
   getCustomerComplaintCustomerOptions,
   getCustomerComplaints,
+  initBatchCustomerComplaintEightD,
+  initCustomerComplaintEightD,
 } from '@/api/customer-quality'
+import CustomerComplaintAnalysisDialog from '@/components/CustomerComplaintAnalysisDialog.vue'
+import CustomerComplaintDispositionDialog from '@/components/CustomerComplaintDispositionDialog.vue'
 import CustomerComplaintForm from '@/components/CustomerComplaintForm.vue'
 import { useProblemManagementStore } from '@/stores/problemManagement'
 import type {
@@ -194,11 +258,20 @@ import {
 } from '@/utils/problemManagement'
 import {
   buildCustomerComplaintStatusOptions,
+  canBatchLaunchCustomerComplaintEightD,
+  canHandleCustomerComplaintAnalysis,
+  canHandleCustomerComplaintDisposition,
   canOpenCustomerComplaintEightD,
-  canSubmitCustomerComplaintAnalysis,
+  getCustomerComplaintBatchLaunchHint,
+  getCustomerComplaintEightDActionLabel,
+  getCustomerComplaintDispositionStatusLabel,
+  getCustomerComplaintDispositionStatusType,
+  getCustomerComplaintPhysicalAnalysisStatusLabel,
+  getCustomerComplaintPhysicalAnalysisStatusType,
   getCustomerComplaintStatusLabel,
   getCustomerComplaintStatusType,
 } from '@/utils/customerComplaint'
+import { getEightDStatusLabel } from '@/utils/customerEightD'
 
 const router = useRouter()
 const problemManagementStore = useProblemManagementStore()
@@ -208,7 +281,13 @@ const complaintList = ref<CustomerComplaint[]>([])
 const customerOptions = ref<CustomerComplaintCustomerOption[]>([])
 const total = ref(0)
 const showCreateDialog = ref(false)
+const showDispositionDialog = ref(false)
+const showAnalysisDialog = ref(false)
+const selectedComplaint = ref<CustomerComplaint | null>(null)
+const selectedComplaints = ref<CustomerComplaint[]>([])
 const dateRange = ref<[string, string] | null>(null)
+const launchingEightDId = ref<number | null>(null)
+const batchLaunchingEightD = ref(false)
 
 const queryParams = reactive<CustomerComplaintListQuery>({
   page: 1,
@@ -224,11 +303,36 @@ const queryParams = reactive<CustomerComplaintListQuery>({
 const complaintTypeOptions = computed(() =>
   buildCustomerComplaintTypeOptions(problemManagementStore.getCategory)
 )
+const canBatchLaunchEightD = computed(() =>
+  canBatchLaunchCustomerComplaintEightD(selectedComplaints.value)
+)
+const batchLaunchHint = computed(() =>
+  getCustomerComplaintBatchLaunchHint(selectedComplaints.value)
+)
+const batchLaunchSummary = computed(() => {
+  if (!selectedComplaints.value.length) {
+    return '可勾选同一客户、同一客诉类型且已完成前置处理的客诉，批量发起同一张 8D。'
+  }
+
+  if (canBatchLaunchEightD.value) {
+    return `已选择 ${selectedComplaints.value.length} 条客诉，可批量发起同一张 8D。`
+  }
+
+  return batchLaunchHint.value
+})
 
 const statusOptions = buildCustomerComplaintStatusOptions()
 
 function getComplaintTypeLabel(complaintType: ComplaintType): string {
   return resolveCustomerComplaintTypeLabel(complaintType, problemManagementStore.getCategory)
+}
+
+function getEightDActionLabel(row: CustomerComplaint): string {
+  return getCustomerComplaintEightDActionLabel(row)
+}
+
+function getEightDDisplayStatus(row: CustomerComplaint): string {
+  return getEightDStatusLabel(row.eight_d_status)
 }
 
 async function loadCustomerOptions() {
@@ -253,10 +357,11 @@ async function loadComplaints() {
 
     const response = await getCustomerComplaints(queryParams)
     complaintList.value = response.items
+    selectedComplaints.value = []
     total.value = response.total
   } catch (error: any) {
-    ElMessage.error(error.message || '加载客诉单列表失败')
-    console.error('Load complaints error:', error)
+    ElMessage.error(error.message || '加载客诉列表失败')
+    console.error('load complaints error:', error)
   } finally {
     loading.value = false
   }
@@ -279,20 +384,85 @@ function handleReset() {
 }
 
 function handleView(row: CustomerComplaint) {
-  router.push(`/customer-complaints/${row.id}`)
+  router.push({ name: 'CustomerComplaintDetail', params: { id: row.id } })
+}
+
+function handleDisposition(row: CustomerComplaint) {
+  selectedComplaint.value = row
+  showDispositionDialog.value = true
 }
 
 function handleAnalysis(row: CustomerComplaint) {
-  router.push(`/customer-complaints/${row.id}/analysis`)
+  selectedComplaint.value = row
+  showAnalysisDialog.value = true
 }
 
-function handle8D(row: CustomerComplaint) {
-  router.push(`/customer-complaints/${row.id}/8d`)
+function handleSelectionChange(selection: CustomerComplaint[]) {
+  selectedComplaints.value = selection
+}
+
+async function handle8D(row: CustomerComplaint) {
+  if (row.eight_d_report_id) {
+    router.push({ name: 'EightDCustomerForm', params: { id: row.id } })
+    return
+  }
+
+  try {
+    launchingEightDId.value = row.id
+    await initCustomerComplaintEightD(row.id)
+    ElMessage.success(`客诉 ${row.complaint_number} 已发起 8D`)
+    await loadComplaints()
+    router.push({ name: 'EightDCustomerForm', params: { id: row.id } })
+  } catch (error: any) {
+    ElMessage.error(error.message || '发起 8D 失败')
+  } finally {
+    launchingEightDId.value = null
+  }
+}
+
+async function handleBatch8D() {
+  const complaints = selectedComplaints.value
+  const launchHint = getCustomerComplaintBatchLaunchHint(complaints)
+  if (launchHint) {
+    ElMessage.warning(launchHint)
+    return
+  }
+
+  const primaryComplaint = complaints[0]
+  if (!primaryComplaint) {
+    ElMessage.warning('请先选择客诉记录')
+    return
+  }
+
+  try {
+    batchLaunchingEightD.value = true
+    const report = await initBatchCustomerComplaintEightD({
+      complaint_ids: complaints.map((item) => item.id),
+      primary_complaint_id: primaryComplaint.id,
+    })
+    ElMessage.success(`已按 ${complaints.length} 条客诉发起同一张 8D`)
+    await loadComplaints()
+    router.push({ name: 'EightDCustomerForm', params: { id: report.complaint_id || primaryComplaint.id } })
+  } catch (error: any) {
+    ElMessage.error(error.message || '批量发起 8D 失败')
+  } finally {
+    batchLaunchingEightD.value = false
+  }
 }
 
 function handleCreateSuccess() {
   showCreateDialog.value = false
   ElMessage.success('客诉单创建成功')
+  void loadComplaints()
+}
+
+function handleDispositionSuccess() {
+  selectedComplaint.value = null
+  void loadComplaints()
+}
+
+function handleAnalysisSuccess() {
+  selectedComplaint.value = null
   void loadComplaints()
 }
 

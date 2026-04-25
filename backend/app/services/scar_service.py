@@ -15,7 +15,7 @@ from app.schemas.scar import (
     SCARCreate, SCARUpdate, SCARListQuery,
     EightDSubmit, EightDReview
 )
-from app.services.notification_service import NotificationService
+from app.services.notification_service import NotificationHub
 from app.core.exceptions import NotFoundException, BusinessException
 
 
@@ -104,13 +104,13 @@ class SCARService:
         
         # 发送通知
         if supplier_user:
-            await NotificationService.send_notification(
+            await NotificationHub.send_notification(
                 db=db,
                 user_ids=[supplier_user.id],
+                message_type="workflow_exception",
                 title=f"新 SCAR 单：{scar_number}",
                 content=f"物料 {scar_data.material_code} 发现质量问题，请及时提交 8D 报告。截止日期：{scar_data.deadline.strftime('%Y-%m-%d')}",
-                notification_type="workflow",
-                link=f"/supplier/scar/{scar.id}"
+                link=f"/supplier/scar?focusId={scar.id}"
             )
             
             # TODO: 发送邮件通知（需要集成 SMTP 服务）
@@ -254,6 +254,7 @@ class EightDService:
         
         # 更新 SCAR 状态
         scar.status = SCARStatus.UNDER_REVIEW
+        scar.current_handler_id = scar.created_by or scar.current_handler_id
         scar.updated_at = datetime.utcnow()
         
         await db.commit()
@@ -261,13 +262,13 @@ class EightDService:
         
         # 通知 SQE（查找创建 SCAR 的人）
         if scar.created_by:
-            await NotificationService.send_notification(
+            await NotificationHub.send_notification(
                 db=db,
                 user_ids=[scar.created_by],
+                message_type="workflow_exception",
                 title=f"8D 报告已提交：{scar.scar_number}",
                 content=f"供应商已提交 8D 报告，请及时审核。",
-                notification_type="workflow",
-                link=f"/quality/scar/{scar.id}/8d"
+                link=f"/quality/scar/eight-d/{scar.id}?action=review"
             )
         
         return eight_d
@@ -329,13 +330,13 @@ class EightDService:
         # 通知供应商
         if eight_d.submitted_by:
             status_text = "已批准" if review_data.approved else "已驳回"
-            await NotificationService.send_notification(
+            await NotificationHub.send_notification(
                 db=db,
                 user_ids=[eight_d.submitted_by],
+                message_type="workflow_exception",
                 title=f"8D 报告审核结果：{scar.scar_number}",
                 content=f"您的 8D 报告{status_text}。审核意见：{review_data.review_comments}",
-                notification_type="workflow",
-                link=f"/supplier/scar/{scar.id}/8d"
+                link=f"/supplier/eight-d/{scar.id}"
             )
         
         return eight_d

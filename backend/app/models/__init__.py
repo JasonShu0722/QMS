@@ -42,8 +42,20 @@ from app.models.process_defect import ProcessDefect, ResponsibilityCategory
 from app.models.process_issue import ProcessIssue, ProcessIssueStatus
 
 # Customer Quality Management Models (客户质量管理模型)
-from app.models.customer_complaint import CustomerComplaint, ComplaintType, ComplaintStatus, SeverityLevel
-from app.models.eight_d_customer import EightDCustomer, EightDStatus as CustomerEightDStatus, ApprovalLevel
+from app.models.customer_complaint import (
+    CustomerComplaint,
+    PhysicalAnalysisStatus,
+    ComplaintType,
+    ComplaintStatus,
+    PhysicalDispositionStatus,
+    SeverityLevel,
+)
+from app.models.eight_d_customer import (
+    EightDCustomer,
+    EightDCustomerComplaintLink,
+    EightDStatus as CustomerEightDStatus,
+    ApprovalLevel,
+)
 from app.models.customer_claim import CustomerClaim
 from app.models.supplier_claim import SupplierClaim, SupplierClaimStatus
 from app.models.lesson_learned import LessonLearned, SourceType
@@ -137,10 +149,13 @@ __all__ = [
     "ProcessIssueStatus",
     # Customer Quality Management
     "CustomerComplaint",
+    "PhysicalAnalysisStatus",
     "ComplaintType",
     "ComplaintStatus",
+    "PhysicalDispositionStatus",
     "SeverityLevel",
     "EightDCustomer",
+    "EightDCustomerComplaintLink",
     "CustomerEightDStatus",
     "ApprovalLevel",
     "CustomerClaim",

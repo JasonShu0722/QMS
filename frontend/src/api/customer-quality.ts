@@ -2,6 +2,12 @@
  * Customer quality management API client.
  */
 import request from '@/utils/request'
+import {
+  type BackendEightDCustomer,
+  buildEightDD4D7Payload,
+  buildEightDD8Payload,
+  normalizeEightDCustomer,
+} from '@/utils/customerEightD'
 import type {
   CustomerClaim,
   CustomerClaimCreate,
@@ -10,10 +16,17 @@ import type {
   CustomerComplaint,
   CustomerComplaintCreate,
   CustomerComplaintCustomerOption,
+  CustomerComplaintInternalUserOption,
+  CustomerComplaintPhysicalAnalysisRecord,
+  CustomerComplaintPhysicalDispositionRecord,
   CustomerComplaintListQuery,
   CustomerComplaintListResponse,
   CustomerQualityAnalysis,
+  EightDBatchInitRequest,
+  EightDPrimaryComplaintSwitchRequest,
+  EightDScopeAppendRequest,
   EightDCustomer,
+  EightDSLAStatus,
   EightDCustomerSubmit,
   EightDD8Submit,
   EightDReview,
@@ -51,6 +64,16 @@ export async function getCustomerComplaintCustomerOptions(
   })
 }
 
+export async function getCustomerComplaintInternalUserOptions(
+  params?: { keyword?: string }
+): Promise<CustomerComplaintInternalUserOption[]> {
+  return request({
+    url: '/api/v1/customer-complaints/internal-users',
+    method: 'get',
+    params,
+  })
+}
+
 export async function createCustomerComplaint(data: CustomerComplaintCreate): Promise<CustomerComplaint> {
   return request({
     url: '/api/v1/customer-complaints',
@@ -62,7 +85,7 @@ export async function createCustomerComplaint(data: CustomerComplaintCreate): Pr
 export async function submitPreliminaryAnalysis(
   id: number,
   data: PreliminaryAnalysis
-): Promise<{ message: string }> {
+): Promise<CustomerComplaint> {
   return request({
     url: `/api/v1/customer-complaints/${id}/preliminary-analysis`,
     method: 'post',
@@ -70,43 +93,138 @@ export async function submitPreliminaryAnalysis(
   })
 }
 
-export async function getEightDCustomer(complaintId: number): Promise<EightDCustomer> {
+export async function recordCustomerComplaintPhysicalDisposition(
+  id: number,
+  data: CustomerComplaintPhysicalDispositionRecord
+): Promise<CustomerComplaint> {
   return request({
+    url: `/api/v1/customer-complaints/${id}/physical-disposition`,
+    method: 'post',
+    data,
+  })
+}
+
+export async function recordCustomerComplaintPhysicalAnalysis(
+  id: number,
+  data: CustomerComplaintPhysicalAnalysisRecord
+): Promise<CustomerComplaint> {
+  return request({
+    url: `/api/v1/customer-complaints/${id}/physical-analysis`,
+    method: 'post',
+    data,
+  })
+}
+
+export async function initCustomerComplaintEightD(complaintId: number): Promise<EightDCustomer> {
+  const response = (await request({
+    url: `/api/v1/customer-complaints/${complaintId}/8d/init`,
+    method: 'post',
+  })) as unknown as BackendEightDCustomer
+  return normalizeEightDCustomer(response)
+}
+
+export async function initBatchCustomerComplaintEightD(
+  data: EightDBatchInitRequest
+): Promise<EightDCustomer> {
+  const response = (await request({
+    url: '/api/v1/customer-complaints/8d/init',
+    method: 'post',
+    data,
+  })) as unknown as BackendEightDCustomer
+  return normalizeEightDCustomer(response)
+}
+
+export async function appendCustomerComplaintEightDScope(
+  complaintId: number,
+  data: EightDScopeAppendRequest
+): Promise<EightDCustomer> {
+  const response = (await request({
+    url: `/api/v1/customer-complaints/${complaintId}/8d/complaints`,
+    method: 'post',
+    data,
+  })) as unknown as BackendEightDCustomer
+  return normalizeEightDCustomer(response)
+}
+
+export async function removeCustomerComplaintEightDScopeComplaint(
+  complaintId: number,
+  linkedComplaintId: number
+): Promise<EightDCustomer> {
+  const response = (await request({
+    url: `/api/v1/customer-complaints/${complaintId}/8d/complaints/${linkedComplaintId}`,
+    method: 'delete',
+  })) as unknown as BackendEightDCustomer
+  return normalizeEightDCustomer(response)
+}
+
+export async function switchCustomerComplaintEightDPrimaryComplaint(
+  complaintId: number,
+  data: EightDPrimaryComplaintSwitchRequest
+): Promise<EightDCustomer> {
+  const response = (await request({
+    url: `/api/v1/customer-complaints/${complaintId}/8d/primary-complaint`,
+    method: 'post',
+    data,
+  })) as unknown as BackendEightDCustomer
+  return normalizeEightDCustomer(response)
+}
+
+export async function getEightDCustomer(complaintId: number): Promise<EightDCustomer> {
+  const response = (await request({
     url: `/api/v1/customer-complaints/${complaintId}/8d`,
     method: 'get',
-  })
+  })) as unknown as BackendEightDCustomer
+  return normalizeEightDCustomer(response)
 }
 
 export async function submitEightDCustomer(
   complaintId: number,
   data: EightDCustomerSubmit
-): Promise<{ message: string }> {
-  return request({
-    url: `/api/v1/customer-complaints/${complaintId}/8d`,
+): Promise<EightDCustomer> {
+  const response = (await request({
+    url: `/api/v1/customer-complaints/${complaintId}/8d/d4-d7`,
     method: 'post',
-    data,
-  })
+    data: buildEightDD4D7Payload(data),
+  })) as unknown as BackendEightDCustomer
+  return normalizeEightDCustomer(response)
 }
 
 export async function submitEightDD8(
   complaintId: number,
   data: EightDD8Submit
-): Promise<{ message: string }> {
-  return request({
+): Promise<EightDCustomer> {
+  const response = (await request({
     url: `/api/v1/customer-complaints/${complaintId}/8d/d8`,
     method: 'post',
-    data,
-  })
+    data: buildEightDD8Payload(data),
+  })) as unknown as BackendEightDCustomer
+  return normalizeEightDCustomer(response)
 }
 
 export async function reviewEightDCustomer(
   complaintId: number,
   data: EightDReview
-): Promise<{ message: string }> {
-  return request({
+): Promise<EightDCustomer> {
+  const response = (await request({
     url: `/api/v1/customer-complaints/${complaintId}/8d/review`,
     method: 'post',
     data,
+  })) as unknown as BackendEightDCustomer
+  return normalizeEightDCustomer(response)
+}
+
+export async function archiveEightDCustomer(complaintId: number): Promise<EightDCustomer> {
+  const response = (await request({
+    url: `/api/v1/customer-complaints/${complaintId}/8d/archive`,
+    method: 'post',
+  })) as unknown as BackendEightDCustomer
+  return normalizeEightDCustomer(response)
+}
+
+export async function getEightDSLAStatus(complaintId: number): Promise<EightDSLAStatus> {
+  return request({
+    url: `/api/v1/customer-complaints/${complaintId}/8d/sla`,
+    method: 'get',
   })
 }
 

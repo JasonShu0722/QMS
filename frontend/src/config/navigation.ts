@@ -42,6 +42,7 @@ export const NAV_SECTIONS: NavigationSection[] = [
     title: '质量数据面板',
     icon: DataLine,
     children: [
+      { index: '/quality/problem-center', title: '问题中心' },
       { index: '/quality-dashboard', title: '数据仪表盘' },
       { index: '/quality-dashboard/analysis', title: '专项数据分析' },
     ],

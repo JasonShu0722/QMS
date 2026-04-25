@@ -27,7 +27,7 @@
             />
           </el-select>
         </el-form-item>
-        <el-form-item label="是否逾期">
+        <el-form-item label="是否超期">
           <el-select v-model="queryForm.is_overdue" placeholder="全部" clearable>
             <el-option label="是" :value="true" />
             <el-option label="否" :value="false" />
@@ -40,7 +40,7 @@
     </el-card>
 
     <el-card v-loading="loading">
-      <el-table :data="ncs" stripe>
+      <el-table :data="ncs" stripe row-key="id" :row-class-name="getRowClassName">
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column label="问题分类" width="140">
           <template #default="{ row }">
@@ -63,14 +63,12 @@
           <template #default="{ row }">
             <div :class="row.is_overdue ? 'font-bold text-red-600' : ''">
               {{ formatDateTime(row.deadline) }}
-              <el-tag v-if="row.is_overdue" type="danger" size="small" class="ml-1">
-                逾期
-              </el-tag>
+              <el-tag v-if="row.is_overdue" type="danger" size="small" class="ml-1">超期</el-tag>
             </div>
           </template>
         </el-table-column>
 
-        <el-table-column label="操作" width="250" fixed="right">
+        <el-table-column label="操作" width="260" fixed="right">
           <template #default="{ row }">
             <el-button
               v-if="canAssignAuditNC(row.verification_status)"
@@ -189,14 +187,17 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+
 import {
   assignAuditNC,
   closeAuditNC,
+  getAuditNC,
   getAuditNCs,
   respondAuditNC,
-  verifyAuditNC
+  verifyAuditNC,
 } from '@/api/audit'
 import { useProblemManagementStore } from '@/stores/problemManagement'
 import type { AuditNC, AuditNCAssign, AuditNCQuery, AuditNCResponse, AuditNCVerify } from '@/types/audit'
@@ -210,9 +211,11 @@ import {
   getAuditNCProblemCategoryLabel,
   getAuditNCStatusLabel,
   getAuditNCStatusOptions,
-  getAuditNCStatusType
+  getAuditNCStatusType,
 } from '@/utils/auditNc'
 
+const route = useRoute()
+const router = useRouter()
 const problemManagementStore = useProblemManagementStore()
 
 const loading = ref(false)
@@ -234,25 +237,49 @@ const queryForm = reactive<AuditNCQuery>({
   verification_status: '',
   is_overdue: undefined,
   page: 1,
-  page_size: 20
+  page_size: 20,
 })
 
 const assignForm = reactive<AuditNCAssign>({
   assigned_to: 0,
   deadline: '',
-  comment: ''
+  comment: '',
 })
 
 const respondForm = reactive<AuditNCResponse>({
   root_cause: '',
   corrective_action: '',
-  corrective_evidence: ''
+  corrective_evidence: '',
 })
 
 const verifyForm = reactive<AuditNCVerify>({
   is_approved: true,
-  verification_comment: ''
+  verification_comment: '',
 })
+
+function parseFocusId(value: unknown): number | null {
+  const raw = Array.isArray(value) ? value[0] : value
+  if (!raw) {
+    return null
+  }
+
+  const parsed = Number(raw)
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null
+}
+
+const focusedNcId = computed(() => parseFocusId(route.query.focusId))
+
+function clearRouteAction() {
+  if (!route.query.action) {
+    return
+  }
+
+  const { action, ...restQuery } = route.query
+  void router.replace({
+    name: 'AuditNCList',
+    query: restQuery,
+  })
+}
 
 function resolveProblemCategory(categoryKey: ProblemCategoryKey) {
   return problemManagementStore.getCategory(categoryKey)
@@ -266,6 +293,47 @@ function getProblemCategoryLabel(nc: AuditNC): string {
   )
 }
 
+async function loadFocusedNC() {
+  if (!focusedNcId.value || ncs.value.some((item) => item.id === focusedNcId.value)) {
+    return
+  }
+
+  try {
+    const focusedNc = await getAuditNC(focusedNcId.value)
+    ncs.value = [focusedNc, ...ncs.value]
+  } catch (error) {
+    console.error('Failed to load focused audit NC:', error)
+  }
+}
+
+async function consumeRouteAction() {
+  if (!route.query.action || !focusedNcId.value) {
+    return
+  }
+
+  const focusedNc = ncs.value.find((item) => item.id === focusedNcId.value)
+  if (!focusedNc) {
+    return
+  }
+
+  if (route.query.action === 'respond' && canRespondAuditNC(focusedNc.verification_status)) {
+    handleRespond(focusedNc)
+    clearRouteAction()
+    return
+  }
+
+  if (route.query.action === 'verify' && canVerifyAuditNC(focusedNc.verification_status)) {
+    handleVerify(focusedNc)
+    clearRouteAction()
+    return
+  }
+
+  if (route.query.action === 'close' && canCloseAuditNC(focusedNc.verification_status)) {
+    clearRouteAction()
+    await handleClose(focusedNc)
+  }
+}
+
 async function loadNCs() {
   loading.value = true
 
@@ -273,6 +341,8 @@ async function loadNCs() {
     const response = await getAuditNCs(queryForm)
     ncs.value = response.items
     total.value = response.total
+    await loadFocusedNC()
+    await consumeRouteAction()
   } catch (error: any) {
     ElMessage.error(error.message || '加载失败')
   } finally {
@@ -365,8 +435,18 @@ async function handleClose(nc: AuditNC) {
   }
 }
 
-function handleView(_nc: AuditNC) {
-  ElMessage.info('查看 NC 详情')
+function handleView(nc: AuditNC) {
+  void router.push({
+    name: 'AuditNCList',
+    query: {
+      ...route.query,
+      focusId: String(nc.id),
+    },
+  })
+}
+
+function getRowClassName({ row }: { row: AuditNC }) {
+  return focusedNcId.value === row.id ? 'focused-row' : ''
 }
 
 function formatDateTime(dateStr: string): string {
@@ -377,11 +457,33 @@ onMounted(async () => {
   await problemManagementStore.loadCatalog()
   await loadNCs()
 })
+
+watch(
+  () => route.query.focusId,
+  async (current, previous) => {
+    if (current === previous) {
+      return
+    }
+
+    await loadNCs()
+  }
+)
+
+watch(
+  () => route.query.action,
+  () => {
+    void consumeRouteAction()
+  }
+)
 </script>
 
 <style scoped>
 .audit-nc-list {
   min-height: 100vh;
   background-color: #f5f7fa;
+}
+
+:deep(.focused-row td) {
+  background-color: #ecf5ff !important;
 }
 </style>

@@ -53,16 +53,23 @@ export const supplierApi = {
   },
 
   /**
+   * 获取 8D 报告
+   */
+  get8DReport(scarId: number): Promise<EightDReport> {
+    return request.get(`/v1/scar/${scarId}/8d`)
+  },
+
+  /**
    * 审核 8D 报告（SQE）
    */
-  review8DReport(scarId: number, data: { approved: boolean; comments?: string }): Promise<void> {
+  review8DReport(scarId: number, data: { approved: boolean; review_comments: string }): Promise<EightDReport> {
     return request.post(`/v1/scar/${scarId}/8d/review`, data)
   },
 
   /**
    * 驳回 8D 报告（SQE）
    */
-  reject8DReport(scarId: number, data: { comments: string }): Promise<void> {
+  reject8DReport(scarId: number, data: { approved: boolean; review_comments: string }): Promise<EightDReport> {
     return request.post(`/v1/scar/${scarId}/8d/reject`, data)
   },
 

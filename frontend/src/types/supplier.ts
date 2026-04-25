@@ -33,13 +33,14 @@ export interface SCAR {
   defect_description: string
   defect_qty: number
   severity: 'low' | 'medium' | 'high' | 'critical'
-  status: 'pending' | 'in_progress' | 'submitted' | 'approved' | 'rejected' | 'closed'
+  status: 'open' | 'supplier_responding' | 'under_review' | 'approved' | 'rejected' | 'closed'
   current_handler_id?: number
   current_handler_name?: string
   deadline: string
   created_at: string
   updated_at: string
   created_by?: number
+  has_8d_report?: boolean
   eight_d_report?: EightDReport
 }
 
@@ -56,6 +57,11 @@ export interface EightDReport {
   submitted_by?: number
   reviewed_by?: number
   review_comments?: string
+  submitted_at?: string
+  reviewed_at?: string
+  submitter_name?: string
+  reviewer_name?: string
+  scar_number?: string
   created_at: string
   updated_at: string
 }

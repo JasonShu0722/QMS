@@ -78,7 +78,7 @@ const routes: RouteRecordRaw[] = [
         meta: { title: 'SCAR管理', requiresAuth: true, permission: { modulePath: 'supplier.scar', operation: 'read' } }
       },
       {
-        path: 'supplier/eight-d',
+        path: 'supplier/eight-d/:id?',
         name: 'EightDForm',
         component: () => import('@/views/supplier/EightDForm.vue'),
         meta: { title: '8D报告', requiresAuth: true, permission: { modulePath: 'supplier.scar', operation: 'read' } }
@@ -120,6 +120,12 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/supplier/SCARList.vue'),
         meta: { title: 'SCAR管理', requiresAuth: true, permission: { modulePath: 'quality.incoming', operation: 'read' } }
       },
+      {
+        path: 'quality/scar/eight-d/:id?',
+        name: 'ScarEightDReview',
+        component: () => import('@/views/supplier/EightDForm.vue'),
+        meta: { title: 'SCAR 8D审核', requiresAuth: true, permission: { modulePath: 'quality.incoming', operation: 'read' } }
+      },
       // ==================== 质量管理 - 过程 ====================
       {
         path: 'quality/process-defects',
@@ -147,7 +153,13 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '客户投诉', requiresAuth: true, permission: { modulePath: 'quality.customer', operation: 'read' } }
       },
       {
-        path: 'quality/eight-d-customer',
+        path: 'quality/customer-complaints/:id',
+        name: 'CustomerComplaintDetail',
+        component: () => import('@/views/CustomerComplaintDetail.vue'),
+        meta: { title: '客诉详情', requiresAuth: true, permission: { modulePath: 'quality.customer', operation: 'read' } }
+      },
+      {
+        path: 'quality/eight-d-customer/:id?',
         name: 'EightDCustomerForm',
         component: () => import('@/views/EightDCustomerForm.vue'),
         meta: { title: '客户8D报告', requiresAuth: true, permission: { modulePath: 'quality.customer', operation: 'read' } }
@@ -178,6 +190,17 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '经验教训库', requiresAuth: true, permission: { modulePath: 'quality.process', operation: 'read' } }
       },
       // ==================== 审核管理 ====================
+      {
+        path: 'quality/problem-center',
+        name: 'ProblemIssueCenter',
+        component: () => import('@/views/ProblemIssueCenter.vue'),
+        meta: {
+          title: '问题中心',
+          requiresAuth: true,
+          audience: 'internal',
+          permission: { modulePath: 'quality.data_panel', operation: 'read' }
+        }
+      },
       {
         path: 'audit/plans',
         name: 'AuditPlanCalendar',

@@ -27,8 +27,7 @@ def upgrade() -> None:
     op.add_column(
         "customer_complaints",
         sa.Column(
-            "physical_analysis_status",
-            analysis_status_enum,
+            "physical_analysis_status", analysis_status_enum,
             nullable=False,
             server_default="pending",
             comment="实物解析任务状态",

@@ -27,8 +27,7 @@ def upgrade() -> None:
     op.add_column(
         "customer_complaints",
         sa.Column(
-            "physical_disposition_status",
-            disposition_status_enum,
+            "physical_disposition_status", disposition_status_enum,
             nullable=False,
             server_default="pending",
             comment="实物处理备案状态",

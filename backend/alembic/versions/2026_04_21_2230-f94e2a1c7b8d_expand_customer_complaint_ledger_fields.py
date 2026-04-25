@@ -31,8 +31,7 @@ def upgrade() -> None:
     op.add_column(
         "customer_complaints",
         sa.Column(
-            "is_return_required",
-            sa.Boolean(),
+            "is_return_required", sa.Boolean(),
             nullable=False,
             server_default=sa.text("false"),
             comment="是否涉及退件",
@@ -41,8 +40,7 @@ def upgrade() -> None:
     op.add_column(
         "customer_complaints",
         sa.Column(
-            "requires_physical_analysis",
-            sa.Boolean(),
+            "requires_physical_analysis", sa.Boolean(),
             nullable=False,
             server_default=sa.text("false"),
             comment="是否需要实物解析",

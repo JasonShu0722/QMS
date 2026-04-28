@@ -3,7 +3,7 @@
     <div class="mb-6">
       <h1 class="text-2xl font-bold">问题中心</h1>
       <p class="mt-1 text-sm text-gray-500">
-        先统一收供应商质量、客户质量、制程质量、新品质量和审核管理的问题视图，后续再逐步接入更多板块。
+        统一汇总供应商质量、客户质量、制程质量、新品质量和审核管理的问题单，后续再逐步接入更多板块。
       </p>
     </div>
 
@@ -123,7 +123,7 @@
 
         <el-table-column prop="title" label="问题标题" min-width="260" show-overflow-tooltip />
 
-        <el-table-column label="客户/对象" min-width="180">
+        <el-table-column label="客户/供应商/对象" min-width="180">
           <template #default="{ row }">
             <span>{{ row.customer_name || '-' }}</span>
           </template>
@@ -135,9 +135,9 @@
           </template>
         </el-table-column>
 
-        <el-table-column label="当前责任人" width="120">
+        <el-table-column label="当前责任人" min-width="220" show-overflow-tooltip>
           <template #default="{ row }">
-            <span>{{ row.assigned_to ? `#${row.assigned_to}` : '-' }}</span>
+            <span>{{ getAssignedUserLabel(row.assigned_to) }}</span>
           </template>
         </el-table-column>
 
@@ -225,8 +225,14 @@ import { ElMessage } from 'element-plus'
 import { problemManagementApi } from '@/api/problem-management'
 import { useAuthStore } from '@/stores/auth'
 import { useProblemManagementStore } from '@/stores/problemManagement'
-import type { ProblemIssueSummaryItem, ProblemIssueSummaryQuery, ProblemModuleKey } from '@/types/problem-management'
+import type {
+  InternalUserOption,
+  ProblemIssueSummaryItem,
+  ProblemIssueSummaryQuery,
+  ProblemModuleKey,
+} from '@/types/problem-management'
 import { formatDateTimeInBeijing } from '@/utils/dateTime'
+import { buildInternalUserLabelMap } from '@/utils/internalUsers'
 import {
   buildProblemIssueModuleSummaries,
   buildProblemIssueModuleOptions,
@@ -261,8 +267,10 @@ const loading = ref(false)
 const items = ref<ProblemIssueSummaryItem[]>([])
 const total = ref(0)
 const moduleCounts = ref<Partial<Record<ProblemModuleKey, number>>>({})
+const internalUsers = ref<InternalUserOption[]>([])
 
 const currentUserId = computed(() => authStore.userInfo?.id ?? null)
+const internalUserLabelMap = computed(() => buildInternalUserLabelMap(internalUsers.value))
 
 const actionableCount = computed(() =>
   items.value.filter((item) => isProblemIssueQuickActionable(item, currentUserId.value)).length
@@ -336,6 +344,22 @@ async function loadIssueSummaries() {
   } finally {
     loading.value = false
   }
+}
+
+async function loadInternalUsers() {
+  try {
+    internalUsers.value = await problemManagementApi.getInternalUsers()
+  } catch (error: any) {
+    ElMessage.error(error.message || '加载内部责任人列表失败')
+  }
+}
+
+function getAssignedUserLabel(assignedTo?: number | null) {
+  if (!assignedTo) {
+    return '-'
+  }
+
+  return internalUserLabelMap.value[assignedTo] || `#${assignedTo}`
 }
 
 function applyRouteQueryToForm() {
@@ -414,6 +438,7 @@ function handleOpenSource(item: ProblemIssueSummaryItem) {
 
 onMounted(async () => {
   await problemManagementStore.loadCatalog()
+  await loadInternalUsers()
   applyRouteQueryToForm()
   await loadIssueSummaries()
 })

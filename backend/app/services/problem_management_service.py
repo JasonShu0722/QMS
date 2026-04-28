@@ -18,7 +18,7 @@ from app.core.problem_management import (
     get_problem_category_by_scar_context,
     get_problem_category_by_trial_issue_type,
 )
-from app.models.audit import AuditExecution, AuditNC, AuditPlan
+from app.models.audit import AuditExecution, AuditNC, AuditPlan, CustomerAudit
 from app.models.customer_complaint import ComplaintStatus, ComplaintType, CustomerComplaint
 from app.models.eight_d_customer import EightDCustomerComplaintLink
 from app.models.process_defect import ProcessDefect
@@ -26,8 +26,9 @@ from app.models.process_issue import ProcessIssue, ProcessIssueStatus
 from app.models.scar import SCAR, SCARStatus
 from app.models.supplier import Supplier
 from app.models.trial_issue import IssueStatus, TrialIssue
-from app.models.user import User, UserType
+from app.models.user import User, UserStatus, UserType
 from app.schemas.problem_management import (
+    InternalUserOption,
     ProblemIssueSummaryItem,
     ProblemIssueSummaryListResponse,
     ProblemIssueSummaryQuery,
@@ -45,6 +46,30 @@ class ProblemManagementService:
         "incoming_quality",
         "new_product_quality",
     }
+
+    @staticmethod
+    async def list_internal_user_options(
+        db: AsyncSession,
+        *,
+        keyword: str | None = None,
+    ) -> list[InternalUserOption]:
+        query = select(User).where(
+            User.user_type == UserType.INTERNAL,
+            User.status == UserStatus.ACTIVE,
+        )
+
+        if keyword:
+            like_value = f"%{keyword.strip()}%"
+            query = query.where(
+                or_(
+                    User.username.ilike(like_value),
+                    User.full_name.ilike(like_value),
+                    User.department.ilike(like_value),
+                )
+            )
+
+        result = await db.execute(query.order_by(User.department.asc(), User.full_name.asc(), User.username.asc()))
+        return [InternalUserOption.model_validate(item) for item in result.scalars().all()]
 
     @staticmethod
     def _is_actionable_for_current_user(
@@ -237,13 +262,6 @@ class ProblemManagementService:
     ) -> list[ProblemIssueSummaryItem]:
         conditions = []
 
-        if query.problem_category_key:
-            try:
-                audit_type = get_audit_type_by_problem_category(query.problem_category_key)
-            except ValueError:
-                return []
-            conditions.append(AuditPlan.audit_type == audit_type)
-
         if query.keyword:
             like_value = f"%{query.keyword.strip()}%"
             conditions.append(
@@ -255,9 +273,16 @@ class ProblemManagementService:
             )
 
         stmt = (
-            select(AuditNC, AuditPlan.audit_type, AuditExecution.auditor_id)
+            select(
+                AuditNC,
+                AuditPlan.audit_type,
+                AuditExecution.auditor_id,
+                CustomerAudit.id.label("customer_audit_id"),
+                CustomerAudit.customer_name.label("customer_audit_name"),
+            )
             .outerjoin(AuditExecution, AuditExecution.id == AuditNC.audit_id)
             .outerjoin(AuditPlan, AuditPlan.id == AuditExecution.audit_plan_id)
+            .outerjoin(CustomerAudit, CustomerAudit.id == -AuditNC.audit_id)
         )
         if conditions:
             stmt = stmt.where(and_(*conditions))
@@ -268,25 +293,31 @@ class ProblemManagementService:
         now = datetime.utcnow()
 
         items: list[ProblemIssueSummaryItem] = []
-        for nc, audit_type, auditor_id in rows:
-            if not audit_type:
+        for nc, audit_type, auditor_id, customer_audit_id, customer_audit_name in rows:
+            resolved_audit_type = audit_type or ("customer_audit" if customer_audit_id else None)
+            if not resolved_audit_type:
                 continue
 
             unified_status = ProblemManagementService._normalize_audit_unified_status(nc.verification_status)
             if query.unified_status and unified_status != query.unified_status:
                 continue
 
-            category = get_problem_category_by_audit_type(audit_type)
+            category = get_problem_category_by_audit_type(resolved_audit_type)
+            if query.problem_category_key and category.key != query.problem_category_key:
+                continue
             is_overdue = nc.deadline < now and nc.verification_status not in ["closed", "verified"]
             action_owner_id = nc.assigned_to
             if unified_status in [UnifiedProblemStatus.PENDING_REVIEW, UnifiedProblemStatus.VERIFYING]:
-                action_owner_id = auditor_id
+                action_owner_id = auditor_id or nc.created_by
+
+            source_label = "客户审核问题" if customer_audit_id else "审核 NC"
 
             items.append(
                 ProblemIssueSummaryItem(
                     source_type="audit_nc",
                     source_id=nc.id,
-                    source_label="审核 NC",
+                    source_parent_id=customer_audit_id,
+                    source_label=source_label,
                     module_key="audit_management",
                     problem_category_key=category.key,
                     problem_category_label=category.label,
@@ -301,7 +332,7 @@ class ProblemManagementService:
                     owner_id=nc.created_by,
                     verified_by=nc.verified_by,
                     response_mode="brief",
-                    customer_name=None,
+                    customer_name=customer_audit_name,
                     is_overdue=is_overdue,
                     due_at=nc.deadline,
                     created_at=nc.created_at,

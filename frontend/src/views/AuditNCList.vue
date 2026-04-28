@@ -1,8 +1,16 @@
 <template>
   <div class="audit-nc-list p-4 md:p-6">
-    <div class="mb-6">
-      <h1 class="text-2xl font-bold">NC 整改清单</h1>
-      <p class="mt-1 text-sm text-gray-500">审核不符合项整改跟踪</p>
+    <div class="mb-6 flex flex-wrap items-start justify-between gap-3">
+      <div>
+        <h1 class="text-2xl font-bold">NC 整改清单</h1>
+        <p class="mt-1 text-sm text-gray-500">审核不符合项整改跟踪</p>
+        <p v-if="isCustomerAuditSource" class="mt-2 text-sm text-blue-600">
+          当前 NC 来自客户审核问题任务，可在处理后返回客户审核台账继续跟踪。
+        </p>
+      </div>
+      <el-button v-if="isCustomerAuditSource" @click="goBackToCustomerAuditSource">
+        返回客审任务
+      </el-button>
     </div>
 
     <el-card class="mb-6">
@@ -118,10 +126,29 @@
       </div>
     </el-card>
 
-    <el-dialog v-model="showAssignDialog" title="指派 NC" width="500px">
+    <el-dialog
+      v-model="showAssignDialog"
+      title="指派 NC"
+      width="90%"
+      class="max-w-xl"
+      :close-on-click-modal="false"
+    >
       <el-form :model="assignForm" label-width="100px">
         <el-form-item label="指派给">
-          <el-input-number v-model="assignForm.assigned_to" :min="1" placeholder="用户 ID" class="w-full" />
+          <el-select
+            v-model="assignForm.assigned_to"
+            filterable
+            placeholder="请选择内部责任人"
+            class="w-full"
+            :loading="loadingInternalUsers"
+          >
+            <el-option
+              v-for="user in internalUsers"
+              :key="user.id"
+              :label="formatUserLabel(user)"
+              :value="user.id"
+            />
+          </el-select>
         </el-form-item>
         <el-form-item label="整改期限">
           <el-date-picker
@@ -143,10 +170,21 @@
       </template>
     </el-dialog>
 
-    <el-dialog v-model="showRespondDialog" title="填写整改对策" width="600px">
+    <el-dialog
+      v-model="showRespondDialog"
+      title="填写整改对策"
+      width="90%"
+      class="max-w-2xl"
+      :close-on-click-modal="false"
+    >
       <el-form :model="respondForm" label-width="100px">
         <el-form-item label="根本原因" required>
-          <el-input v-model="respondForm.root_cause" type="textarea" :rows="4" placeholder="请详细分析根本原因" />
+          <el-input
+            v-model="respondForm.root_cause"
+            type="textarea"
+            :rows="4"
+            placeholder="请详细分析根本原因"
+          />
         </el-form-item>
         <el-form-item label="纠正措施" required>
           <el-input
@@ -166,7 +204,13 @@
       </template>
     </el-dialog>
 
-    <el-dialog v-model="showVerifyDialog" title="验证 NC 整改" width="500px">
+    <el-dialog
+      v-model="showVerifyDialog"
+      title="验证 NC 整改"
+      width="90%"
+      class="max-w-xl"
+      :close-on-click-modal="false"
+    >
       <el-form :model="verifyForm" label-width="100px">
         <el-form-item label="验证结果" required>
           <el-radio-group v-model="verifyForm.is_approved">
@@ -199,9 +243,11 @@ import {
   respondAuditNC,
   verifyAuditNC,
 } from '@/api/audit'
+import { problemManagementApi } from '@/api/problem-management'
 import { useProblemManagementStore } from '@/stores/problemManagement'
 import type { AuditNC, AuditNCAssign, AuditNCQuery, AuditNCResponse, AuditNCVerify } from '@/types/audit'
-import type { ProblemCategoryKey } from '@/types/problem-management'
+import type { InternalUserOption, ProblemCategoryKey } from '@/types/problem-management'
+import { formatInternalUserLabel } from '@/utils/internalUsers'
 import {
   buildAuditNCProblemCategoryOptions,
   canAssignAuditNC,
@@ -219,10 +265,12 @@ const router = useRouter()
 const problemManagementStore = useProblemManagementStore()
 
 const loading = ref(false)
+const loadingInternalUsers = ref(false)
 const submitting = ref(false)
 const ncs = ref<AuditNC[]>([])
 const total = ref(0)
 const currentNC = ref<AuditNC | null>(null)
+const internalUsers = ref<InternalUserOption[]>([])
 
 const showAssignDialog = ref(false)
 const showRespondDialog = ref(false)
@@ -257,6 +305,10 @@ const verifyForm = reactive<AuditNCVerify>({
   verification_comment: '',
 })
 
+function formatUserLabel(user: InternalUserOption) {
+  return formatInternalUserLabel(user)
+}
+
 function parseFocusId(value: unknown): number | null {
   const raw = Array.isArray(value) ? value[0] : value
   if (!raw) {
@@ -268,6 +320,10 @@ function parseFocusId(value: unknown): number | null {
 }
 
 const focusedNcId = computed(() => parseFocusId(route.query.focusId))
+const sourceCustomerAuditId = computed(() => parseFocusId(route.query.sourceParentId))
+const isCustomerAuditSource = computed(
+  () => route.query.sourceCategoryKey === 'AQ3' && Boolean(sourceCustomerAuditId.value)
+)
 
 function clearRouteAction() {
   if (!route.query.action) {
@@ -278,6 +334,25 @@ function clearRouteAction() {
   void router.replace({
     name: 'AuditNCList',
     query: restQuery,
+  })
+}
+
+function goBackToCustomerAuditSource() {
+  if (!sourceCustomerAuditId.value) {
+    return
+  }
+
+  void router.push({
+    name: 'CustomerAuditList',
+    query: {
+      focusId: String(sourceCustomerAuditId.value),
+      ...(focusedNcId.value
+        ? {
+            issueTaskId: String(focusedNcId.value),
+            openIssueTasks: 'true',
+          }
+        : {}),
+    },
   })
 }
 
@@ -347,6 +422,18 @@ async function loadNCs() {
     ElMessage.error(error.message || '加载失败')
   } finally {
     loading.value = false
+  }
+}
+
+async function loadInternalUsers() {
+  loadingInternalUsers.value = true
+
+  try {
+    internalUsers.value = await problemManagementApi.getInternalUsers()
+  } catch (error: any) {
+    ElMessage.error(error.message || '加载内部责任人列表失败')
+  } finally {
+    loadingInternalUsers.value = false
   }
 }
 
@@ -455,6 +542,7 @@ function formatDateTime(dateStr: string): string {
 
 onMounted(async () => {
   await problemManagementStore.loadCatalog()
+  await loadInternalUsers()
   await loadNCs()
 })
 

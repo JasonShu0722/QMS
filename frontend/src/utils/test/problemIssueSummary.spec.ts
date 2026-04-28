@@ -96,6 +96,7 @@ describe('problem issue summary helpers', () => {
     expect(getProblemIssueSourceRoute({ source_type: 'customer_complaint', source_id: 12 })).toEqual({
       name: 'CustomerComplaintDetail',
       params: { id: 12 },
+      query: { sourceRouteName: 'ProblemIssueCenter' },
     })
 
     expect(getProblemIssueSourceActionLabel({ source_type: 'process_issue' })).toBe('查看问题单')
@@ -120,6 +121,28 @@ describe('problem issue summary helpers', () => {
     expect(getProblemIssueSourceRoute({ source_type: 'audit_nc', source_id: 9 })).toEqual({
       name: 'AuditNCList',
       query: { focusId: '9' },
+    })
+
+    expect(
+      getProblemIssueSourceActionLabel({
+        source_type: 'audit_nc',
+        problem_category_key: 'AQ3',
+      } as any)
+    ).toBe('查看客审任务')
+    expect(
+      getProblemIssueSourceRoute({
+        source_type: 'audit_nc',
+        source_id: 19,
+        source_parent_id: 7,
+        problem_category_key: 'AQ3',
+      } as any)
+    ).toEqual({
+      name: 'CustomerAuditList',
+      query: {
+        focusId: '7',
+        issueTaskId: '19',
+        openIssueTasks: 'true',
+      },
     })
   })
 
@@ -209,12 +232,19 @@ describe('problem issue summary helpers', () => {
           assigned_to: 99,
           action_owner_id: 7,
           unified_status: 'pending_review',
+          problem_category_key: 'AQ3',
+          source_parent_id: 4,
         },
         7
       )
     ).toEqual({
       name: 'AuditNCList',
-      query: { focusId: '10', action: 'verify' },
+      query: {
+        focusId: '10',
+        action: 'verify',
+        sourceParentId: '4',
+        sourceCategoryKey: 'AQ3',
+      },
     })
     expect(
       getProblemIssueQuickActionLabel(
@@ -228,6 +258,40 @@ describe('problem issue summary helpers', () => {
         7
       )
     ).toBe('关闭')
+
+    expect(
+      getProblemIssueQuickActionRoute(
+        {
+          source_type: 'scar',
+          source_id: 31,
+          assigned_to: 99,
+          action_owner_id: 7,
+          unified_status: 'pending_review',
+        },
+        7
+      )
+    ).toEqual({
+      name: 'ScarEightDReview',
+      params: { id: 31 },
+      query: {
+        action: 'review',
+        focusId: '31',
+        sourceRouteName: 'ScarManagement',
+        sourceFocusId: '31',
+      },
+    })
+    expect(
+      getProblemIssueQuickActionLabel(
+        {
+          source_type: 'scar',
+          source_id: 31,
+          assigned_to: 99,
+          action_owner_id: 7,
+          unified_status: 'pending_review',
+        },
+        7
+      )
+    ).toBe('审核8D')
 
     expect(
       getProblemIssueQuickActionRoute(
@@ -275,7 +339,10 @@ describe('problem issue summary helpers', () => {
     ).toEqual({
       name: 'CustomerComplaintDetail',
       params: { id: 12 },
-      query: { action: 'analysis' },
+      query: {
+        action: 'analysis',
+        sourceRouteName: 'ProblemIssueCenter',
+      },
     })
     expect(
       getProblemIssueQuickActionLabel(
@@ -290,6 +357,26 @@ describe('problem issue summary helpers', () => {
         7
       )
     ).toBe('实物处理')
+    expect(
+      getProblemIssueQuickActionRoute(
+        {
+          source_type: 'customer_complaint',
+          source_id: 13,
+          assigned_to: 7,
+          action_owner_id: 7,
+          unified_status: 'open',
+          requires_physical_analysis: false,
+        },
+        7
+      )
+    ).toEqual({
+      name: 'CustomerComplaintDetail',
+      params: { id: 13 },
+      query: {
+        action: 'disposition',
+        sourceRouteName: 'ProblemIssueCenter',
+      },
+    })
 
     expect(
       getProblemIssueQuickActionRoute(
@@ -305,7 +392,12 @@ describe('problem issue summary helpers', () => {
     ).toEqual({
       name: 'ScarEightDReview',
       params: { id: 22 },
-      query: { action: 'review' },
+      query: {
+        action: 'review',
+        focusId: '22',
+        sourceRouteName: 'ScarManagement',
+        sourceFocusId: '22',
+      },
     })
   })
 

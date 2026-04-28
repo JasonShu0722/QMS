@@ -7,7 +7,7 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.audit import AuditExecution, AuditNC, AuditPlan, AuditTemplate
+from app.models.audit import AuditExecution, AuditNC, AuditPlan, AuditTemplate, CustomerAudit
 from app.models.new_product_project import NewProductProject, ProjectStage, ProjectStatus
 from app.models.process_defect import ProcessDefect, ResponsibilityCategory
 from app.models.process_issue import ProcessIssue, ProcessIssueStatus
@@ -318,6 +318,35 @@ async def _seed_internal_user(
     return user
 
 
+async def _seed_customer_audit(
+    db_session: AsyncSession,
+    *,
+    user: User,
+    name_suffix: str,
+) -> CustomerAudit:
+    now = datetime.utcnow()
+
+    audit = CustomerAudit(
+        customer_name=f"Customer {name_suffix}",
+        audit_type="system",
+        audit_date=now,
+        final_result="conditional_passed",
+        score=88,
+        external_issue_list_path=None,
+        internal_contact="QA",
+        audit_report_path=None,
+        summary="test customer audit",
+        status="completed",
+        created_at=now,
+        updated_at=now,
+        created_by=user.id,
+    )
+    db_session.add(audit)
+    await db_session.commit()
+    await db_session.refresh(audit)
+    return audit
+
+
 @pytest.mark.asyncio
 async def test_get_problem_management_catalog_requires_auth(async_client: AsyncClient):
     response = await async_client.get("/api/v1/problem-management/catalog")
@@ -348,6 +377,127 @@ async def test_get_problem_management_catalog_returns_confirmed_metadata(
     assert any(item["key"] == "CQ1" and item["label"] == "售后" for item in data["categories"])
     assert any(item["key"] == "IQ0" and item["label"] == "结构料" for item in data["categories"])
     assert any(item["key"] == "AQ3" and item["label"] == "客户审核问题" for item in data["categories"])
+
+
+@pytest.mark.asyncio
+async def test_get_problem_management_internal_users_returns_active_internal_users(
+    async_client: AsyncClient,
+    db_session: AsyncSession,
+    test_user_token: str,
+):
+    headers = {"Authorization": f"Bearer {test_user_token}"}
+    now = datetime.utcnow()
+    auth_strategy = LocalAuthStrategy()
+
+    active_internal_user = User(
+        username="assignable-user",
+        password_hash=auth_strategy.hash_password("Test@1234"),
+        full_name="Assignable User",
+        email="assignable-user@example.com",
+        phone="13800138009",
+        user_type=UserType.INTERNAL,
+        status=UserStatus.ACTIVE,
+        department="工程部",
+        position="工程师",
+        password_changed_at=now,
+        created_at=now,
+        updated_at=now,
+    )
+    supplier_user = User(
+        username="assignable-supplier",
+        password_hash=auth_strategy.hash_password("Test@1234"),
+        full_name="Assignable Supplier",
+        email="assignable-supplier@example.com",
+        phone="13800138010",
+        user_type=UserType.SUPPLIER,
+        status=UserStatus.ACTIVE,
+        department=None,
+        position=None,
+        password_changed_at=now,
+        created_at=now,
+        updated_at=now,
+    )
+    inactive_internal_user = User(
+        username="inactive-internal-user",
+        password_hash=auth_strategy.hash_password("Test@1234"),
+        full_name="Inactive Internal User",
+        email="inactive-internal-user@example.com",
+        phone="13800138011",
+        user_type=UserType.INTERNAL,
+        status=UserStatus.FROZEN,
+        department="质量部",
+        position="工程师",
+        password_changed_at=now,
+        created_at=now,
+        updated_at=now,
+    )
+    db_session.add_all([active_internal_user, supplier_user, inactive_internal_user])
+    await db_session.commit()
+
+    response = await async_client.get(
+        "/api/v1/problem-management/internal-users",
+        headers=headers,
+        params={"keyword": "Assignable"},
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+
+    assert len(data) == 1
+    assert data[0]["username"] == "assignable-user"
+    assert data[0]["department"] == "工程部"
+
+
+@pytest.mark.asyncio
+async def test_customer_audit_issue_task_appears_in_problem_management_actionable_queue(
+    async_client: AsyncClient,
+    db_session: AsyncSession,
+    test_user: User,
+    test_user_token: str,
+):
+    headers = {"Authorization": f"Bearer {test_user_token}"}
+    audit = await _seed_customer_audit(db_session, user=test_user, name_suffix="aq3-problem")
+
+    create_response = await async_client.post(
+        f"/api/v1/customer-audits/{audit.id}/issue-tasks",
+        headers=headers,
+        json={
+            "customer_audit_id": audit.id,
+            "issue_description": "Customer-audit issue task should flow into the unified problem center",
+            "responsible_dept": "Quality",
+            "assigned_to": test_user.id,
+            "deadline": (datetime.utcnow() + timedelta(days=5)).isoformat(),
+            "priority": "high",
+        },
+    )
+
+    assert create_response.status_code == 201
+    created_task = create_response.json()
+    assert created_task["status"] == "assigned"
+
+    response = await async_client.get(
+        "/api/v1/problem-management/issues",
+        headers=headers,
+        params={
+            "problem_category_key": "AQ3",
+            "only_actionable_to_me": True,
+        },
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["total"] == 1
+    assert data["module_counts"] == {"audit_management": 1}
+
+    issue = data["items"][0]
+    assert issue["source_type"] == "audit_nc"
+    assert issue["source_label"] == "客户审核问题"
+    assert issue["problem_category_key"] == "AQ3"
+    assert issue["unified_status"] == "assigned"
+    assert issue["source_parent_id"] == audit.id
+    assert issue["assigned_to"] == test_user.id
+    assert issue["action_owner_id"] == test_user.id
+    assert issue["customer_name"] == audit.customer_name
 
 
 @pytest.mark.asyncio

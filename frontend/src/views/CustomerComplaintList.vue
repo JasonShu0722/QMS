@@ -94,6 +94,7 @@
         stripe
         class="w-full"
         row-key="id"
+        :row-class-name="getRowClassName"
         @selection-change="handleSelectionChange"
       >
         <el-table-column type="selection" width="48" fixed="left" />
@@ -232,11 +233,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import {
+  getCustomerComplaint,
   getCustomerComplaintCustomerOptions,
   getCustomerComplaints,
   initBatchCustomerComplaintEightD,
@@ -273,6 +275,7 @@ import {
 } from '@/utils/customerComplaint'
 import { getEightDStatusLabel } from '@/utils/customerEightD'
 
+const route = useRoute()
 const router = useRouter()
 const problemManagementStore = useProblemManagementStore()
 
@@ -306,6 +309,7 @@ const complaintTypeOptions = computed(() =>
 const canBatchLaunchEightD = computed(() =>
   canBatchLaunchCustomerComplaintEightD(selectedComplaints.value)
 )
+const focusedComplaintId = computed(() => parseFocusId(route.query.focusId))
 const batchLaunchHint = computed(() =>
   getCustomerComplaintBatchLaunchHint(selectedComplaints.value)
 )
@@ -335,6 +339,16 @@ function getEightDDisplayStatus(row: CustomerComplaint): string {
   return getEightDStatusLabel(row.eight_d_status)
 }
 
+function parseFocusId(value: unknown): number | null {
+  const raw = Array.isArray(value) ? value[0] : value
+  if (!raw) {
+    return null
+  }
+
+  const parsed = Number(raw)
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null
+}
+
 async function loadCustomerOptions() {
   try {
     customerOptions.value = await getCustomerComplaintCustomerOptions()
@@ -359,11 +373,28 @@ async function loadComplaints() {
     complaintList.value = response.items
     selectedComplaints.value = []
     total.value = response.total
+    await loadFocusedComplaint()
   } catch (error: any) {
     ElMessage.error(error.message || '加载客诉列表失败')
     console.error('load complaints error:', error)
   } finally {
     loading.value = false
+  }
+}
+
+async function loadFocusedComplaint() {
+  if (
+    !focusedComplaintId.value ||
+    complaintList.value.some((item) => item.id === focusedComplaintId.value)
+  ) {
+    return
+  }
+
+  try {
+    const focusedComplaint = await getCustomerComplaint(focusedComplaintId.value)
+    complaintList.value = [focusedComplaint, ...complaintList.value]
+  } catch (error) {
+    console.error('Failed to load focused complaint:', error)
   }
 }
 
@@ -384,7 +415,14 @@ function handleReset() {
 }
 
 function handleView(row: CustomerComplaint) {
-  router.push({ name: 'CustomerComplaintDetail', params: { id: row.id } })
+  router.push({
+    name: 'CustomerComplaintDetail',
+    params: { id: row.id },
+    query: {
+      sourceRouteName: 'CustomerComplaintList',
+      sourceFocusId: String(row.id),
+    },
+  })
 }
 
 function handleDisposition(row: CustomerComplaint) {
@@ -403,7 +441,14 @@ function handleSelectionChange(selection: CustomerComplaint[]) {
 
 async function handle8D(row: CustomerComplaint) {
   if (row.eight_d_report_id) {
-    router.push({ name: 'EightDCustomerForm', params: { id: row.id } })
+    router.push({
+      name: 'EightDCustomerForm',
+      params: { id: row.id },
+      query: {
+        sourceRouteName: 'CustomerComplaintList',
+        sourceFocusId: String(row.id),
+      },
+    })
     return
   }
 
@@ -412,7 +457,14 @@ async function handle8D(row: CustomerComplaint) {
     await initCustomerComplaintEightD(row.id)
     ElMessage.success(`客诉 ${row.complaint_number} 已发起 8D`)
     await loadComplaints()
-    router.push({ name: 'EightDCustomerForm', params: { id: row.id } })
+    router.push({
+      name: 'EightDCustomerForm',
+      params: { id: row.id },
+      query: {
+        sourceRouteName: 'CustomerComplaintList',
+        sourceFocusId: String(row.id),
+      },
+    })
   } catch (error: any) {
     ElMessage.error(error.message || '发起 8D 失败')
   } finally {
@@ -442,7 +494,14 @@ async function handleBatch8D() {
     })
     ElMessage.success(`已按 ${complaints.length} 条客诉发起同一张 8D`)
     await loadComplaints()
-    router.push({ name: 'EightDCustomerForm', params: { id: report.complaint_id || primaryComplaint.id } })
+    router.push({
+      name: 'EightDCustomerForm',
+      params: { id: report.complaint_id || primaryComplaint.id },
+      query: {
+        sourceRouteName: 'CustomerComplaintList',
+        sourceFocusId: String(report.complaint_id || primaryComplaint.id),
+      },
+    })
   } catch (error: any) {
     ElMessage.error(error.message || '批量发起 8D 失败')
   } finally {
@@ -466,16 +525,35 @@ function handleAnalysisSuccess() {
   void loadComplaints()
 }
 
+function getRowClassName({ row }: { row: CustomerComplaint }) {
+  return focusedComplaintId.value === row.id ? 'focused-row' : ''
+}
+
 onMounted(() => {
   void problemManagementStore.loadCatalog()
   void loadCustomerOptions()
   void loadComplaints()
 })
+
+watch(
+  () => route.query.focusId,
+  async (current, previous) => {
+    if (current === previous) {
+      return
+    }
+
+    await loadComplaints()
+  }
+)
 </script>
 
 <style scoped>
 .customer-complaint-list {
   min-height: 100vh;
+}
+
+:deep(.focused-row td) {
+  background-color: #ecf5ff !important;
 }
 
 @media (max-width: 768px) {

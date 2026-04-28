@@ -149,6 +149,12 @@
       :defect-id="currentDefectId"
       @success="handleFormSuccess"
     />
+
+    <ProcessIssueCreateDialog
+      v-model="issueDialogVisible"
+      :seed-defect="issueSeedDefect"
+      @success="handleIssueCreateSuccess"
+    />
   </div>
 </template>
 
@@ -168,6 +174,7 @@ import type {
   ResponsibilityCategoryOption
 } from '@/types/process-quality';
 import ProcessDefectForm from '@/components/ProcessDefectForm.vue';
+import ProcessIssueCreateDialog from '@/components/ProcessIssueCreateDialog.vue';
 import { useRouter } from 'vue-router';
 
 const router = useRouter();
@@ -178,6 +185,8 @@ const tableData = ref<ProcessDefect[]>([]);
 const responsibilityCategories = ref<ResponsibilityCategoryOption[]>([]);
 const formDialogVisible = ref(false);
 const currentDefectId = ref<number | null>(null);
+const issueDialogVisible = ref(false);
+const issueSeedDefect = ref<ProcessDefect | null>(null);
 
 // 日期范围
 const dateRange = ref<[string, string]>([
@@ -322,11 +331,16 @@ const handleDelete = async (row: ProcessDefect) => {
 
 // 发起问题单
 const handleCreateIssue = (row: ProcessDefect) => {
+  issueSeedDefect.value = row;
+  issueDialogVisible.value = true;
+};
+
+const handleIssueCreateSuccess = (issueId: number) => {
+  issueDialogVisible.value = false;
+  issueSeedDefect.value = null;
   router.push({
-    name: 'ProcessIssueCreate',
-    query: {
-      defect_id: row.id
-    }
+    name: 'ProcessIssueDetail',
+    params: { id: issueId }
   });
 };
 

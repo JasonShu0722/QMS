@@ -68,7 +68,7 @@ async def test_create_customer_audit_issue_task_returns_unified_problem_category
     data = response.json()
     assert data["customer_audit_id"] == audit.id
     assert data["issue_description"] == "Line clearance gap"
-    assert data["status"] == "open"
+    assert data["status"] == "assigned"
     assert data["priority"] == "high"
     assert data["problem_category_key"] == "AQ3"
     assert data["problem_category_label"]

@@ -211,7 +211,7 @@ class CustomerAuditService:
             responsible_dept=task_data.responsible_dept,
             assigned_to=task_data.assigned_to,
             deadline=task_data.deadline,
-            verification_status="open",
+            verification_status="assigned" if task_data.assigned_to else "open",
             created_by=created_by,
             created_at=datetime.utcnow(),
             updated_at=datetime.utcnow()

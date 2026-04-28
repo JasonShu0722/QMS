@@ -185,6 +185,11 @@
         />
       </div>
     </el-card>
+
+    <ProcessIssueCreateDialog
+      v-model="showCreateDialog"
+      @success="handleCreateSuccess"
+    />
   </div>
 </template>
 
@@ -195,6 +200,7 @@ import { Plus, Refresh, Search } from '@element-plus/icons-vue'
 import { useRouter } from 'vue-router'
 
 import { getProcessIssues, getResponsibilityCategories } from '@/api/process-quality'
+import ProcessIssueCreateDialog from '@/components/ProcessIssueCreateDialog.vue'
 import { useAuthStore } from '@/stores/auth'
 import type {
   ProcessIssue,
@@ -215,6 +221,7 @@ const router = useRouter()
 const authStore = useAuthStore()
 
 const loading = ref(false)
+const showCreateDialog = ref(false)
 const tableData = ref<ProcessIssue[]>([])
 const responsibilityCategories = ref<ResponsibilityCategoryOption[]>([])
 const dateRange = ref<[string, string] | null>(null)
@@ -315,7 +322,7 @@ const handleReset = () => {
 }
 
 const handleCreate = () => {
-  router.push({ name: 'ProcessIssueCreate' })
+  showCreateDialog.value = true
 }
 
 const handleView = (issue: ProcessIssue) => {
@@ -342,6 +349,15 @@ const handleSizeChange = (size: number) => {
 const handlePageChange = (page: number) => {
   pagination.page = page
   loadData()
+}
+
+const handleCreateSuccess = (issueId: number) => {
+  showCreateDialog.value = false
+  void loadData()
+  router.push({
+    name: 'ProcessIssueDetail',
+    params: { id: issueId },
+  })
 }
 
 onMounted(() => {

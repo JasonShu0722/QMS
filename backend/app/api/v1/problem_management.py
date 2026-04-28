@@ -17,6 +17,7 @@ from app.core.problem_management import (
 )
 from app.models.user import User
 from app.schemas.problem_management import (
+    InternalUserOption,
     NumberingRuleItem,
     ProblemCategoryItem,
     ProblemIssueSummaryListResponse,
@@ -61,6 +62,24 @@ async def get_problem_management_catalog(
             issue_pattern="ZXQ-<分类子类>-<YYMM>-<SEQ3>",
             report_pattern="ZX8D-<分类子类>-<YYMM>-<SEQ3>",
         ),
+    )
+
+
+@router.get(
+    "/internal-users",
+    response_model=list[InternalUserOption],
+    summary="Get shared internal assignment user options",
+)
+async def list_internal_user_options(
+    keyword: str | None = Query(None, description="Keyword"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Return active internal users for cross-module assignment dialogs."""
+
+    return await ProblemManagementService.list_internal_user_options(
+        db=db,
+        keyword=keyword,
     )
 
 

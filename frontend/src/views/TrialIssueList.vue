@@ -64,7 +64,12 @@
     </el-card>
 
     <el-card>
-      <el-table :data="issueList" v-loading="loading" stripe>
+      <el-table
+        :data="issueList"
+        v-loading="loading"
+        stripe
+        :row-class-name="getRowClassName"
+      >
         <el-table-column prop="issue_number" label="问题编号" width="140" />
         <el-table-column prop="issue_description" label="问题描述" min-width="220" show-overflow-tooltip />
         <el-table-column prop="issue_type" label="问题类型" width="110">
@@ -145,7 +150,8 @@
     <el-dialog
       v-model="dialogVisible"
       title="录入试产问题"
-      width="600px"
+      width="90%"
+      class="max-w-2xl"
       :close-on-click-modal="false"
     >
       <el-form ref="formRef" :model="formData" :rules="formRules" label-width="120px">
@@ -185,7 +191,13 @@
       </template>
     </el-dialog>
 
-    <el-dialog v-model="solutionDialogVisible" title="提交解决方案" width="600px">
+    <el-dialog
+      v-model="solutionDialogVisible"
+      title="提交解决方案"
+      width="90%"
+      class="max-w-2xl"
+      :close-on-click-modal="false"
+    >
       <el-form label-width="120px">
         <el-form-item label="根本原因">
           <el-input
@@ -218,7 +230,13 @@
       </template>
     </el-dialog>
 
-    <el-dialog v-model="detailDialogVisible" title="问题详情" width="700px">
+    <el-dialog
+      v-model="detailDialogVisible"
+      title="问题详情"
+      width="90%"
+      class="max-w-3xl"
+      :close-on-click-modal="false"
+    >
       <el-descriptions v-if="currentIssue" :column="1" border>
         <el-descriptions-item label="问题编号">{{ currentIssue.issue_number }}</el-descriptions-item>
         <el-descriptions-item label="问题描述">
@@ -256,7 +274,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 
@@ -282,6 +300,7 @@ const dialogVisible = ref(false)
 const solutionDialogVisible = ref(false)
 const detailDialogVisible = ref(false)
 const currentIssue = ref<TrialIssue | null>(null)
+const focusedIssueId = computed(() => parseFocusId(route.query.focusId))
 
 const formRef = ref<FormInstance>()
 const formData = reactive<TrialIssueCreate>({
@@ -328,6 +347,18 @@ const clearRouteAction = () => {
   })
 }
 
+const clearRouteFocus = () => {
+  if (!route.query.focusId || route.query.action) {
+    return
+  }
+
+  const { focusId, ...restQuery } = route.query
+  void router.replace({
+    name: 'TrialIssueList',
+    query: restQuery,
+  })
+}
+
 const consumeRouteAction = async (issue: TrialIssue | null) => {
   if (!issue) {
     return
@@ -358,10 +389,24 @@ const loadData = async () => {
     const response: any = await newProductApi.getTrialIssueList(params)
     issueList.value = Array.isArray(response) ? response : response.items ?? []
     pagination.total = Array.isArray(response) ? response.length : response.total ?? issueList.value.length
+    await ensureFocusedIssueLoaded()
   } catch (error: any) {
     ElMessage.error(error.message || '加载数据失败')
   } finally {
     loading.value = false
+  }
+}
+
+const ensureFocusedIssueLoaded = async () => {
+  if (!focusedIssueId.value || issueList.value.some((item) => item.id === focusedIssueId.value)) {
+    return
+  }
+
+  try {
+    const focusedIssue = await newProductApi.getTrialIssue(focusedIssueId.value)
+    issueList.value = [focusedIssue, ...issueList.value]
+  } catch (error) {
+    console.error('Failed to load focused trial issue:', error)
   }
 }
 
@@ -439,8 +484,13 @@ const handleSubmit = async () => {
 }
 
 const handleView = (row: TrialIssue) => {
-  currentIssue.value = row
-  detailDialogVisible.value = true
+  void router.push({
+    name: 'TrialIssueList',
+    query: {
+      ...route.query,
+      focusId: String(row.id),
+    },
+  })
 }
 
 const handleSubmitSolution = (row: TrialIssue) => {
@@ -563,6 +613,9 @@ const isOverdue = (deadline?: string) => {
   return new Date(deadline) < new Date()
 }
 
+const getRowClassName = ({ row }: { row: TrialIssue }) =>
+  focusedIssueId.value === row.id ? 'focused-row' : ''
+
 const formatDate = (dateStr: string, type: 'date' | 'datetime' = 'datetime') => {
   if (!dateStr) {
     return '-'
@@ -596,6 +649,12 @@ watch(
     void consumeRouteAction(currentIssue.value)
   }
 )
+
+watch(detailDialogVisible, (visible) => {
+  if (!visible) {
+    clearRouteFocus()
+  }
+})
 </script>
 
 <style scoped>
@@ -617,5 +676,9 @@ watch(
     display: block;
     margin-bottom: 12px;
   }
+}
+
+:deep(.focused-row td) {
+  background-color: #ecf5ff !important;
 }
 </style>

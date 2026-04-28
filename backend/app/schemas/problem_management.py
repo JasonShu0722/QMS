@@ -38,6 +38,19 @@ class ProblemManagementCatalogResponse(BaseModel):
     numbering_rule: NumberingRuleItem = Field(..., description="Unified numbering rule")
 
 
+class InternalUserOption(BaseModel):
+    """Shared internal user option for cross-module assignment dialogs."""
+
+    id: int
+    username: str
+    full_name: str
+    department: Optional[str] = None
+    position: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
 class UnifiedProblemStatus(str, Enum):
     OPEN = "open"
     ASSIGNED = "assigned"
@@ -71,6 +84,7 @@ class ProblemIssueSummaryItem(BaseModel):
 
     source_type: str = Field(..., description="Source entity type")
     source_id: int = Field(..., description="Source entity id")
+    source_parent_id: Optional[int] = Field(default=None, description="Parent source entity id when applicable")
     source_label: str = Field(..., description="Source label")
     module_key: str = Field(..., description="Module key")
     problem_category_key: str = Field(..., description="Problem category key")

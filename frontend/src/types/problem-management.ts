@@ -54,6 +54,14 @@ export interface ProblemManagementCatalogResponse {
   numbering_rule: NumberingRuleItem
 }
 
+export interface InternalUserOption {
+  id: number
+  username: string
+  full_name: string
+  department?: string | null
+  position?: string | null
+}
+
 export interface ProblemIssueSummaryQuery {
   module_key?: ProblemModuleKey
   problem_category_key?: ProblemCategoryKey
@@ -70,6 +78,7 @@ export interface ProblemIssueSummaryQuery {
 export interface ProblemIssueSummaryItem {
   source_type: 'customer_complaint' | 'process_issue' | 'trial_issue' | 'audit_nc' | 'scar' | string
   source_id: number
+  source_parent_id?: number | null
   source_label: string
   module_key: ProblemModuleKey | string
   problem_category_key: ProblemCategoryKey | string

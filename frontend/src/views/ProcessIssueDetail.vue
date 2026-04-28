@@ -32,7 +32,7 @@
           </el-tag>
         </el-descriptions-item>
         <el-descriptions-item label="当前处理人">
-          {{ issueDetail?.assigned_to ?? '-' }}
+          {{ assignedUserLabel }}
         </el-descriptions-item>
         <el-descriptions-item label="验证期">
           {{ issueDetail?.verification_period ? `${issueDetail.verification_period} 天` : '-' }}
@@ -110,7 +110,8 @@
     <el-dialog
       v-model="showResponseDialog"
       title="填写分析和对策"
-      width="800px"
+      width="90%"
+      class="max-w-3xl"
       :close-on-click-modal="false"
     >
       <el-form
@@ -184,7 +185,8 @@
     <el-dialog
       v-model="showVerifyDialog"
       title="验证对策有效性"
-      width="600px"
+      width="90%"
+      class="max-w-xl"
       :close-on-click-modal="false"
     >
       <el-form
@@ -223,7 +225,8 @@
     <el-dialog
       v-model="showCloseDialog"
       title="关闭问题单"
-      width="600px"
+      width="90%"
+      class="max-w-xl"
       :close-on-click-modal="false"
     >
       <el-form :model="closeForm" label-width="120px">
@@ -250,13 +253,15 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import { ArrowLeft, Document } from '@element-plus/icons-vue'
 
+import { problemManagementApi } from '@/api/problem-management'
 import { closeProcessIssue, getProcessIssue, respondToProcessIssue, verifyProcessIssue } from '@/api/process-quality'
 import { useAuthStore } from '@/stores/auth'
+import type { InternalUserOption } from '@/types/problem-management'
 import type {
   ProcessIssue,
   ProcessIssueClose,
@@ -264,6 +269,7 @@ import type {
   ProcessIssueVerification,
   ResponsibilityCategory,
 } from '@/types/process-quality'
+import { buildInternalUserLabelMap } from '@/utils/internalUsers'
 import {
   canCloseProcessIssue,
   canRespondToProcessIssue,
@@ -283,9 +289,11 @@ const showResponseDialog = ref(false)
 const showVerifyDialog = ref(false)
 const showCloseDialog = ref(false)
 const evidenceInput = ref('')
+const internalUsers = ref<InternalUserOption[]>([])
 
 const responseFormRef = ref<FormInstance>()
 const verifyFormRef = ref<FormInstance>()
+const internalUserLabelMap = computed(() => buildInternalUserLabelMap(internalUsers.value))
 
 const responseForm = reactive<ProcessIssueResponse>({
   root_cause: '',
@@ -346,6 +354,14 @@ const canRespond = computed(() =>
 const canVerify = computed(() => canVerifyProcessIssue(issueDetail.value))
 
 const canClose = computed(() => canCloseProcessIssue(issueDetail.value))
+const assignedUserLabel = computed(() => {
+  const assignedTo = issueDetail.value?.assigned_to
+  if (!assignedTo) {
+    return '-'
+  }
+
+  return internalUserLabelMap.value[assignedTo] || `#${assignedTo}`
+})
 
 const getResponsibilityTagType = (category?: ResponsibilityCategory): string => {
   if (!category) {
@@ -394,6 +410,14 @@ const formatDateTime = (dateTime?: string): string => {
 }
 
 const getFileName = (path: string): string => path.split('/').pop() || path
+
+const loadInternalUsers = async () => {
+  try {
+    internalUsers.value = await problemManagementApi.getInternalUsers()
+  } catch (error: any) {
+    ElMessage.error(error.message || '加载内部责任人列表失败')
+  }
+}
 
 const resetDialogs = () => {
   showResponseDialog.value = false
@@ -562,6 +586,10 @@ watch(
   },
   { immediate: true }
 )
+
+onMounted(() => {
+  void loadInternalUsers()
+})
 </script>
 
 <style scoped>

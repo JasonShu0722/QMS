@@ -5,7 +5,7 @@
       <el-button @click="goBack" circle>
         <el-icon><ArrowLeft /></el-icon>
       </el-button>
-      <h2>8D 报告填写</h2>
+      <h2>{{ pageTitle }}</h2>
       <div v-if="authStore.isSupplier" class="header-actions">
         <el-button @click="handleSaveDraft" :loading="saving">
           <el-icon><Document /></el-icon>
@@ -291,12 +291,14 @@ import {
 import { supplierApi } from '@/api/supplier'
 import { useAuthStore } from '@/stores/auth'
 import type { EightDReport, SCAR } from '@/types/supplier'
+import { isScarRouteName } from '@/utils/problemIssueSummary'
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 
 const scarId = computed(() => Number(route.params.id))
+const pageTitle = computed(() => (authStore.isInternal ? 'SCAR 8D 审核' : '8D 报告填写'))
 const scarData = ref<SCAR | null>(null)
 const eightDReport = ref<EightDReport | null>(null)
 const saving = ref(false)
@@ -308,6 +310,40 @@ const aiReviewResult = ref<any>(null)
 const reviewForm = reactive({
   review_comments: ''
 })
+
+function getSingleQueryValue(value: unknown): string | undefined {
+  if (typeof value === 'string') {
+    return value
+  }
+
+  if (Array.isArray(value) && typeof value[0] === 'string') {
+    return value[0]
+  }
+
+  return undefined
+}
+
+function getDefaultSourceRouteName() {
+  return authStore.isInternal ? 'ScarManagement' : 'SCARList'
+}
+
+const sourceRouteName = computed(() => {
+  const raw = getSingleQueryValue(route.query.sourceRouteName)
+  return raw && isScarRouteName(raw) ? raw : getDefaultSourceRouteName()
+})
+
+const sourceFocusId = computed(() => {
+  const raw = getSingleQueryValue(route.query.sourceFocusId)
+  const parsed = raw ? Number.parseInt(raw, 10) : NaN
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : scarId.value
+})
+
+function buildSourceRoute() {
+  return {
+    name: sourceRouteName.value,
+    query: { focusId: String(sourceFocusId.value) },
+  }
+}
 
 // 表单数据
 const formData = reactive({
@@ -396,7 +432,7 @@ const handleUploadSuccess = () => {
 
 // 返回
 const goBack = () => {
-  router.back()
+  router.push(buildSourceRoute())
 }
 
 // 保存草稿
@@ -476,10 +512,7 @@ const handleSubmit = async () => {
     }
     await supplierApi.submit8DReport(scarId.value, reportData)
     ElMessage.success('8D报告提交成功')
-    router.push({
-      name: 'SCARList',
-      query: { focusId: String(scarId.value) }
-    })
+    router.push(buildSourceRoute())
   } catch (error) {
     if (error !== 'cancel') {
       console.error('Failed to submit 8D report:', error)

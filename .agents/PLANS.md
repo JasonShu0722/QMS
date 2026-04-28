@@ -384,6 +384,73 @@
     - `& '.\.venv\Scripts\python.exe' -m pytest backend/test/test_problem_management_api.py`
     - `Set-Location frontend; npm run test -- src/utils/test/problemIssueSummary.spec.ts src/utils/test/processIssue.spec.ts src/utils/test/customerComplaint.spec.ts src/utils/test/customerEightD.spec.ts src/utils/test/problemManagement.spec.ts`
     - `Set-Location frontend; npm run build`
+  - self-check follow-up for current problem-management pages:
+    - added a shared `/api/v1/problem-management/internal-users` option API so cross-module assignment dialogs no longer have to reuse customer-only endpoints or raw user-id inputs
+    - `ProcessIssueList` and `ProcessDefectList` now use a real `ProcessIssueCreateDialog` instead of the stale `ProcessIssueCreate` route reference, closing an actual broken entry in the current base chain
+    - `AuditNCList` assignment now uses an internal-user dropdown instead of manual `用户 ID` input, which is a direct UX cleanup for the current audit problem workflow
+    - `ProcessIssueDetail`, `TrialIssueList`, and `AuditNCList` dialogs were switched to percentage widths plus max-width caps to reduce mobile/medium-screen overflow and obvious form squeezing
+  - duplicate / overlap review conclusion for this pass:
+    - `quality/scar` and `supplier/scar` intentionally reuse the same `SCARList.vue` surface for internal vs supplier audiences and should be retained
+    - `quality/scar/eight-d/:id?` and `supplier/eight-d/:id?` intentionally reuse the same 8D page with different entry context and should be retained
+    - `CustomerClaimList` vs `CustomerComplaintList`, and `SupplierClaimList` vs `SCARList`, are adjacent business pages rather than true duplicates in the current codebase
+    - the only confirmed stale page-level gap in this pass was the missing `ProcessIssueCreate` entry path, which has now been replaced by an actual create dialog
+  - latest verification for this increment:
+    - `& '.\.venv\Scripts\python.exe' -m pytest backend/test/test_problem_management_api.py`
+    - `Set-Location frontend; npm run test -- src/utils/test/processIssue.spec.ts src/utils/test/problemIssueSummary.spec.ts`
+    - `Set-Location frontend; npm run build`
+  - cross-module follow-up for current problem-management usability:
+    - extracted a lightweight frontend `internalUsers` utility so shared issue surfaces render internal handler names consistently instead of exposing raw numeric ids
+    - the unified problem center now resolves `assigned_to` into `姓名 (username) / 部门` labels when possible, which makes mixed-module queues easier to scan once customer / process / audit items sit together
+    - `ProcessIssueDetail` now shows the same internal handler label format as the issue center, aligning process-quality detail pages with the cross-module summary experience
+    - `CustomerAuditList` issue-task creation now uses the shared internal-user dropdown instead of manual user-id entry, and both customer-audit dialogs now use responsive widths to reduce obvious medium-screen layout squeezing
+    - `AuditNCList` now reuses the same internal-user label formatter as the other problem-management pages, keeping audit-management assignment wording aligned with the unified center
+  - latest verification for this increment:
+    - `Set-Location frontend; npm run test -- src/utils/test/internalUsers.spec.ts src/utils/test/processIssue.spec.ts src/utils/test/problemIssueSummary.spec.ts`
+    - `Set-Location frontend; npm run build`
+  - audit-management / customer-audit follow-up:
+    - customer-audit issue tasks (`AQ3`) now enter the shared NC workflow as `assigned` when a responsible owner is chosen during creation, instead of falling back to `open` and forcing a redundant second assignment step
+    - the unified problem-center audit aggregation now includes customer-audit-derived NC tasks (negative `audit_id` bridge records), resolves them to `AQ3`, carries the customer name back into the shared summary, and exposes them as actionable items for the assigned internal owner
+    - this closes a real gap in the current first-batch scope: customer-audit发单 no longer disappears outside the standalone list and can now be filtered through `问题分类=AQ3` plus `只看我可处理`
+  - latest verification for this increment:
+    - `& '.\.venv\Scripts\python.exe' -m pytest backend/test/test_problem_management_api.py backend/test/test_customer_audit_issue_task_api.py`
+  - customer-audit source-page closure:
+    - the unified problem summary now carries the parent customer-audit record id for `AQ3` items, so source routing can distinguish “客户审核问题” from normal audit NC
+    - `AQ3` items opened from the problem center now land on the customer-audit ledger with the target audit row focused, automatically open the related issue-task dialog, and highlight the originating task
+    - the customer-audit ledger was upgraded from a placeholder list into an actionable source surface: it now supports task viewing, route-driven focus, related-task listing, and one-click handoff back into the shared NC handling page
+  - latest verification for this increment:
+    - `& '.\.venv\Scripts\python.exe' -m pytest backend/test/test_problem_management_api.py backend/test/test_customer_audit_issue_task_api.py`
+    - `Set-Location frontend; npm run test -- src/utils/test/problemIssueSummary.spec.ts src/utils/test/internalUsers.spec.ts`
+    - `Set-Location frontend; npm run build`
+  - AQ3 source-loop polish:
+    - `AQ3` source links in the unified problem center now use a distinct customer-audit action label instead of the generic `查看 NC`, reducing ambiguity once customer-audit tasks and normal audit NC items are mixed in the same queue
+    - `AQ3` quick actions now carry the parent customer-audit id into `AuditNCList`, so users who enter NC handling directly from the problem center still retain a clean return path back to the originating customer-audit task
+    - `AuditNCList` now exposes a lightweight `返回客审任务` entry when the current NC came from customer-audit dispatch, completing the round-trip between source ledger, unified problem center, and NC handling without inventing a new page
+  - latest verification for this increment:
+    - `Set-Location frontend; npm run test -- src/utils/test/problemIssueSummary.spec.ts src/utils/test/internalUsers.spec.ts`
+    - `Set-Location frontend; npm run build`
+  - new-product / trial-issue source-loop polish:
+    - `TrialIssueList` now treats `focusId` as a first-class route state instead of only an incidental detail lookup, so trial issues opened from the unified problem center are also anchored in the source list itself
+    - when the focused issue is outside the current page slice, the source page now fetches and prepends that issue before opening the detail dialog, avoiding the previous “dialog opens but list has no matching row” break in context
+    - trial-issue detail viewing now round-trips through route query state, with source-row highlighting and automatic `focusId` cleanup after the dialog closes, keeping the new-product-quality queue aligned with the customer-audit and SCAR source patterns
+  - latest verification for this increment:
+    - `Set-Location frontend; npm run test -- src/utils/test/problemIssueSummary.spec.ts src/utils/test/internalUsers.spec.ts`
+    - `Set-Location frontend; npm run build`
+  - SCAR / 8D source-loop and copy cleanup:
+    - `SCARList` now passes explicit `sourceRouteName` and `sourceFocusId` into the 8D form, so supplier-side 8D submission no longer depends on browser history to get back to the originating SCAR list row
+    - unified problem-center `scar-review-8d` quick actions now carry the same source-return metadata into `ScarEightDReview`, keeping internal review entry and supplier entry on one consistent round-trip contract
+    - `EightDForm` now derives a stable return target (`SCARList` or `ScarManagement`) from route context, uses it for the header back button and post-submit redirect, and shows a context-aware page title for supplier fill-in vs internal review
+    - `ProblemIssueCenter` copy was normalized for clearer wording around unified issue aggregation and cross-object display, closing the remaining visible text inconsistency in the core issue-center surface
+  - latest verification for this increment:
+    - `Set-Location frontend; npm run test -- src/utils/test/problemIssueSummary.spec.ts src/utils/test/internalUsers.spec.ts`
+    - `Set-Location frontend; npm run build`
+  - customer-quality source-loop closure:
+    - `CustomerComplaintList` now supports `focusId` anchoring, row highlighting, and focused-record补载, so complaint rows opened from downstream pages can return to a visible source row instead of landing on an unanchored ledger slice
+    - unified problem-center customer-complaint source links and quick actions now carry `sourceRouteName=ProblemIssueCenter`, allowing complaint detail actions to return to the problem center explicitly instead of depending on browser history
+    - `CustomerComplaintDetail` and `EightDCustomerForm` now exchange explicit source metadata for `台账 -> 详情 -> 8D`, `问题中心 -> 详情`, and `8D -> 关联客诉详情` round-trips, closing the remaining customer-quality navigation gap in the current problem-management scope
+    - cleaned visible乱码 in the customer 8D scope-management area (`设为主客诉` / 切换提示语), removing a lingering polish defect in one of the core issue-response pages
+  - latest verification for this increment:
+    - `Set-Location frontend; npm run test -- src/utils/test/problemIssueSummary.spec.ts src/utils/test/internalUsers.spec.ts`
+    - `Set-Location frontend; npm run build`
 
 ## Task: Permission-Driven Surface Visibility And Supplier Quality Panel Access (2026-04-18)
 

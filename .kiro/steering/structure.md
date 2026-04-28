@@ -1,6 +1,6 @@
----
-inclusion: always
----
+***
+
+## inclusion: always
 
 # Project Structure
 
@@ -132,6 +132,7 @@ graph TD
     classDef stable fill:#dfd,stroke:#333,stroke-width:2px;
     classDef preview fill:#eef,stroke:#333,stroke-width:2px,stroke-dasharray: 5 5;
     classDef shared fill:#ffd,stroke:#333,stroke-width:3px;
+    classDef storage fill:#f8f1d4,stroke:#333,stroke-width:2px;
 
     Supplier[供应商] --> Nginx
     Staff[内部员工] --> Nginx
@@ -146,8 +147,13 @@ graph TD
     ApiPreview --> Postgres
     ApiStable --> Redis[(Redis)]:::shared
     ApiPreview --> Redis
+    ApiStable --> UploadStable[(stable uploads)]:::storage
+    ApiPreview --> UploadPreview[(preview uploads)]:::storage
+
     Worker[celery-worker]:::shared --> Redis
     Worker --> Postgres
+    Beat[celery-beat]:::shared --> Redis
+    Beat --> Postgres
 ```
 
 ### Current Deployment Notes
@@ -155,6 +161,8 @@ graph TD
 - `stable` 与 `preview` 通过不同域名区分，而不是通过 `/api/preview` 路径切换。
 - 两套环境共享同一个 PostgreSQL 数据库，数据库迁移必须遵守非破坏性原则。
 - Redis 通过不同逻辑库区分部分环境和任务用途。
+- `celery-worker` 与 `celery-beat` 属于共享异步基础设施，当前围绕通知、定时任务、后续集成能力预留运行位。
+- 稳定环境与预览环境各自使用独立上传目录卷，避免附件与上传文件相互覆盖。
 - 功能开关按“环境优先，再按 global / whitelist 判断”执行可见性控制。
 
 ## Development and Verification Flow

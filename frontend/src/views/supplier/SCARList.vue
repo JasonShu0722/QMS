@@ -402,7 +402,11 @@ function handleSubmit8D(row: SCAR) {
   router.push({
     name: 'EightDForm',
     params: { id: String(row.id) },
-    query: { action: 'submit' },
+    query: {
+      action: 'submit',
+      sourceRouteName: currentRouteName.value,
+      sourceFocusId: String(row.id),
+    },
   })
 }
 

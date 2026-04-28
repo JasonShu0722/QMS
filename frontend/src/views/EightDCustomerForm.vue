@@ -130,11 +130,11 @@
               <template #default="{ row }">
                 <el-popconfirm
                   v-if="canSwitchPrimaryComplaint(row)"
-                  title="纭灏嗚瀹㈣瘔璁剧疆涓哄綋鍓?8D 鐨勪富瀹㈣瘔锛?"
+                  title="确认将该客诉设为当前 8D 的主客诉？"
                   @confirm="handleSwitchPrimaryComplaint(row.complaint_id)"
                 >
                   <template #reference>
-                    <el-button type="primary" link :disabled="submitting">璁句负涓诲璇?</el-button>
+                    <el-button type="primary" link :disabled="submitting">设为主客诉</el-button>
                   </template>
                 </el-popconfirm>
                 <el-popconfirm
@@ -421,6 +421,7 @@ import {
   reviewEightDCustomer,
 } from '@/api/customer-quality'
 import { canOpenCustomerComplaintEightD } from '@/utils/customerComplaint'
+import { isCustomerComplaintRouteName } from '@/utils/problemIssueSummary'
 import {
   canManageEightDComplaintScope,
   canRemoveComplaintFromEightDScope,
@@ -553,6 +554,70 @@ const canReview = computed(() => {
 })
 
 const canArchiveEightD = computed(() => eightDData.value?.status === 'approved')
+
+function getSingleQueryValue(value: unknown): string | undefined {
+  if (typeof value === 'string') {
+    return value
+  }
+
+  if (Array.isArray(value) && typeof value[0] === 'string') {
+    return value[0]
+  }
+
+  return undefined
+}
+
+const sourceRouteName = computed(() => {
+  const raw = getSingleQueryValue(route.query.sourceRouteName)
+  return raw && isCustomerComplaintRouteName(raw) ? raw : 'CustomerComplaintList'
+})
+
+const sourceFocusId = computed(() => {
+  const raw = getSingleQueryValue(route.query.sourceFocusId)
+  const parsed = raw ? Number.parseInt(raw, 10) : NaN
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : complaint.value?.id ?? Number(route.params.id)
+})
+
+const sourceComplaintId = computed(() => {
+  const raw = getSingleQueryValue(route.query.sourceComplaintId)
+  const parsed = raw ? Number.parseInt(raw, 10) : NaN
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : complaint.value?.id ?? Number(route.params.id)
+})
+
+function buildSourceRoute() {
+  if (sourceRouteName.value === 'ProblemIssueCenter') {
+    return { name: 'ProblemIssueCenter' as const }
+  }
+
+  if (sourceRouteName.value === 'CustomerComplaintDetail') {
+    return {
+      name: 'CustomerComplaintDetail' as const,
+      params: { id: String(sourceComplaintId.value) },
+      query: {
+        sourceRouteName: 'CustomerComplaintList',
+        sourceFocusId: String(sourceComplaintId.value),
+      },
+    }
+  }
+
+  if (sourceRouteName.value === 'EightDCustomerForm') {
+    return {
+      name: 'EightDCustomerForm' as const,
+      params: { id: String(sourceComplaintId.value) },
+      query: {
+        sourceRouteName: 'CustomerComplaintDetail',
+        sourceComplaintId: String(sourceComplaintId.value),
+      },
+    }
+  }
+
+  return {
+    name: 'CustomerComplaintList' as const,
+    query: {
+      focusId: String(sourceFocusId.value),
+    },
+  }
+}
 
 function canRemoveComplaintFromScope(row: { complaint_id: number; is_primary: boolean }) {
   return canRemoveComplaintFromEightDScope(row, complaint.value?.id)
@@ -690,6 +755,10 @@ function handleOpenComplaint(complaintId: number) {
   router.push({
     name: 'CustomerComplaintDetail',
     params: { id: String(complaintId) },
+    query: {
+      sourceRouteName: 'EightDCustomerForm',
+      sourceComplaintId: String(complaint.value?.id ?? complaintId),
+    },
   })
 }
 
@@ -709,10 +778,10 @@ async function handleSwitchPrimaryComplaint(primaryComplaintId: number) {
     eightDData.value = await switchCustomerComplaintEightDPrimaryComplaint(complaintId, {
       primary_complaint_id: primaryComplaintId,
     })
-    ElMessage.success('宸插垏鎹富瀹㈣瘔')
+    ElMessage.success('已切换主客诉')
     await loadData()
   } catch (error: any) {
-    ElMessage.error(error.message || '鍒囨崲涓诲璇夊け璐?')
+    ElMessage.error(error.message || '切换主客诉失败')
     console.error('Switch primary customer complaint error:', error)
   } finally {
     submitting.value = false
@@ -803,7 +872,7 @@ async function handleReview() {
  * 返回
  */
 function handleBack() {
-  router.back()
+  router.push(buildSourceRoute())
 }
 
 // 初始化

@@ -241,6 +241,7 @@ import {
 import { useProblemManagementStore } from '@/stores/problemManagement'
 import { ComplaintType, type CustomerComplaint, type EightDCustomer } from '@/types/customer-quality'
 import { getCustomerComplaintTypeLabel } from '@/utils/problemManagement'
+import { isCustomerComplaintRouteName } from '@/utils/problemIssueSummary'
 import {
   canHandleCustomerComplaintAnalysis,
   canHandleCustomerComplaintDisposition,
@@ -300,6 +301,70 @@ const eightDStatusLabel = computed(() => getEightDStatusLabel(complaint.value?.e
 const relatedComplaints = computed(() => eightDData.value?.related_complaints ?? [])
 const hasRelatedComplaintScope = computed(() => relatedComplaints.value.length > 0)
 const complaintScopeSummary = computed(() => getEightDComplaintScopeSummary(relatedComplaints.value))
+
+function getSingleQueryValue(value: unknown): string | undefined {
+  if (typeof value === 'string') {
+    return value
+  }
+
+  if (Array.isArray(value) && typeof value[0] === 'string') {
+    return value[0]
+  }
+
+  return undefined
+}
+
+const sourceRouteName = computed(() => {
+  const raw = getSingleQueryValue(route.query.sourceRouteName)
+  return raw && isCustomerComplaintRouteName(raw) ? raw : 'CustomerComplaintList'
+})
+
+const sourceFocusId = computed(() => {
+  const raw = getSingleQueryValue(route.query.sourceFocusId)
+  const parsed = raw ? Number.parseInt(raw, 10) : NaN
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : complaint.value?.id ?? Number(route.params.id)
+})
+
+const sourceComplaintId = computed(() => {
+  const raw = getSingleQueryValue(route.query.sourceComplaintId)
+  const parsed = raw ? Number.parseInt(raw, 10) : NaN
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : complaint.value?.id ?? Number(route.params.id)
+})
+
+function buildSourceRoute() {
+  if (sourceRouteName.value === 'ProblemIssueCenter') {
+    return { name: 'ProblemIssueCenter' as const }
+  }
+
+  if (sourceRouteName.value === 'EightDCustomerForm') {
+    return {
+      name: 'EightDCustomerForm' as const,
+      params: { id: String(sourceComplaintId.value) },
+      query: {
+        sourceRouteName: 'CustomerComplaintDetail',
+        sourceComplaintId: String(sourceComplaintId.value),
+      },
+    }
+  }
+
+  if (sourceRouteName.value === 'CustomerComplaintDetail') {
+    return {
+      name: 'CustomerComplaintDetail' as const,
+      params: { id: String(sourceComplaintId.value) },
+      query: {
+        sourceRouteName: 'CustomerComplaintList',
+        sourceFocusId: String(sourceComplaintId.value),
+      },
+    }
+  }
+
+  return {
+    name: 'CustomerComplaintList' as const,
+    query: {
+      focusId: String(sourceFocusId.value),
+    },
+  }
+}
 
 function clearRouteAction() {
   if (!route.query.action || !complaint.value) {
@@ -362,7 +427,14 @@ async function handleOpenEightD() {
   }
 
   if (complaint.value.eight_d_report_id) {
-    router.push({ name: 'EightDCustomerForm', params: { id: complaint.value.id } })
+    router.push({
+      name: 'EightDCustomerForm',
+      params: { id: complaint.value.id },
+      query: {
+        sourceRouteName: 'CustomerComplaintDetail',
+        sourceComplaintId: String(complaint.value.id),
+      },
+    })
     return
   }
 
@@ -371,7 +443,14 @@ async function handleOpenEightD() {
     await initCustomerComplaintEightD(complaint.value.id)
     ElMessage.success(`客诉 ${complaint.value.complaint_number} 已发起 8D`)
     await loadComplaint()
-    router.push({ name: 'EightDCustomerForm', params: { id: complaint.value.id } })
+    router.push({
+      name: 'EightDCustomerForm',
+      params: { id: complaint.value.id },
+      query: {
+        sourceRouteName: 'CustomerComplaintDetail',
+        sourceComplaintId: String(complaint.value.id),
+      },
+    })
   } catch (error: any) {
     ElMessage.error(error.message || '发起 8D 失败')
     console.error('launch 8D from complaint detail error:', error)
@@ -381,11 +460,18 @@ async function handleOpenEightD() {
 }
 
 function handleBack() {
-  router.back()
+  router.push(buildSourceRoute())
 }
 
 function handleOpenRelatedComplaint(complaintId: number) {
-  router.push({ name: 'CustomerComplaintDetail', params: { id: complaintId } })
+  router.push({
+    name: 'CustomerComplaintDetail',
+    params: { id: complaintId },
+    query: {
+      sourceRouteName: 'CustomerComplaintDetail',
+      sourceComplaintId: String(complaint.value?.id ?? complaintId),
+    },
+  })
 }
 
 function handleRecordSuccess() {

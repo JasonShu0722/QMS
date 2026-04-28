@@ -43,7 +43,21 @@ type ProblemIssueRouteSource = Pick<
   | 'unified_status'
   | 'verified_by'
   | 'requires_physical_analysis'
->
+> &
+  Partial<Pick<ProblemIssueSummaryItem, 'problem_category_key' | 'source_parent_id'>>
+
+type ProblemIssueSourceLabelSource = Pick<ProblemIssueSummaryItem, 'source_type'> &
+  Partial<Pick<ProblemIssueSummaryItem, 'problem_category_key'>>
+
+type ProblemIssueSourceRouteLookup = Pick<ProblemIssueSummaryItem, 'source_type' | 'source_id'> &
+  Partial<Pick<ProblemIssueSummaryItem, 'source_parent_id' | 'problem_category_key'>>
+
+type ScarRouteName = 'SCARList' | 'ScarManagement'
+type CustomerComplaintRouteName =
+  | 'CustomerComplaintList'
+  | 'CustomerComplaintDetail'
+  | 'EightDCustomerForm'
+  | 'ProblemIssueCenter'
 
 const MODULE_LABELS: Record<ProblemModuleKey, string> = {
   customer_quality: '客户质量',
@@ -66,6 +80,32 @@ const STATUS_META: Record<UnifiedProblemStatus, StatusMeta> = {
 const MODULE_KEYS = new Set<ProblemModuleKey>(Object.keys(MODULE_LABELS) as ProblemModuleKey[])
 const STATUS_KEYS = new Set<UnifiedProblemStatus>(Object.keys(STATUS_META) as UnifiedProblemStatus[])
 const PROBLEM_ISSUE_MODULE_ORDER = Object.keys(MODULE_LABELS) as ProblemModuleKey[]
+const SCAR_ROUTE_NAMES = new Set<ScarRouteName>(['SCARList', 'ScarManagement'])
+const CUSTOMER_COMPLAINT_ROUTE_NAMES = new Set<CustomerComplaintRouteName>([
+  'CustomerComplaintList',
+  'CustomerComplaintDetail',
+  'EightDCustomerForm',
+  'ProblemIssueCenter',
+])
+
+function buildScarReturnQuery(
+  scarId: number,
+  sourceRouteName: ScarRouteName = 'ScarManagement'
+): Record<string, string> {
+  return {
+    focusId: String(scarId),
+    sourceRouteName,
+    sourceFocusId: String(scarId),
+  }
+}
+
+export function isScarRouteName(value: string): value is ScarRouteName {
+  return SCAR_ROUTE_NAMES.has(value as ScarRouteName)
+}
+
+export function isCustomerComplaintRouteName(value: string): value is CustomerComplaintRouteName {
+  return CUSTOMER_COMPLAINT_ROUTE_NAMES.has(value as CustomerComplaintRouteName)
+}
 
 function isActionOwnerCurrentUser(
   item: ProblemIssueRouteSource,
@@ -247,24 +287,22 @@ export function getProblemIssueResponseModeLabel(
   return '-'
 }
 
-export function getProblemIssueSourceActionLabel(
-  item: Pick<ProblemIssueSummaryItem, 'source_type'>
-): string {
+export function getProblemIssueSourceActionLabel(item: ProblemIssueSourceLabelSource): string {
   if (item.source_type === 'customer_complaint') return '查看客诉'
   if (item.source_type === 'process_issue') return '查看问题单'
   if (item.source_type === 'scar') return '查看 SCAR'
   if (item.source_type === 'trial_issue') return '查看试产问题'
+  if (item.source_type === 'audit_nc' && item.problem_category_key === 'AQ3') return '查看客审任务'
   if (item.source_type === 'audit_nc') return '查看 NC'
   return '查看来源'
 }
 
-export function getProblemIssueSourceRoute(
-  item: Pick<ProblemIssueSummaryItem, 'source_type' | 'source_id'>
-): RouteLocationRaw | null {
+export function getProblemIssueSourceRoute(item: ProblemIssueSourceRouteLookup): RouteLocationRaw | null {
   if (item.source_type === 'customer_complaint') {
     return {
       name: 'CustomerComplaintDetail',
       params: { id: item.source_id },
+      query: { sourceRouteName: 'ProblemIssueCenter' },
     }
   }
 
@@ -290,6 +328,17 @@ export function getProblemIssueSourceRoute(
   }
 
   if (item.source_type === 'audit_nc') {
+    if (item.problem_category_key === 'AQ3' && item.source_parent_id) {
+      return {
+        name: 'CustomerAuditList',
+        query: {
+          focusId: String(item.source_parent_id),
+          issueTaskId: String(item.source_id),
+          openIssueTasks: 'true',
+        },
+      }
+    }
+
     return {
       name: 'AuditNCList',
       query: { focusId: String(item.source_id) },
@@ -341,6 +390,13 @@ export function getProblemIssueQuickActionRoute(
   currentUserId?: number | null
 ): RouteLocationRaw | null {
   const quickActionKind = getProblemIssueQuickActionKind(item, currentUserId)
+  const customerAuditSourceQuery =
+    item.problem_category_key === 'AQ3' && item.source_parent_id
+      ? {
+          sourceParentId: String(item.source_parent_id),
+          sourceCategoryKey: 'AQ3',
+        }
+      : {}
 
   if (quickActionKind === 'process-respond') {
     return {
@@ -372,6 +428,7 @@ export function getProblemIssueQuickActionRoute(
       query: {
         focusId: String(item.source_id),
         action: 'respond',
+        ...customerAuditSourceQuery,
       },
     }
   }
@@ -382,6 +439,7 @@ export function getProblemIssueQuickActionRoute(
       query: {
         focusId: String(item.source_id),
         action: 'verify',
+        ...customerAuditSourceQuery,
       },
     }
   }
@@ -392,6 +450,7 @@ export function getProblemIssueQuickActionRoute(
       query: {
         focusId: String(item.source_id),
         action: 'close',
+        ...customerAuditSourceQuery,
       },
     }
   }
@@ -420,7 +479,10 @@ export function getProblemIssueQuickActionRoute(
     return {
       name: 'CustomerComplaintDetail',
       params: { id: item.source_id },
-      query: { action: 'analysis' },
+      query: {
+        action: 'analysis',
+        sourceRouteName: 'ProblemIssueCenter',
+      },
     }
   }
 
@@ -428,7 +490,10 @@ export function getProblemIssueQuickActionRoute(
     return {
       name: 'CustomerComplaintDetail',
       params: { id: item.source_id },
-      query: { action: 'disposition' },
+      query: {
+        action: 'disposition',
+        sourceRouteName: 'ProblemIssueCenter',
+      },
     }
   }
 
@@ -436,7 +501,10 @@ export function getProblemIssueQuickActionRoute(
     return {
       name: 'ScarEightDReview',
       params: { id: item.source_id },
-      query: { action: 'review' },
+      query: {
+        action: 'review',
+        ...buildScarReturnQuery(item.source_id, 'ScarManagement'),
+      },
     }
   }
 
